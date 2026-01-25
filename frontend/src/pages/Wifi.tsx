@@ -78,9 +78,9 @@ interface BillsResponse {
 
 interface Payment {
   pay_time: string
-  amount: number
-  pay_type: string
-  terminal: string
+  amount: number | string
+  pay_type: number | string
+  terminal: number | string
   remark: string
 }
 
@@ -489,13 +489,21 @@ export default function Wifi() {
       title: '金额',
       key: 'amount',
       width: 100,
-      render: (_: any, record: Payment) => `¥${record.amount.toFixed(2)}`,
+      render: (_: any, record: Payment) => {
+        // pay_type 实际上是金额（数字）
+        const amount = typeof record.pay_type === 'number' ? record.pay_type : record.amount
+        return typeof amount === 'number' ? `¥${amount.toFixed(2)}` : String(amount)
+      },
     },
     {
       title: '交费类型',
-      dataIndex: 'pay_type',
       key: 'pay_type',
       width: 120,
+      render: (_: any, record: Payment) => {
+        // amount 实际上是交费类型（字符串）
+        const payType = typeof record.amount === 'string' ? record.amount : record.pay_type
+        return String(payType)
+      },
     },
     {
       title: '受理终端',
