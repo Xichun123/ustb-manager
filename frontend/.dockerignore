@@ -1,0 +1,39 @@
+# Node
+node_modules
+npm-debug.log*
+
+# 构建产物
+dist
+build
+
+# Git
+.git
+.gitignore
+
+# 文档
+*.md
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# 环境变量
+.env
+.env.*
+
+# 测试
+coverage
+.nyc_output
+
+# Docker（不需要打包自身）
+Dockerfile
+.dockerignore
+
+# Claude
+.claude/
+CLAUDE.md

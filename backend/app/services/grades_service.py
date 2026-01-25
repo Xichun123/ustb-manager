@@ -1,0 +1,507 @@
+import asyncio
+import logging
+from typing import Dict, List, Optional
+from app.services.session_store import Session
+from app.exceptions import BYYTSessionExpired
+from httpx import HTTPStatusError
+
+logger = logging.getLogger(__name__)
+
+
+def _check_byyt_response(resp) -> None:
+    """检查BYYT响应是否表示会话过期"""
+    # 检查是否被重定向到登录页面
+    if resp.url and "authentication" in str(resp.url):
+        raise BYYTSessionExpired("BYYT session expired, redirected to login page")
+
+    # 检查401状态码
+    if resp.status_code == 401:
+        raise BYYTSessionExpired("BYYT session expired, got 401")
+
+    # 检查响应内容是否为HTML（登录页面）
+    content_type = resp.headers.get("content-type", "")
+    if "text/html" in content_type:
+        raise BYYTSessionExpired("BYYT session expired, got HTML response instead of JSON")
+
+
+async def get_grades(
+    session: Session,
+    page_num: int = 1,
+    page_size: int = 100,
+    xn: Optional[str] = None,
+    xq: Optional[str] = None,
+    kcxz: Optional[str] = None,
+    kclb: Optional[str] = None,
+) -> Dict:
+    """获取成绩列表"""
+
+    def _fetch():
+        params = {
+            "pageNum": page_num,
+            "pageSize": page_size,
+            "total": 0,
+            "xjid": session.student_id,
+            "sfgld": "1",
+            "pxzd": "",
+            "pxfx": "",
+            "xn": xn or "",
+            "xq": xq or "",
+            "kcxz": kcxz or "",
+            "kclb": kclb or "",
+            "key": "",
+            "pylx": "1",
+            "sffx": "",
+            "sfcxfxcj": "0",
+            "sfsjqx": "1",
+        }
+
+        resp = session.client.post(
+            "https://byyt.ustb.edu.cn/cjgl/grcjcx/dyxwList",
+            data=params,
+        )
+        _check_byyt_response(resp)
+        resp.raise_for_status()
+        return resp.json()
+
+    result = await asyncio.to_thread(_fetch)
+
+    if result.get("code") != 200:
+        raise Exception(f"Failed to fetch grades: {result.get('msg')}")
+
+    return result.get("content", {})
+
+
+async def get_student_info(session: Session) -> Dict:
+    """获取学生基本信息"""
+
+    def _fetch():
+        resp = session.client.post(
+            "https://byyt.ustb.edu.cn/UserManager/queryxsxx",
+            data="",
+        )
+        _check_byyt_response(resp)
+        resp.raise_for_status()
+        return resp.json()
+
+    result = await asyncio.to_thread(_fetch)
+    return result
+
+
+async def get_user_info(session: Session) -> Dict:
+    """获取当前用户完整信息（包含角色、权限）"""
+
+    def _fetch():
+        resp = session.client.post(
+            "https://byyt.ustb.edu.cn/user/me",
+            data="",
+        )
+        _check_byyt_response(resp)
+        resp.raise_for_status()
+        return resp.json()
+
+    result = await asyncio.to_thread(_fetch)
+    return result
+
+
+async def get_plan_course_list(session: Session, fah: str) -> List[Dict]:
+    """获取培养方案课程列表"""
+
+    def _fetch():
+        params = {
+            "multiple": "false",
+            "pylx": "1",
+            "pylb": "1",
+            "bgid": "",
+            "xsid": "",
+            "xh": "",
+            "fah": fah,
+            "kcmcdm": "",
+            "yxdm": "",
+            "xqdm": "",
+            "kclbdm": "",
+            "kcxzdm": "",
+            "sffaw": "",
+            "iskcztpx": "",
+            "order1": "",
+            "order2": "",
+        }
+        resp = session.client.post(
+            "https://byyt.ustb.edu.cn/xspyyjsfasq/queryGrjhKcList1",
+            data=params,
+        )
+        _check_byyt_response(resp)
+        resp.raise_for_status()
+        return resp.json()
+
+    result = await asyncio.to_thread(_fetch)
+
+    if result.get("code") != 200:
+        raise Exception(f"Failed to fetch plan course list: {result.get('msg')}")
+
+    return result.get("content", [])
+
+
+async def get_student_plan(session: Session) -> List[Dict]:
+    """获取学生方案信息"""
+
+    def _fetch():
+        params = {"xjidorxh": session.student_id}
+        resp = session.client.post(
+            "https://byyt.ustb.edu.cn/cjgl/cjzhtjcx/cjcx/getXss",
+            json=params,
+        )
+        _check_byyt_response(resp)
+        resp.raise_for_status()
+        return resp.json()
+
+    result = await asyncio.to_thread(_fetch)
+
+    if result.get("code") != 200:
+        raise Exception(f"Failed to fetch student plan: {result.get('msg')}")
+
+    plans = result.get("content", [])
+    if not isinstance(plans, list):
+        return []
+
+    async def _enrich_plan(plan: Dict) -> Dict:
+        if not isinstance(plan, dict):
+            return plan
+
+        fah = plan.get("fah")
+        if not fah:
+            plan["kclb_list"] = []
+            return plan
+
+        try:
+            # 获取培养方案课程列表（总体要求）
+            course_list = await get_plan_course_list(session, fah)
+
+            # 获取已修课程信息（包含成绩）
+            completed_courses = await query_xflbyq(session, fah, page_size=500)
+
+            # 按课程代码建立已完成课程的映射
+            completed_map = {}
+            for course in completed_courses:
+                kcdm = course.get("kcdm")
+                if kcdm:
+                    xscj = course.get("xscj") or course.get("zzcj")
+                    if xscj:
+                        try:
+                            score = float(xscj) if str(xscj).replace(".", "").isdigit() else None
+                            if score is not None and score >= 60:
+                                completed_map[kcdm] = float(course.get("xf", 0) or 0)
+                        except (ValueError, TypeError):
+                            pass
+
+            kclb_dict = {}
+            for course in course_list:
+                kclb = course.get("kclbmc", "其他")
+                kcxz = course.get("kcxzmc", "")
+
+                key = f"{kclb}_{kcxz}"
+                if key not in kclb_dict:
+                    kclb_dict[key] = {
+                        "kclbmc": kclb,
+                        "kcxzmc": kcxz,
+                        "yqxdxf": 0.0,
+                        "wcxf": 0.0,
+                        "wwcxf": 0.0,
+                    }
+
+                xf = float(course.get("xf", 0) or 0)
+                kclb_dict[key]["yqxdxf"] += xf
+
+                # 检查该课程是否已完成
+                kcdm = course.get("kcdm")
+                if kcdm and kcdm in completed_map:
+                    kclb_dict[key]["wcxf"] += completed_map[kcdm]
+
+            # 计算未完成学分
+            for item in kclb_dict.values():
+                item["wwcxf"] = round(item["yqxdxf"] - item["wcxf"], 1)
+                item["yqxdxf"] = round(item["yqxdxf"], 1)
+                item["wcxf"] = round(item["wcxf"], 1)
+
+            plan["kclb_list"] = list(kclb_dict.values())
+
+        except Exception as e:
+            logger.warning(f"Failed to enrich plan {fah}: {e}")
+            plan["kclb_list"] = []
+
+        return plan
+
+    if plans:
+        plans = await asyncio.gather(*[_enrich_plan(plan) for plan in plans])
+
+    return plans
+
+
+async def get_available_terms(session: Session) -> Dict:
+    """查询可选学年学期"""
+
+    def _fetch():
+        resp = session.client.post(
+            "https://byyt.ustb.edu.cn/cjgl/cjzhtjcx/cjcx/queryqxnxq",
+            data="",
+        )
+        _check_byyt_response(resp)
+        resp.raise_for_status()
+        return resp.json()
+
+    result = await asyncio.to_thread(_fetch)
+    return result
+
+
+async def get_required_course_status(
+    session: Session,
+    jzxnxq: Optional[str] = None,
+) -> Dict:
+    """查询必修课完成情况"""
+
+    def _fetch():
+        # 如果没有提供截止学年学期，使用当前学年学期
+        term = jzxnxq or ""
+
+        params = {
+            "xh": session.student_id,
+            "pylx": "1",
+            "nj": session.student_id[:4] if session.student_id else "",  # 从学号提取年级
+            "jzxnxq": term,
+            "xjid": session.student_id,
+            "fah": "",
+            "sfcxxfj": "0",
+        }
+
+        resp = session.client.post(
+            "https://byyt.ustb.edu.cn/cjgl/cjzhtjcx/cjcx/queryBxkqk",
+            json=params,
+        )
+        _check_byyt_response(resp)
+        resp.raise_for_status()
+        return resp.json()
+
+    result = await asyncio.to_thread(_fetch)
+
+    if result.get("code") != 200:
+        raise Exception(f"Failed to fetch required course status: {result.get('msg')}")
+
+    return result.get("content", {})
+
+
+async def get_term_list(session: Session) -> List[Dict]:
+    """查询学年学期列表"""
+
+    def _fetch():
+        resp = session.client.post(
+            "https://byyt.ustb.edu.cn/component/queryXnxq",
+            data="",
+        )
+        _check_byyt_response(resp)
+        resp.raise_for_status()
+        return resp.json()
+
+    result = await asyncio.to_thread(_fetch)
+    return result if isinstance(result, list) else []
+
+
+def calculate_gpa(grades: List[Dict]) -> Dict:
+    """计算GPA和学分统计
+
+    GPA计算规则：
+    - 90-100: 4.0
+    - 85-89: 3.7
+    - 82-84: 3.3
+    - 78-81: 3.0
+    - 75-77: 2.7
+    - 72-74: 2.3
+    - 68-71: 2.0
+    - 64-67: 1.5
+    - 60-63: 1.0
+    - <60: 0
+    """
+
+    def score_to_gp(score: float) -> float:
+        if score >= 90:
+            return 4.0
+        elif score >= 85:
+            return 3.7
+        elif score >= 82:
+            return 3.3
+        elif score >= 78:
+            return 3.0
+        elif score >= 75:
+            return 2.7
+        elif score >= 72:
+            return 2.3
+        elif score >= 68:
+            return 2.0
+        elif score >= 64:
+            return 1.5
+        elif score >= 60:
+            return 1.0
+        else:
+            return 0.0
+
+    total_credits = 0.0
+    total_gp_credits = 0.0
+    passed_credits = 0.0
+    failed_count = 0
+
+    for grade in grades:
+        try:
+            # 只统计正考成绩
+            if grade.get("bkcxbj") != "正考":
+                continue
+
+            credit = float(grade.get("xf", 0))
+            score_str = grade.get("xscj", "")
+
+            # 跳过非数字成绩
+            if not score_str or not score_str.replace(".", "").isdigit():
+                continue
+
+            score = float(score_str)
+            gp = score_to_gp(score)
+
+            total_credits += credit
+            total_gp_credits += gp * credit
+
+            if score >= 60:
+                passed_credits += credit
+            else:
+                failed_count += 1
+
+        except (ValueError, TypeError):
+            continue
+
+    gpa = total_gp_credits / total_credits if total_credits > 0 else 0.0
+
+    return {
+        "gpa": round(gpa, 2),
+        "total_credits": round(total_credits, 1),
+        "passed_credits": round(passed_credits, 1),
+        "failed_count": failed_count,
+    }
+
+
+async def get_student_xs_info(session: Session) -> Dict:
+    """获取学生信息（包含培养方案号fah）"""
+
+    def _fetch():
+        params = {"xjidorxh": session.student_id}
+        resp = session.client.post(
+            "https://byyt.ustb.edu.cn/cjgl/cjzhtjcx/cjcx/getXs",
+            json=params,
+        )
+        _check_byyt_response(resp)
+        resp.raise_for_status()
+        return resp.json()
+
+    result = await asyncio.to_thread(_fetch)
+
+    if result.get("code") != 200:
+        raise Exception(f"Failed to fetch student xs info: {result.get('msg')}")
+
+    content = result.get("content", [])
+    if isinstance(content, list) and len(content) > 0:
+        return content[0]
+    return {}
+
+
+async def query_xflbyq(
+    session: Session,
+    fah: str,
+    page_size: int = 500,
+) -> List[Dict]:
+    """查询学分类别要求课程列表"""
+
+    def _fetch():
+        params = {
+            "current": 1,
+            "pageSize": page_size,
+            "xjid": session.student_id,
+            "zyfxdm": None,
+            "pylx": "1",
+            "fah": fah,
+        }
+        resp = session.client.post(
+            "https://byyt.ustb.edu.cn/cjgl/cjzhtjcx/cjcx/queryXflbyq1",
+            json=params,
+        )
+        _check_byyt_response(resp)
+        resp.raise_for_status()
+        return resp.json()
+
+    result = await asyncio.to_thread(_fetch)
+    return result.get("xflbyqkc", []) if isinstance(result, dict) else []
+
+
+async def get_credit_completion_status(session: Session) -> Dict:
+    """获取学分完成情况（从byyt系统）"""
+
+    xs_info = await get_student_xs_info(session)
+    fah = xs_info.get("fah")
+
+    if not fah:
+        return {"categories": []}
+
+    xflbyq_list = await query_xflbyq(session, fah, page_size=500)
+
+    kclb_list = xs_info.get("kclb_list", [])
+    kclb_name_map = {item.get("dm"): item.get("mc", "其他") for item in kclb_list if item.get("dm")}
+
+    kclb_dict = {}
+    for course in xflbyq_list:
+        kclbdm = course.get("kclbdm", "0")
+        kclbmc = course.get("kclbmc")
+
+        if not kclbmc:
+            kclbmc = kclb_name_map.get(kclbdm, "其他")
+
+        if kclbdm not in kclb_dict:
+            kclb_dict[kclbdm] = {
+                "category_code": kclbdm,
+                "category_name": kclbmc,
+                "required_credits": 0.0,
+                "completed_credits": 0.0,
+                "required_hours": 0,
+                "completed_hours": 0,
+                "courses": [],
+            }
+
+        xf = float(course.get("xf", 0) or 0)
+        xs = int(course.get("xs", 0) or 0)
+        kclb_dict[kclbdm]["required_credits"] += xf
+        kclb_dict[kclbdm]["required_hours"] += xs
+
+        xscj = course.get("xscj") or course.get("zzcj")
+        if xscj:
+            try:
+                score = float(xscj) if str(xscj).replace(".", "").isdigit() else None
+                if score is not None and score >= 60:
+                    kclb_dict[kclbdm]["completed_credits"] += xf
+                    kclb_dict[kclbdm]["completed_hours"] += xs
+                    kclb_dict[kclbdm]["courses"].append({
+                        "course_code": course.get("kcdm", ""),
+                        "course_name": course.get("kcmc", ""),
+                        "credits": xf,
+                        "hours": xs,
+                        "score": xscj,
+                        "term": course.get("xnxqmc", ""),
+                    })
+            except (ValueError, TypeError):
+                pass
+
+    categories = []
+    for cat in kclb_dict.values():
+        cat["remaining_credits"] = round(
+            cat["required_credits"] - cat["completed_credits"], 1
+        )
+        cat["remaining_hours"] = cat["required_hours"] - cat["completed_hours"]
+        cat["required_credits"] = round(cat["required_credits"], 1)
+        cat["completed_credits"] = round(cat["completed_credits"], 1)
+        categories.append(cat)
+
+    categories.sort(key=lambda x: x.get("category_code", ""))
+
+    return {"categories": categories}

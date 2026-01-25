@@ -1,0 +1,42 @@
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+.venv
+venv
+.env
+*.log
+
+# 测试
+.pytest_cache
+.coverage
+htmlcov
+test*.py
+
+# Git
+.git
+.gitignore
+
+# 文档
+*.md
+docs/
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Docker（不需要打包自身）
+Dockerfile
+.dockerignore
+
+# Claude
+.claude/
+CLAUDE.md
+
+# 锁文件（可选，uv 会重新解析依赖）
+uv.lock
