@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "学业进度",
+  "usingComponents": {
+    "empty-state": "../../components/empty-state/empty-state"
+  }
+}

@@ -1,0 +1,125 @@
+<!--wifi.wxml-->
+<view class="page-container">
+  <view class="loading-container" wx:if="{{loading}}">
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <block wx:else>
+    <!-- Not logged in -->
+    <view class="card" wx:if="{{!loggedIn}}">
+      <view class="not-logged">
+        <text class="not-logged-icon">📶</text>
+        <text class="not-logged-text">校园网未登录</text>
+        <button class="btn-primary" bindtap="showLogin">登录校园网</button>
+      </view>
+    </view>
+
+    <!-- Logged in content -->
+    <block wx:if="{{loggedIn}}">
+      <!-- Section tabs -->
+      <view class="section-tabs">
+        <view class="sec-tab {{activeSection === 'overview' ? 'active' : ''}}" data-section="overview" bindtap="switchSection">概览</view>
+        <view class="sec-tab {{activeSection === 'devices' ? 'active' : ''}}" data-section="devices" bindtap="switchSection">设备</view>
+        <view class="sec-tab {{activeSection === 'payments' ? 'active' : ''}}" data-section="payments" bindtap="switchSection">充值</view>
+      </view>
+
+      <!-- Overview Section -->
+      <block wx:if="{{activeSection === 'overview'}}">
+        <view class="card">
+          <view class="flex-between" style="margin-bottom: 16rpx;">
+            <text class="card-title" style="margin-bottom: 0;">账户概览</text>
+            <text class="refresh-btn" bindtap="refreshFlow">刷新</text>
+          </view>
+          <view class="stat-grid">
+            <view class="stat-item">
+              <text class="stat-value">{{flowDisplay.balance}}</text>
+              <text class="stat-label">余额</text>
+            </view>
+            <view class="stat-item">
+              <text class="stat-value">{{flowDisplay.usedFlow}}</text>
+              <text class="stat-label">已用流量</text>
+            </view>
+            <view class="stat-item">
+              <text class="stat-value" style="color: #52c41a;">{{flowDisplay.availableFlow}}</text>
+              <text class="stat-label">可用流量</text>
+            </view>
+            <view class="stat-item">
+              <text class="stat-value" style="font-size: 32rpx;">{{flowDisplay.status}}</text>
+              <text class="stat-label">状态</text>
+            </view>
+          </view>
+          <view class="divider"></view>
+          <view class="list-item">
+            <text class="list-item-label">套餐</text>
+            <text class="list-item-value">{{flowDisplay.package}}</text>
+          </view>
+        </view>
+
+        <!-- Online Devices -->
+        <view class="card" wx:if="{{onlineDevices.length > 0}}">
+          <view class="card-title">在线设备 ({{onlineDevices.length}})</view>
+          <view class="device-item" wx:for="{{onlineDevices}}" wx:key="mac_address">
+            <view class="device-info">
+              <text class="device-icon">{{item.device_type === 'mobile' ? '📱' : '💻'}}</text>
+              <view class="device-detail">
+                <text class="device-name">{{item.terminal_info || item.mac_address}}</text>
+                <text class="device-meta">{{item.ip_address}} · {{item.login_time}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </block>
+
+      <!-- Devices Section -->
+      <block wx:if="{{activeSection === 'devices'}}">
+        <view class="card" wx:if="{{devices.length > 0}}">
+          <view class="card-title">绑定设备 ({{devices.length}})</view>
+          <view class="device-item" wx:for="{{devices}}" wx:key="mac_address">
+            <view class="device-info">
+              <text class="device-icon">{{item.is_dumb_terminal ? '🔌' : '💻'}}</text>
+              <view class="device-detail">
+                <text class="device-name">
+                  {{item.terminal_info || item.mac_address}}
+                  <text wx:if="{{item.online}}" class="online-dot">●</text>
+                </text>
+                <text class="device-meta">MAC: {{item.mac_address}}</text>
+                <text class="device-meta">最后登录: {{item.last_login_time}}</text>
+              </view>
+            </view>
+            <view class="unbind-btn" data-mac="{{item.mac_address}}" bindtap="unbindDevice">解绑</view>
+          </view>
+        </view>
+        <empty-state wx:if="{{devices.length === 0}}" message="暂无绑定设备" icon="💻" />
+      </block>
+
+      <!-- Payments Section -->
+      <block wx:if="{{activeSection === 'payments'}}">
+        <view class="card" wx:if="{{payments.length > 0}}">
+          <view class="card-title">充值记录</view>
+          <view class="payment-item" wx:for="{{payments}}" wx:key="index">
+            <view class="payment-left">
+              <text class="payment-time">{{item.pay_time}}</text>
+              <text class="payment-remark">{{item.remark || item.terminal || ''}}</text>
+            </view>
+            <text class="payment-amount">+¥{{item.amount}}</text>
+          </view>
+        </view>
+        <empty-state wx:if="{{payments.length === 0}}" message="暂无充值记录" icon="💳" />
+      </block>
+    </block>
+  </block>
+
+  <!-- Login Modal -->
+  <view class="modal-mask" wx:if="{{showLoginForm}}" bindtap="hideLogin">
+    <view class="modal-content" catchtap="noop">
+      <view class="modal-title">登录校园网</view>
+      <view class="form-item">
+        <text class="form-label">密码</text>
+        <input class="form-input" type="text" password placeholder="请输入校园网密码" bindinput="onPasswordInput" />
+      </view>
+      <button class="btn-primary" style="width: 100%; margin-top: 24rpx;" loading="{{loginLoading}}" disabled="{{loginLoading}}" bindtap="doWifiLogin">
+        登录
+      </button>
+    </view>
+  </view>
+</view>

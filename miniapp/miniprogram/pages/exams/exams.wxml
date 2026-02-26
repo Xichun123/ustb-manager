@@ -1,0 +1,33 @@
+<!--exams.wxml-->
+<view class="page-container">
+  <view class="loading-container" wx:if="{{loading}}">
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <block wx:else>
+    <view class="card" wx:if="{{exams.length > 0}}">
+      <view
+        class="exam-item {{item.isPast ? 'past' : ''}} {{item.isToday ? 'today' : ''}}"
+        wx:for="{{exams}}"
+        wx:key="index"
+        data-index="{{index}}"
+        bindtap="onExamClick"
+      >
+        <view class="exam-left">
+          <text class="exam-name">{{item.course_name}}</text>
+          <view class="exam-meta">
+            <text class="tag {{item.exam_type === '期末' ? 'tag-red' : 'tag-blue'}}">{{item.exam_type || '考试'}}</text>
+            <text class="exam-date">{{item.exam_date}} {{item.weekday}}</text>
+          </view>
+          <text class="exam-time">{{item.exam_time}}</text>
+        </view>
+        <view class="exam-right">
+          <text class="exam-location">{{item.building}}{{item.room}}</text>
+          <text class="exam-campus">{{item.campus}}</text>
+        </view>
+      </view>
+    </view>
+
+    <empty-state wx:if="{{exams.length === 0}}" message="暂无考试安排" icon="📝" />
+  </block>
+</view>

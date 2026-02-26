@@ -1,0 +1,61 @@
+.grade-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.grade-item:last-child {
+  border-bottom: none;
+}
+
+.grade-left {
+  flex: 1;
+  margin-right: 24rpx;
+}
+
+.grade-name {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #333;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.grade-meta {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.grade-type {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.grade-right {
+  display: flex;
+  align-items: center;
+}
+
+.grade-score {
+  font-size: 36rpx;
+  font-weight: 700;
+}
+
+.score-green {
+  color: #52c41a;
+}
+
+.score-blue {
+  color: #1890ff;
+}
+
+.score-orange {
+  color: #fa8c16;
+}
+
+.score-red {
+  color: #ff4d4f;
+}

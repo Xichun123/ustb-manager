@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "考试安排",
+  "usingComponents": {
+    "empty-state": "../../components/empty-state/empty-state"
+  }
+}

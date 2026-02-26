@@ -1,0 +1,33 @@
+<view class="schedule-grid {{compact ? 'compact' : ''}}">
+  <!-- Header row -->
+  <view class="grid-header">
+    <view class="grid-corner"></view>
+    <view class="grid-header-cell" wx:for="{{weekdays}}" wx:key="*this">
+      <text class="header-day">{{item}}</text>
+      <text class="header-date" wx:if="{{dates[index+1]}}">{{dates[index+1]}}</text>
+    </view>
+  </view>
+  <!-- Body rows -->
+  <view class="grid-row" wx:for="{{grid}}" wx:for-item="row" wx:for-index="periodIdx" wx:key="periodIdx">
+    <view class="grid-period">
+      <text>{{periods[periodIdx]}}</text>
+    </view>
+    <view
+      class="grid-cell"
+      wx:for="{{row}}"
+      wx:for-item="cell"
+      wx:for-index="dayIdx"
+      wx:key="dayIdx"
+      data-period="{{periodIdx}}"
+      data-day="{{dayIdx}}"
+      bindtap="onCourseClick"
+    >
+      <block wx:if="{{cell}}">
+        <view class="course-block" style="background:{{cell.color.bg}};color:{{cell.color.text}}">
+          <text class="course-name">{{cell.course_name}}</text>
+          <text class="course-location" wx:if="{{!compact}}">{{cell.location}}</text>
+        </view>
+      </block>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "成绩",
+  "usingComponents": {
+    "grade-card": "../../components/grade-card/grade-card",
+    "empty-state": "../../components/empty-state/empty-state"
+  }
+}

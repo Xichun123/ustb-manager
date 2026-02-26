@@ -1,0 +1,84 @@
+<!--index.wxml - Dashboard-->
+<view class="page-container">
+  <!-- Loading -->
+  <view class="loading-container" wx:if="{{loading}}">
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <block wx:else>
+    <!-- Student Info Card -->
+    <view class="card" wx:if="{{studentInfo}}">
+      <view class="student-header">
+        <view class="avatar-circle">
+          <text class="avatar-text">{{studentInfo.name[0] || '?'}}</text>
+        </view>
+        <view class="student-basic">
+          <text class="student-name">{{studentInfo.name}}</text>
+          <text class="student-id">{{studentInfo.student_id}}</text>
+        </view>
+      </view>
+      <view class="student-detail">
+        <view class="detail-item">
+          <text class="detail-label">院系</text>
+          <text class="detail-value">{{studentInfo.dept}}</text>
+        </view>
+        <view class="detail-item">
+          <text class="detail-label">专业</text>
+          <text class="detail-value">{{studentInfo.major}}</text>
+        </view>
+        <view class="detail-item">
+          <text class="detail-label">班级</text>
+          <text class="detail-value">{{studentInfo.class_name}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- WiFi Status Card -->
+    <view class="card" wx:if="{{wifiFlow}}">
+      <view class="card-title">校园网状态</view>
+      <view class="wifi-stats">
+        <view class="wifi-stat">
+          <text class="wifi-stat-value">{{wifiBalanceDisplay}}</text>
+          <text class="wifi-stat-label">余额</text>
+        </view>
+        <view class="wifi-stat">
+          <text class="wifi-stat-value">{{wifiFlowDisplay}}</text>
+          <text class="wifi-stat-label">已用流量</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- Quick Entries -->
+    <view class="card">
+      <view class="card-title">快捷入口</view>
+      <view class="quick-grid">
+        <view class="quick-item" bindtap="goToExams">
+          <text class="quick-icon">📝</text>
+          <text class="quick-label">考试安排</text>
+        </view>
+        <view class="quick-item" bindtap="goToCourses">
+          <text class="quick-icon">📚</text>
+          <text class="quick-label">选课查询</text>
+        </view>
+        <view class="quick-item" bindtap="goToProgress">
+          <text class="quick-icon">📈</text>
+          <text class="quick-label">学业进度</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- Weekly Schedule -->
+    <view class="card">
+      <view class="card-title">第{{currentWeek}}周课表</view>
+      <block wx:if="{{schedule.length > 0}}">
+        <schedule-grid
+          schedule="{{schedule}}"
+          dates="{{scheduleDates}}"
+          compact="{{true}}"
+          bind:courseclick="onCourseClick"
+        />
+      </block>
+      <empty-state wx:else message="本周没有课程" icon="📅" />
+    </view>
+  </block>
+</view>

@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "选课查询",
+  "usingComponents": {
+    "empty-state": "../../components/empty-state/empty-state"
+  }
+}

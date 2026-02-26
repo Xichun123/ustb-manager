@@ -126,6 +126,44 @@ async def qr_init(response: Response, ustb_sid: Optional[str] = Cookie(None)):
     }
 
 
+@router.get("/qr/poll", summary="轮询二维码登录状态（非SSE）")
+async def qr_poll(ustb_sid: Optional[str] = Cookie(None)):
+    """
+    ## 业务说明
+    非SSE方式轮询二维码扫码状态，适用于不支持SSE的客户端（如微信小程序）。
+
+    ## 使用流程
+    1. 调用 `/qr/init` 获取二维码后
+    2. 每隔2秒调用此接口轮询状态
+    3. 收到 success 后调用 `/qr/complete` 完成登录
+
+    ## 状态说明
+    - `waiting`: 等待扫码
+    - `scanned`: 已扫码，等待确认
+    - `success`: 登录成功
+    - `expired`: 二维码已过期
+    """
+    if not ustb_sid:
+        raise HTTPException(401, "No session")
+    session = store.get(ustb_sid)
+    if not session:
+        raise HTTPException(401, "Session expired")
+
+    # Start background monitoring on first poll
+    if session.state == AuthState.QR_READY:
+        await auth_service.start_qr_background_monitor(session)
+
+    state = session.state
+    if state == AuthState.ACTIVE:
+        return {"status": "success"}
+    elif state == AuthState.CONFIRMED:
+        return {"status": "scanned"}
+    elif state == AuthState.EXPIRED:
+        return {"status": "expired"}
+    else:
+        return {"status": "waiting"}
+
+
 @router.get("/qr/status", summary="轮询二维码登录状态")
 async def qr_status(ustb_sid: Optional[str] = Cookie(None)):
     """

@@ -1,0 +1,90 @@
+/* User card */
+.user-card {
+  padding: 40rpx 32rpx;
+}
+
+.user-header {
+  display: flex;
+  align-items: center;
+}
+
+.avatar-circle {
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1890ff, #40a9ff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 28rpx;
+}
+
+.avatar-text {
+  font-size: 48rpx;
+  color: #fff;
+  font-weight: 600;
+}
+
+.user-basic {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-name {
+  font-size: 40rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.user-id {
+  font-size: 28rpx;
+  color: #999;
+  margin-top: 4rpx;
+}
+
+/* Menu items */
+.menu-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 28rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-left {
+  display: flex;
+  align-items: center;
+}
+
+.menu-icon {
+  font-size: 36rpx;
+  margin-right: 20rpx;
+}
+
+.menu-text {
+  font-size: 30rpx;
+  color: #333;
+}
+
+.menu-arrow {
+  font-size: 36rpx;
+  color: #ccc;
+}
+
+/* Logout */
+.logout-btn {
+  margin-top: 32rpx;
+  text-align: center;
+  padding: 28rpx;
+  background: #fff;
+  border-radius: 16rpx;
+}
+
+.logout-text {
+  font-size: 30rpx;
+  color: #ff4d4f;
+}

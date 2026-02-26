@@ -1,0 +1,43 @@
+.grade-card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+}
+
+.stat-grid {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.stat-item {
+  width: 50%;
+  box-sizing: border-box;
+  padding: 12rpx;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 44rpx;
+  font-weight: 700;
+  color: #1890ff;
+  display: block;
+}
+
+.stat-value.gpa {
+  color: #1890ff;
+}
+
+.stat-value.passed {
+  color: #52c41a;
+}
+
+.stat-value.failed {
+  color: #ff4d4f;
+}
+
+.stat-label {
+  font-size: 24rpx;
+  color: #999;
+  margin-top: 8rpx;
+  display: block;
+}

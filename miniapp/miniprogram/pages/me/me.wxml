@@ -1,0 +1,77 @@
+<!--me.wxml-->
+<view class="page-container">
+  <view class="loading-container" wx:if="{{loading}}">
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <block wx:else>
+    <!-- User Header -->
+    <view class="card user-card">
+      <view class="user-header">
+        <view class="avatar-circle">
+          <text class="avatar-text">{{studentInfo.name[0] || '?'}}</text>
+        </view>
+        <view class="user-basic">
+          <text class="user-name">{{studentInfo.name || '未知'}}</text>
+          <text class="user-id">{{studentInfo.student_id || ''}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- Student Info -->
+    <view class="card" wx:if="{{studentInfo}}">
+      <view class="card-title">个人信息</view>
+      <view class="list-item">
+        <text class="list-item-label">院系</text>
+        <text class="list-item-value">{{studentInfo.dept}}</text>
+      </view>
+      <view class="list-item">
+        <text class="list-item-label">专业</text>
+        <text class="list-item-value">{{studentInfo.major}}</text>
+      </view>
+      <view class="list-item">
+        <text class="list-item-label">班级</text>
+        <text class="list-item-value">{{studentInfo.class_name}}</text>
+      </view>
+      <view class="list-item" wx:if="{{studentInfo.grade}}">
+        <text class="list-item-label">年级</text>
+        <text class="list-item-value">{{studentInfo.grade}}</text>
+      </view>
+      <view class="list-item" wx:if="{{studentInfo.gender}}">
+        <text class="list-item-label">性别</text>
+        <text class="list-item-value">{{studentInfo.gender}}</text>
+      </view>
+    </view>
+
+    <!-- Function Entries -->
+    <view class="card">
+      <view class="card-title">功能</view>
+      <view class="menu-item" bindtap="goToExams">
+        <view class="menu-left">
+          <text class="menu-icon">📝</text>
+          <text class="menu-text">考试安排</text>
+        </view>
+        <text class="menu-arrow">›</text>
+      </view>
+      <view class="menu-item" bindtap="goToCourses">
+        <view class="menu-left">
+          <text class="menu-icon">📚</text>
+          <text class="menu-text">选课查询</text>
+        </view>
+        <text class="menu-arrow">›</text>
+      </view>
+      <view class="menu-item" bindtap="goToProgress">
+        <view class="menu-left">
+          <text class="menu-icon">📈</text>
+          <text class="menu-text">学业进度</text>
+        </view>
+        <text class="menu-arrow">›</text>
+      </view>
+    </view>
+
+    <!-- Logout -->
+    <view class="logout-btn" bindtap="doLogout">
+      <text class="logout-text">退出登录</text>
+    </view>
+  </block>
+</view>

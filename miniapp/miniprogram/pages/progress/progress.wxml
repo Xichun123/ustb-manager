@@ -1,0 +1,94 @@
+<!--progress.wxml-->
+<view class="page-container">
+  <!-- Tabs -->
+  <view class="tab-bar card">
+    <view class="tab {{activeTab === 'credits' ? 'active' : ''}}" data-tab="credits" bindtap="switchTab">学分完成</view>
+    <view class="tab {{activeTab === 'required' ? 'active' : ''}}" data-tab="required" bindtap="switchTab">必修课</view>
+    <view class="tab {{activeTab === 'plan' ? 'active' : ''}}" data-tab="plan" bindtap="switchTab">培养方案</view>
+  </view>
+
+  <view class="loading-container" wx:if="{{loading}}">
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <block wx:else>
+    <!-- Credit Completion -->
+    <block wx:if="{{activeTab === 'credits'}}">
+      <view class="card" wx:for="{{creditCategories}}" wx:key="name">
+        <view class="category-header">
+          <text class="category-name">{{item.name}}</text>
+          <text class="category-pct">{{item.percentage}}%</text>
+        </view>
+        <view class="progress-bar">
+          <view class="progress-fill" style="width: {{item.percentage}}%"></view>
+        </view>
+        <view class="category-stats">
+          <view class="cat-stat">
+            <text class="cat-stat-label">要求</text>
+            <text class="cat-stat-value">{{item.required}}</text>
+          </view>
+          <view class="cat-stat">
+            <text class="cat-stat-label">已修</text>
+            <text class="cat-stat-value text-success">{{item.completed}}</text>
+          </view>
+          <view class="cat-stat">
+            <text class="cat-stat-label">剩余</text>
+            <text class="cat-stat-value {{item.remaining > 0 ? 'text-warning' : 'text-success'}}">{{item.remaining}}</text>
+          </view>
+        </view>
+      </view>
+      <empty-state wx:if="{{creditCategories.length === 0}}" message="暂无学分数据" icon="📈" />
+    </block>
+
+    <!-- Required Courses -->
+    <block wx:if="{{activeTab === 'required'}}">
+      <view class="card" wx:if="{{requiredStats}}">
+        <view class="card-title">必修课进度</view>
+        <view class="stat-grid">
+          <view class="stat-item">
+            <text class="stat-value">{{requiredStats.yqmsxf.YQXF || '--'}}</text>
+            <text class="stat-label">要求学分</text>
+          </view>
+          <view class="stat-item">
+            <text class="stat-value" style="color: #52c41a;">{{requiredStats.ywcxf || '--'}}</text>
+            <text class="stat-label">已完成学分</text>
+          </view>
+          <view class="stat-item">
+            <text class="stat-value" style="color: #faad14;">{{requiredStats.wwcxf || '--'}}</text>
+            <text class="stat-label">未完成学分</text>
+          </view>
+          <view class="stat-item">
+            <text class="stat-value">{{requiredStats.yqmsxf.YQMS || '--'}}</text>
+            <text class="stat-label">要求门数</text>
+          </view>
+          <view class="stat-item">
+            <text class="stat-value" style="color: #52c41a;">{{requiredStats.ywcms || '--'}}</text>
+            <text class="stat-label">已完成门数</text>
+          </view>
+          <view class="stat-item">
+            <text class="stat-value" style="color: #faad14;">{{requiredStats.wwcms || '--'}}</text>
+            <text class="stat-label">未完成门数</text>
+          </view>
+        </view>
+      </view>
+      <empty-state wx:if="{{!requiredStats}}" message="暂无必修课数据" icon="📋" />
+    </block>
+
+    <!-- Student Plan -->
+    <block wx:if="{{activeTab === 'plan'}}">
+      <view class="card" wx:for="{{planData}}" wx:key="index">
+        <view class="card-title">{{item.zymc || '培养方案'}}</view>
+        <view class="plan-info" wx:if="{{item.nj}}">
+          <text class="plan-label">年级: {{item.nj}}</text>
+        </view>
+        <view wx:if="{{item.kclb_list}}" class="plan-categories">
+          <view class="plan-cat" wx:for="{{item.kclb_list}}" wx:for-item="cat" wx:key="index">
+            <text class="plan-cat-name">{{cat.kclb || cat.name || '--'}}</text>
+            <text class="plan-cat-credit">{{cat.xf || cat.credits || '--'}}学分</text>
+          </view>
+        </view>
+      </view>
+      <empty-state wx:if="{{planData.length === 0}}" message="暂无培养方案数据" icon="📖" />
+    </block>
+  </block>
+</view>

@@ -1,0 +1,46 @@
+# Mini program
+ustb-manager-miniapp/
+
+# Git
+.git/
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Build artifacts
+frontend/dist/
+
+# Environment
+.env
+.env.*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Claude
+.claude/
+CLAUDE.md
+
+# Logs
+*.log
+
+# Docker
+docker-compose.yml

@@ -1,0 +1,121 @@
+.controls {
+  padding: 24rpx;
+}
+
+.view-tabs {
+  display: flex;
+  background: #f5f5f5;
+  border-radius: 12rpx;
+  padding: 4rpx;
+  margin-bottom: 20rpx;
+}
+
+.view-tab {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx 0;
+  font-size: 28rpx;
+  color: #666;
+  border-radius: 10rpx;
+}
+
+.view-tab.active {
+  background: #fff;
+  color: #1890ff;
+  font-weight: 600;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+}
+
+.picker-row {
+  display: flex;
+  gap: 16rpx;
+}
+
+.picker-btn {
+  display: flex;
+  align-items: center;
+  padding: 14rpx 24rpx;
+  background: #f5f5f5;
+  border-radius: 10rpx;
+  font-size: 26rpx;
+  color: #333;
+}
+
+.picker-arrow {
+  font-size: 20rpx;
+  color: #999;
+  margin-left: 8rpx;
+}
+
+.schedule-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.schedule-scroll {
+  width: 100%;
+}
+
+/* Modal */
+.modal-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  width: 80%;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 40rpx;
+  max-height: 70vh;
+}
+
+.modal-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 32rpx;
+  text-align: center;
+}
+
+.modal-body {
+  margin-bottom: 32rpx;
+}
+
+.modal-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.modal-item:last-child {
+  border-bottom: none;
+}
+
+.modal-label {
+  color: #999;
+  font-size: 28rpx;
+}
+
+.modal-value {
+  color: #333;
+  font-size: 28rpx;
+  font-weight: 500;
+}
+
+.modal-close {
+  text-align: center;
+  padding: 20rpx;
+  color: #1890ff;
+  font-size: 30rpx;
+  font-weight: 600;
+}

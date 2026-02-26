@@ -1,0 +1,43 @@
+<!--grades.wxml-->
+<view class="page-container">
+  <view class="loading-container" wx:if="{{loading}}">
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <block wx:else>
+    <!-- GPA Stats Card -->
+    <view class="card">
+      <grade-card
+        gpa="{{gpaStats.gpa}}"
+        totalCredits="{{gpaStats.total_credits}}"
+        passedCredits="{{gpaStats.passed_credits}}"
+        failedCount="{{gpaStats.failed_count}}"
+      />
+    </view>
+
+    <!-- Grades List -->
+    <view class="card" wx:if="{{grades.length > 0}}">
+      <view class="card-title">成绩列表</view>
+      <view
+        class="grade-item"
+        wx:for="{{grades}}"
+        wx:key="index"
+        data-index="{{index}}"
+        bindtap="onGradeClick"
+      >
+        <view class="grade-left">
+          <text class="grade-name">{{item.kcmc || item.course_name}}</text>
+          <view class="grade-meta">
+            <text class="tag tag-blue">{{item.xf || item.credit}}学分</text>
+            <text class="grade-type">{{item.kcxzmc || ''}}</text>
+          </view>
+        </view>
+        <view class="grade-right">
+          <text class="grade-score {{item.scoreColor}}">{{item.xscj || item.score || '--'}}</text>
+        </view>
+      </view>
+    </view>
+
+    <empty-state wx:if="{{grades.length === 0}}" message="暂无成绩数据" icon="📊" />
+  </block>
+</view>

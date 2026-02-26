@@ -1,0 +1,58 @@
+<!--courses.wxml-->
+<view class="page-container">
+  <!-- View Tabs -->
+  <view class="view-tabs card">
+    <view class="view-tab {{viewMode === 'selected' ? 'active' : ''}}" data-mode="selected" bindtap="switchView">已选课程</view>
+    <view class="view-tab {{viewMode === 'available' ? 'active' : ''}}" data-mode="available" bindtap="switchView">可选课程</view>
+  </view>
+
+  <!-- Filters (available mode) -->
+  <view class="filters card" wx:if="{{viewMode === 'available'}}">
+    <picker mode="selector" range="{{methods}}" range-key="label" value="{{selectedMethodIdx}}" bindchange="onMethodChange">
+      <view class="picker-btn">
+        <text>{{methods[selectedMethodIdx].label}}</text>
+        <text class="picker-arrow">▼</text>
+      </view>
+    </picker>
+  </view>
+
+  <!-- Stats -->
+  <view class="stats-row" wx:if="{{!loading}}">
+    <view class="stat-chip">
+      <text class="stat-chip-value">{{courseCount}}</text>
+      <text class="stat-chip-label">门课程</text>
+    </view>
+    <view class="stat-chip">
+      <text class="stat-chip-value">{{totalCredits}}</text>
+      <text class="stat-chip-label">总学分</text>
+    </view>
+  </view>
+
+  <view class="loading-container" wx:if="{{loading}}">
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <block wx:else>
+    <!-- Course List -->
+    <view class="card" wx:if="{{courses.length > 0}}">
+      <view
+        class="course-item"
+        wx:for="{{courses}}"
+        wx:key="index"
+        data-index="{{index}}"
+        bindtap="onCourseClick"
+      >
+        <view class="course-top">
+          <text class="course-name">{{item.course_name}}</text>
+          <text class="tag {{item.course_type === '必修' ? 'tag-red' : 'tag-blue'}}">{{item.course_type}}</text>
+        </view>
+        <view class="course-bottom">
+          <text class="course-info">{{item.teacher}} · {{item.credits}}学分</text>
+          <text class="course-capacity">{{item.selected_count || 0}}/{{item.capacity || 0}}</text>
+        </view>
+      </view>
+    </view>
+
+    <empty-state wx:if="{{courses.length === 0}}" message="暂无课程数据" icon="📚" />
+  </block>
+</view>

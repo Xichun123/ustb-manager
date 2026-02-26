@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "校园网",
+  "usingComponents": {
+    "empty-state": "../../components/empty-state/empty-state"
+  }
+}

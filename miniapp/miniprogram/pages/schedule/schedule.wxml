@@ -1,0 +1,70 @@
+<!--schedule.wxml-->
+<view class="page-container">
+  <!-- Controls -->
+  <view class="controls card">
+    <!-- View mode tabs -->
+    <view class="view-tabs">
+      <view class="view-tab {{viewMode === 'week' ? 'active' : ''}}" data-mode="week" bindtap="switchView">周课表</view>
+      <view class="view-tab {{viewMode === 'term' ? 'active' : ''}}" data-mode="term" bindtap="switchView">学期课表</view>
+    </view>
+    <!-- Pickers -->
+    <view class="picker-row">
+      <picker mode="selector" range="{{termList}}" range-key="name" value="{{selectedTermIdx}}" bindchange="onTermChange">
+        <view class="picker-btn">
+          <text>{{termList[selectedTermIdx].name || '选择学期'}}</text>
+          <text class="picker-arrow">▼</text>
+        </view>
+      </picker>
+      <picker wx:if="{{viewMode === 'week'}}" mode="selector" range="{{weekList}}" value="{{selectedWeekIdx}}" bindchange="onWeekChange">
+        <view class="picker-btn">
+          <text>第{{weekList[selectedWeekIdx]}}周</text>
+          <text class="picker-arrow">▼</text>
+        </view>
+      </picker>
+    </view>
+  </view>
+
+  <!-- Schedule Grid -->
+  <view class="card schedule-card" wx:if="{{!loading}}">
+    <block wx:if="{{schedule.length > 0}}">
+      <scroll-view scroll-x class="schedule-scroll">
+        <schedule-grid
+          schedule="{{schedule}}"
+          dates="{{dates}}"
+          bind:courseclick="onCourseClick"
+        />
+      </scroll-view>
+    </block>
+    <empty-state wx:else message="暂无课程安排" icon="📅" />
+  </view>
+
+  <view class="loading-container" wx:if="{{loading}}">
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <!-- Course Detail Modal -->
+  <view class="modal-mask" wx:if="{{showDetail}}" bindtap="closeDetail">
+    <view class="modal-content" catchtap="noop">
+      <view class="modal-title">{{courseDetail.course_name}}</view>
+      <view class="modal-body">
+        <view class="modal-item">
+          <text class="modal-label">教师</text>
+          <text class="modal-value">{{courseDetail.teacher}}</text>
+        </view>
+        <view class="modal-item">
+          <text class="modal-label">地点</text>
+          <text class="modal-value">{{courseDetail.location}}</text>
+        </view>
+        <view class="modal-item">
+          <text class="modal-label">周次</text>
+          <text class="modal-value">{{courseDetail.weeks}}</text>
+        </view>
+        <view class="modal-item">
+          <text class="modal-label">节次</text>
+          <text class="modal-value">{{courseDetail.period_text}}</text>
+        </view>
+      </view>
+      <view class="modal-close" bindtap="closeDetail">关闭</view>
+    </view>
+  </view>
+</view>
