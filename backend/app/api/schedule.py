@@ -1,13 +1,11 @@
-from fastapi import APIRouter, Cookie, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from typing import Optional, List
 from pydantic import BaseModel, Field
 from app.services import schedule_service
-from app.services.session_store import store
-from app.exceptions import BYYTSessionExpired
-import logging
+from app.services.session_store import Session
+from app.dependencies import get_authenticated_session
 
 router = APIRouter(prefix="/schedule", tags=["schedule"])
-logger = logging.getLogger(__name__)
 
 
 class CourseItem(BaseModel):
@@ -44,7 +42,7 @@ class ScheduleResponse(BaseModel):
 
 
 @router.get("/current-term", response_model=dict, summary="获取当前学年学期")
-async def get_current_term(ustb_sid: Optional[str] = Cookie(None)):
+async def get_current_term(session: Session = Depends(get_authenticated_session)):
     """
     ## 业务说明
     获取当前学年学期信息。
@@ -54,31 +52,11 @@ async def get_current_term(ustb_sid: Optional[str] = Cookie(None)):
     - XQ: 学期，如 "1"
     - XNXQ: 学年学期，如 "2025-2026-1"
     """
-    if not ustb_sid:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    session = store.get(ustb_sid)
-    if not session:
-        raise HTTPException(status_code=401, detail="Session not found")
-
-    if not session.authenticated:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    try:
-        result = await schedule_service.get_current_term(session)
-        return result
-
-    except BYYTSessionExpired as e:
-        logger.warning(f"BYYT session expired: {e}")
-        # 返回 502 而不是 401，因为这是 BYYT 系统的问题，不是本地认证问题
-        raise HTTPException(status_code=502, detail="BYYT session expired, please login again")
-    except Exception as e:
-        logger.error(f"Failed to fetch current term: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    return await schedule_service.get_current_term(session)
 
 
 @router.get("/term-list", response_model=List[dict], summary="获取学期列表")
-async def get_term_list(ustb_sid: Optional[str] = Cookie(None)):
+async def get_term_list(session: Session = Depends(get_authenticated_session)):
     """
     ## 业务说明
     获取所有可用的学期列表。
@@ -90,32 +68,12 @@ async def get_term_list(ustb_sid: Optional[str] = Cookie(None)):
     - kssj: 开始时间
     - jssj: 结束时间
     """
-    if not ustb_sid:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    session = store.get(ustb_sid)
-    if not session:
-        raise HTTPException(status_code=401, detail="Session not found")
-
-    if not session.authenticated:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    try:
-        result = await schedule_service.get_term_list(session)
-        return result
-
-    except BYYTSessionExpired as e:
-        logger.warning(f"BYYT session expired: {e}")
-        # 返回 502 而不是 401，因为这是 BYYT 系统的问题，不是本地认证问题
-        raise HTTPException(status_code=502, detail="BYYT session expired, please login again")
-    except Exception as e:
-        logger.error(f"Failed to fetch term list: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    return await schedule_service.get_term_list(session)
 
 
 @router.get("/week-list", response_model=List[dict], summary="获取周次列表")
 async def get_week_list(
-    ustb_sid: Optional[str] = Cookie(None),
+    session: Session = Depends(get_authenticated_session),
     xn: Optional[str] = Query(None, description="学年，如2025-2026"),
     xq: Optional[str] = Query(None, description="学期，1/2/3"),
 ):
@@ -126,32 +84,12 @@ async def get_week_list(
     ## 返回数据
     周次列表，每项包含 ZC（周次编号）
     """
-    if not ustb_sid:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    session = store.get(ustb_sid)
-    if not session:
-        raise HTTPException(status_code=401, detail="Session not found")
-
-    if not session.authenticated:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    try:
-        result = await schedule_service.get_week_list(session, xn, xq)
-        return result
-
-    except BYYTSessionExpired as e:
-        logger.warning(f"BYYT session expired: {e}")
-        # 返回 502 而不是 401，因为这是 BYYT 系统的问题，不是本地认证问题
-        raise HTTPException(status_code=502, detail="BYYT session expired, please login again")
-    except Exception as e:
-        logger.error(f"Failed to fetch week list: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    return await schedule_service.get_week_list(session, xn, xq)
 
 
 @router.get("/full", response_model=ScheduleResponse, summary="获取总课表")
 async def get_full_schedule(
-    ustb_sid: Optional[str] = Cookie(None),
+    session: Session = Depends(get_authenticated_session),
     xn: Optional[str] = Query(None, description="学年，如2025-2026"),
     xq: Optional[str] = Query(None, description="学期，1/2/3"),
 ):
@@ -167,38 +105,17 @@ async def get_full_schedule(
     - schedule: 课程列表，包含课程名、教师、地点、时间等
     - term: 学期信息
     """
-    if not ustb_sid:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+    if not xn or not xq:
+        current = await schedule_service.get_current_term(session)
+        xn = xn or current.get("XN", "")
+        xq = xq or current.get("XQ", "")
 
-    session = store.get(ustb_sid)
-    if not session:
-        raise HTTPException(status_code=401, detail="Session not found")
-
-    if not session.authenticated:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    try:
-        # 如果没有传入学年学期，获取当前学年学期
-        if not xn or not xq:
-            current = await schedule_service.get_current_term(session)
-            xn = xn or current.get("XN", "")
-            xq = xq or current.get("XQ", "")
-
-        result = await schedule_service.get_schedule_with_dates(session, xn, xq)
-        return result
-
-    except BYYTSessionExpired as e:
-        logger.warning(f"BYYT session expired: {e}")
-        # 返回 502 而不是 401，因为这是 BYYT 系统的问题，不是本地认证问题
-        raise HTTPException(status_code=502, detail="BYYT session expired, please login again")
-    except Exception as e:
-        logger.error(f"Failed to fetch full schedule: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    return await schedule_service.get_schedule_with_dates(session, xn, xq)
 
 
 @router.get("/week", response_model=ScheduleResponse, summary="获取周课表")
 async def get_week_schedule(
-    ustb_sid: Optional[str] = Cookie(None),
+    session: Session = Depends(get_authenticated_session),
     xn: Optional[str] = Query(None, description="学年，如2025-2026"),
     xq: Optional[str] = Query(None, description="学期，1/2/3"),
     week: int = Query(..., ge=1, le=99, description="周次，1-99"),
@@ -217,37 +134,16 @@ async def get_week_schedule(
     - week: 当前查询的周次
     - term: 学期信息
     """
-    if not ustb_sid:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+    if not xn or not xq:
+        current = await schedule_service.get_current_term(session)
+        xn = xn or current.get("XN", "")
+        xq = xq or current.get("XQ", "")
 
-    session = store.get(ustb_sid)
-    if not session:
-        raise HTTPException(status_code=401, detail="Session not found")
-
-    if not session.authenticated:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    try:
-        # 如果没有传入学年学期，获取当前学年学期
-        if not xn or not xq:
-            current = await schedule_service.get_current_term(session)
-            xn = xn or current.get("XN", "")
-            xq = xq or current.get("XQ", "")
-
-        result = await schedule_service.get_schedule_with_dates(session, xn, xq, week)
-        return result
-
-    except BYYTSessionExpired as e:
-        logger.warning(f"BYYT session expired: {e}")
-        # 返回 502 而不是 401，因为这是 BYYT 系统的问题，不是本地认证问题
-        raise HTTPException(status_code=502, detail="BYYT session expired, please login again")
-    except Exception as e:
-        logger.error(f"Failed to fetch week schedule: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    return await schedule_service.get_schedule_with_dates(session, xn, xq, week)
 
 
 @router.get("/exams", response_model=List[dict], summary="获取考试安排")
-async def get_exam_schedule(ustb_sid: Optional[str] = Cookie(None)):
+async def get_exam_schedule(session: Session = Depends(get_authenticated_session)):
     """
     ## 业务说明
     获取学生的考试安排列表。
@@ -265,23 +161,4 @@ async def get_exam_schedule(ustb_sid: Optional[str] = Cookie(None)):
     - room: 教室
     - campus: 校区
     """
-    if not ustb_sid:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    session = store.get(ustb_sid)
-    if not session:
-        raise HTTPException(status_code=401, detail="Session not found")
-
-    if not session.authenticated:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    try:
-        result = await schedule_service.get_exam_schedule(session)
-        return result
-
-    except BYYTSessionExpired as e:
-        logger.warning(f"BYYT session expired: {e}")
-        raise HTTPException(status_code=502, detail="BYYT session expired, please login again")
-    except Exception as e:
-        logger.error(f"Failed to fetch exam schedule: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    return await schedule_service.get_exam_schedule(session)

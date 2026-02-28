@@ -1,25 +1,38 @@
 import base64
 import json
+import re
 from fastapi import APIRouter, Response, HTTPException, Cookie
 from fastapi.responses import StreamingResponse
 from sse_starlette.sse import EventSourceResponse
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 import asyncio
 
 from ..config import COOKIE_NAME, COOKIE_SECURE, SESSION_TTL, SESSION_MAX_AGE
 from ..services.session_store import store, AuthState
 from ..services import auth_service
+from ..rate_limit import sms_rate_limiter
 from ustb_sso._exceptions import APIError
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-# Response Models
+# --------------- helpers ---------------
+
+def _set_session_cookie(response: Response, session_id: str, max_age: int) -> None:
+    """统一设置 session cookie。"""
+    response.set_cookie(
+        COOKIE_NAME, session_id,
+        httponly=True, secure=COOKIE_SECURE, samesite="lax", max_age=max_age,
+    )
+
+
+# --------------- models ---------------
+
 class QRInitResponse(BaseModel):
     session_id: str = Field(..., description="会话ID，用于后续轮询")
     qr_image: str = Field(..., description="Base64编码的二维码图片，格式为data:image/png;base64,...")
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -32,7 +45,7 @@ class QRInitResponse(BaseModel):
 class StatusResponse(BaseModel):
     authenticated: bool = Field(..., description="是否已认证")
     state: Optional[str] = Field(None, description="认证状态：init/qr_ready/active等")
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -44,7 +57,7 @@ class StatusResponse(BaseModel):
 
 class SimpleResponse(BaseModel):
     status: str = Field(..., description="操作状态")
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -57,7 +70,7 @@ class CookieLoginResponse(BaseModel):
     status: str = Field(..., description="登录状态")
     student_id: str = Field(..., description="学号")
     student_name: Optional[str] = Field(None, description="学生姓名")
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -71,15 +84,36 @@ class CookieLoginResponse(BaseModel):
 class SmsRequest(BaseModel):
     phone: str = Field(..., description="手机号码", example="13800138000")
 
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        if not re.match(r"^1[3-9]\d{9}$", v):
+            raise ValueError("手机号格式不正确")
+        return v
+
 
 class SmsVerifyRequest(BaseModel):
     phone: str = Field(..., description="手机号码", example="13800138000")
     code: str = Field(..., description="短信验证码", example="123456")
 
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        if not re.match(r"^1[3-9]\d{9}$", v):
+            raise ValueError("手机号格式不正确")
+        return v
+
+    @field_validator("code")
+    @classmethod
+    def validate_code(cls, v: str) -> str:
+        if not re.match(r"^\d{4,6}$", v):
+            raise ValueError("验证码格式不正确，应为4-6位数字")
+        return v
+
 
 class CookieLoginRequest(BaseModel):
     cookies: str = Field(
-        ..., 
+        ...,
         description="Cookie字符串，格式: 'INCO=xxx; SESSION=yyy'",
         example="INCO=abc123; SESSION=xyz789"
     )
@@ -103,10 +137,8 @@ async def qr_init(response: Response, ustb_sid: Optional[str] = Cookie(None)):
     - 二维码图片为Base64编码，可直接用于img标签的src属性
     - 如果已有有效的authenticated session，会复用该session
     """
-    # 检查是否已有有效的 authenticated session
     existing_session = store.get(ustb_sid) if ustb_sid else None
     if existing_session and existing_session.authenticated:
-        # 已登录，返回 409 冲突，前端应该跳转到 dashboard 而不是显示二维码
         raise HTTPException(409, "Already authenticated")
 
     session_id, session = store.create()
@@ -116,10 +148,7 @@ async def qr_init(response: Response, ustb_sid: Optional[str] = Cookie(None)):
         store.delete(session_id)
         raise HTTPException(502, str(e))
 
-    response.set_cookie(
-        COOKIE_NAME, session_id,
-        httponly=True, secure=COOKIE_SECURE, samesite="lax", max_age=SESSION_MAX_AGE
-    )
+    _set_session_cookie(response, session_id, SESSION_MAX_AGE)
     return {
         "session_id": session_id,
         "qr_image": f"data:image/png;base64,{base64.b64encode(qr_bytes).decode()}"
@@ -149,7 +178,6 @@ async def qr_poll(ustb_sid: Optional[str] = Cookie(None)):
     if not session:
         raise HTTPException(401, "Session expired")
 
-    # Start background monitoring on first poll
     if session.state == AuthState.QR_READY:
         await auth_service.start_qr_background_monitor(session)
 
@@ -169,19 +197,19 @@ async def qr_status(ustb_sid: Optional[str] = Cookie(None)):
     """
     ## 业务说明
     使用Server-Sent Events (SSE)实时推送二维码扫码状态。
-    
+
     ## 使用流程
     1. 前端使用EventSource连接此接口
     2. 服务器会持续推送状态更新
     3. 收到success状态后，调用 `/qr/complete` 完成登录
-    
+
     ## 状态说明
     - `waiting`: 等待扫码
     - `scanned`: 已扫码，等待确认
     - `success`: 登录成功
     - `expired`: 二维码已过期
     - `error`: 发生错误
-    
+
     ## 注意事项
     - 需要携带 ustb_sid cookie
     - 使用SSE协议，前端需使用EventSource API
@@ -208,12 +236,12 @@ async def qr_complete(response: Response, ustb_sid: Optional[str] = Cookie(None)
     """
     ## 业务说明
     完成二维码登录流程，刷新session并设置长期cookie。
-    
+
     ## 使用流程
     1. 在 `/qr/status` 收到success状态后调用此接口
     2. 服务器会轮换session ID（安全措施）
     3. 设置新的session cookie
-    
+
     ## 注意事项
     - 必须在认证成功后调用
     - 会自动更新cookie，前端无需处理
@@ -227,10 +255,7 @@ async def qr_complete(response: Response, ustb_sid: Optional[str] = Cookie(None)
 
     new_id = store.rotate(ustb_sid)
     if new_id:
-        response.set_cookie(
-            COOKIE_NAME, new_id,
-            httponly=True, secure=COOKIE_SECURE, samesite="lax", max_age=SESSION_TTL
-        )
+        _set_session_cookie(response, new_id, SESSION_TTL)
     return {"status": "ok"}
 
 
@@ -239,12 +264,12 @@ async def sms_init(response: Response):
     """
     ## 业务说明
     初始化短信验证码登录流程。
-    
+
     ## 使用流程
     1. 调用此接口初始化session
     2. 调用 `/sms/send` 发送验证码
     3. 调用 `/sms/verify` 验证验证码
-    
+
     ## 注意事项
     - 接口会自动设置session cookie
     - session有效期24小时
@@ -256,10 +281,7 @@ async def sms_init(response: Response):
         store.delete(session_id)
         raise HTTPException(502, str(e))
 
-    response.set_cookie(
-        COOKIE_NAME, session_id,
-        httponly=True, secure=COOKIE_SECURE, samesite="lax", max_age=SESSION_MAX_AGE
-    )
+    _set_session_cookie(response, session_id, SESSION_MAX_AGE)
     return {"session_id": session_id}
 
 
@@ -268,12 +290,12 @@ async def sms_send(req: SmsRequest, ustb_sid: Optional[str] = Cookie(None)):
     """
     ## 业务说明
     向指定手机号发送短信验证码。
-    
+
     ## 使用流程
     1. 先调用 `/sms/init` 初始化
     2. 调用此接口发送验证码到手机
     3. 用户收到验证码后，调用 `/sms/verify` 验证
-    
+
     ## 注意事项
     - 手机号必须是已在教务系统注册的号码
     - 验证码有效期通常为5分钟
@@ -285,6 +307,9 @@ async def sms_send(req: SmsRequest, ustb_sid: Optional[str] = Cookie(None)):
     session = store.get(ustb_sid)
     if not session:
         raise HTTPException(401, "Session expired")
+
+    # 频率限制
+    sms_rate_limiter.check(f"sms:{req.phone}")
 
     try:
         await auth_service.send_sms(session, req.phone)
@@ -303,12 +328,12 @@ async def sms_verify(req: SmsVerifyRequest, response: Response, ustb_sid: Option
     """
     ## 业务说明
     验证短信验证码并完成登录。
-    
+
     ## 使用流程
     1. 用户输入收到的验证码
     2. 调用此接口验证
     3. 验证成功后即可访问需要认证的API
-    
+
     ## 注意事项
     - 验证码错误会返回401错误
     - 验证成功后会自动轮换session ID
@@ -327,10 +352,7 @@ async def sms_verify(req: SmsVerifyRequest, response: Response, ustb_sid: Option
 
     new_id = store.rotate(ustb_sid)
     if new_id:
-        response.set_cookie(
-            COOKIE_NAME, new_id,
-            httponly=True, secure=COOKIE_SECURE, samesite="lax", max_age=SESSION_MAX_AGE
-        )
+        _set_session_cookie(response, new_id, SESSION_MAX_AGE)
     return {"status": "ok"}
 
 
@@ -339,17 +361,17 @@ async def auth_status(ustb_sid: Optional[str] = Cookie(None)):
     """
     ## 业务说明
     检查当前用户的认证状态，用于判断是否需要登录。
-    
+
     ## 使用场景
     - 页面加载时检查登录状态
     - 路由守卫判断是否需要跳转登录页
     - 定期检查session是否过期
-    
+
     ## 返回说明
     - `authenticated: true` - 已登录，可以访问受保护的API
     - `authenticated: false` - 未登录或session已过期
     - `state` - 当前认证状态（仅在已登录时返回）
-    
+
     ## 注意事项
     - 此接口不会抛出401错误，始终返回200
     - 即使没有cookie也会返回 `authenticated: false`
@@ -367,12 +389,12 @@ async def logout(response: Response, ustb_sid: Optional[str] = Cookie(None)):
     """
     ## 业务说明
     退出登录，清除session和cookie。
-    
+
     ## 使用流程
     1. 用户点击退出按钮
     2. 调用此接口
     3. 前端跳转到登录页
-    
+
     ## 注意事项
     - 会清除服务器端的session数据
     - 会删除客户端的cookie
@@ -389,98 +411,84 @@ async def cookie_login(req: CookieLoginRequest, response: Response):
     """
     ## 业务说明
     使用从浏览器复制的USTB教务系统Cookie直接登录，适合高级用户快速登录。
-    
+
     ## 使用流程
     1. 用户在浏览器中登录USTB教务系统
     2. 从浏览器开发者工具复制Cookie字符串
     3. 粘贴到登录表单并提交
     4. 系统验证Cookie有效性
     5. 验证成功后创建session
-    
+
     ## Cookie格式
     ```
     INCO=abc123; SESSION=xyz789
     ```
-    
+
     ## 验证机制
     - 系统会使用提供的Cookie访问教务系统API
     - 尝试获取学生信息以验证Cookie有效性
     - 如果能成功获取学号和姓名，则认为Cookie有效
-    
+
     ## 注意事项
     - Cookie必须包含USTB教务系统的认证信息
     - Cookie过期会返回401错误
     - 验证成功后会保存Cookie到本地，支持后端重启后恢复
     - 会自动设置session cookie
-    
+
     ## 安全提示
     - Cookie包含敏感信息，请勿分享给他人
     - 建议定期更换Cookie
     """
     from ..services import cookie_store
     import httpx
-    
+
     try:
-        # 解析Cookie字符串
         cookie_dict = {}
         for item in req.cookies.split(';'):
             item = item.strip()
             if '=' in item:
                 key, value = item.split('=', 1)
                 cookie_dict[key.strip()] = value.strip()
-        
-        # 创建新的session
+
         session_id, session = store.create()
-        
-        # 设置cookies到httpx client
+
         for key, value in cookie_dict.items():
             session.client.cookies.set(key, value, domain=".ustb.edu.cn")
-        
-        # 验证Cookie是否有效 - 尝试获取学生信息
+
         try:
             resp = session.client.post("https://byyt.ustb.edu.cn/UserManager/queryxsxx")
             resp.raise_for_status()
             data = resp.json()
 
-            # API直接返回学生信息，不包装在code/content结构中
-            # 如果返回空或包含错误信息则认为Cookie无效
             if not data or "XH" not in data:
                 store.delete(session_id)
                 raise HTTPException(401, "Cookie无效或已过期")
 
             student_info = data
             student_id = student_info.get("XH")
-            
+
             if not student_id:
                 store.delete(session_id)
                 raise HTTPException(401, "无法获取学生信息")
-            
-            # 更新session状态
+
             session.state = AuthState.ACTIVE
             session.authenticated = True
             session.student_id = student_id
 
-            # 保存Cookie到本地
             cookie_store.save_cookies(student_id, cookie_dict)
-
-            # 持久化session映射，支持后端重启后恢复
             store.persist(session_id, student_id)
 
-            # 设置session cookie
-            response.set_cookie(
-                COOKIE_NAME, session_id,
-                httponly=True, secure=COOKIE_SECURE, samesite="lax", max_age=SESSION_MAX_AGE
-            )
-            
+            _set_session_cookie(response, session_id, SESSION_MAX_AGE)
+
             return {
                 "status": "success",
                 "student_id": student_id,
                 "student_name": student_info.get("XM")
             }
-            
+
         except httpx.HTTPError as e:
             store.delete(session_id)
             raise HTTPException(401, f"Cookie验证失败: {str(e)}")
-            
+
     except Exception as e:
         raise HTTPException(400, f"Cookie格式错误: {str(e)}")

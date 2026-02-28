@@ -6,6 +6,7 @@ from app.services.session_store import Session
 from app.exceptions import BYYTSessionExpired
 from app.services.grades_service import _check_byyt_response
 from app.services.schedule_service import get_term_list as _get_schedule_term_list
+from app.cache import reference_data_cache
 
 logger = logging.getLogger(__name__)
 
@@ -338,7 +339,10 @@ async def get_available_courses(
 
 
 async def get_colleges(session: Session) -> List[Dict]:
-    """获取开课学院列表"""
+    """获取开课学院列表（带缓存）"""
+    cached = reference_data_cache.get("colleges")
+    if cached is not None:
+        return cached
 
     def _fetch():
         resp = session.client.post(
@@ -358,11 +362,15 @@ async def get_colleges(session: Session) -> List[Dict]:
                 "code": item.get("YXDM", "") or item.get("DM", ""),
                 "name": item.get("YXMC", "") or item.get("MC", ""),
             })
+    reference_data_cache.set("colleges", colleges)
     return colleges
 
 
 async def get_course_categories(session: Session) -> List[Dict]:
-    """获取课程类别列表"""
+    """获取课程类别列表（带缓存）"""
+    cached = reference_data_cache.get("categories")
+    if cached is not None:
+        return cached
 
     def _fetch():
         params = {"dmbdm": "byyt_kclb", "mbmc": ""}
@@ -383,11 +391,15 @@ async def get_course_categories(session: Session) -> List[Dict]:
                 "code": item.get("DM", ""),
                 "name": item.get("MC", ""),
             })
+    reference_data_cache.set("categories", categories)
     return categories
 
 
 async def get_campuses(session: Session) -> List[Dict]:
-    """获取校区列表"""
+    """获取校区列表（带缓存）"""
+    cached = reference_data_cache.get("campuses")
+    if cached is not None:
+        return cached
 
     def _fetch():
         resp = session.client.post(
@@ -414,4 +426,5 @@ async def get_campuses(session: Session) -> List[Dict]:
             "code": item.get("dm", "") or item.get("DM", ""),
             "name": item.get("mc", "") or item.get("MC", ""),
         })
+    reference_data_cache.set("campuses", campuses)
     return campuses

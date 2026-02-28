@@ -5,6 +5,7 @@ from app.services.session_store import Session
 from app.exceptions import BYYTSessionExpired
 from app.services.grades_service import _check_byyt_response
 from app.services.byyt_crypto import encrypt, encrypt_empty
+from app.cache import reference_data_cache
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,10 @@ async def get_current_term(session: Session) -> Dict:
 
 
 async def get_term_list(session: Session) -> List[Dict]:
-    """获取学期列表"""
+    """获取学期列表（带缓存）"""
+    cached = reference_data_cache.get("schedule_term_list")
+    if cached is not None:
+        return cached
 
     def _fetch():
         resp = session.client.post(
@@ -71,9 +75,8 @@ async def get_term_list(session: Session) -> List[Dict]:
             "dm": f"{xn}{xq}",  # 代码: 2025-20262 (与BYYT p_xnxq格式一致)
             "mc": f"{xn}学年第{xq}学期",  # 名称: 2025-2026学年第2学期
         })
+    reference_data_cache.set("schedule_term_list", formatted)
     return formatted
-
-
 async def get_week_list(
     session: Session,
     xn: Optional[str] = None,

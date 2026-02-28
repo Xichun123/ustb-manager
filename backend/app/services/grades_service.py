@@ -3,6 +3,7 @@ import logging
 from typing import Dict, List, Optional
 from app.services.session_store import Session
 from app.exceptions import BYYTSessionExpired
+from app.cache import reference_data_cache
 from httpx import HTTPStatusError
 
 logger = logging.getLogger(__name__)
@@ -237,7 +238,10 @@ async def get_student_plan(session: Session) -> List[Dict]:
 
 
 async def get_available_terms(session: Session) -> Dict:
-    """查询可选学年学期"""
+    """查询可选学年学期（带缓存）"""
+    cached = reference_data_cache.get("grades_available_terms")
+    if cached is not None:
+        return cached
 
     def _fetch():
         resp = session.client.post(
@@ -249,6 +253,7 @@ async def get_available_terms(session: Session) -> Dict:
         return resp.json()
 
     result = await asyncio.to_thread(_fetch)
+    reference_data_cache.set("grades_available_terms", result)
     return result
 
 
@@ -289,7 +294,10 @@ async def get_required_course_status(
 
 
 async def get_term_list(session: Session) -> List[Dict]:
-    """查询学年学期列表"""
+    """查询学年学期列表（带缓存）"""
+    cached = reference_data_cache.get("grades_term_list")
+    if cached is not None:
+        return cached
 
     def _fetch():
         resp = session.client.post(
@@ -301,7 +309,9 @@ async def get_term_list(session: Session) -> List[Dict]:
         return resp.json()
 
     result = await asyncio.to_thread(_fetch)
-    return result if isinstance(result, list) else []
+    data = result if isinstance(result, list) else []
+    reference_data_cache.set("grades_term_list", data)
+    return data
 
 
 def calculate_gpa(grades: List[Dict]) -> Dict:

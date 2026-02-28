@@ -2,9 +2,11 @@
 校园网管理 API 路由
 使用API接口获取数据，避免HTML解析
 """
+import logging
+import re
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, Request, Response
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Query, Request, Response
+from pydantic import BaseModel, Field, field_validator
 import httpx
 
 from ..services.wifi_service import (
@@ -21,6 +23,7 @@ from ..services.wifi_store import wifi_credential_store
 from ..services.session_store import store as session_store
 
 router = APIRouter(prefix="/wifi", tags=["校园网管理"])
+logger = logging.getLogger(__name__)
 
 
 class WifiLoginRequest(BaseModel):
@@ -28,20 +31,31 @@ class WifiLoginRequest(BaseModel):
 
 
 class WifiStandaloneLoginRequest(BaseModel):
-    student_id: str
+    student_id: str = Field(..., min_length=8, max_length=12, pattern=r"^\d{8,12}$")
     password: str
+
+
+class UnbindMacRequest(BaseModel):
+    mac_address: str
+
+    @field_validator("mac_address")
+    @classmethod
+    def validate_mac(cls, v: str) -> str:
+        # 支持 XX:XX:XX:XX:XX:XX / XX-XX-XX-XX-XX-XX / XXXXXXXXXXXX
+        cleaned = re.sub(r"[:\-]", "", v).upper()
+        if not re.match(r"^[0-9A-F]{12}$", cleaned):
+            raise ValueError("MAC地址格式不正确")
+        return v
 
 
 def get_student_id(request: Request) -> str:
     """从教务系统 session 或独立模式 cookie 获取学号"""
-    # 优先从教务系统 session 获取
     session_id = request.cookies.get("ustb_sid")
     if session_id:
         session = session_store.get(session_id)
         if session and session.student_id:
             return session.student_id
 
-    # 尝试从独立模式 cookie 获取
     wifi_student_id = request.cookies.get("wifi_student_id")
     if wifi_student_id:
         return wifi_student_id
@@ -51,27 +65,23 @@ def get_student_id(request: Request) -> str:
 
 async def get_or_create_wifi_session(student_id: str) -> WifiSession:
     """获取或创建校园网会话"""
-    # 1. 检查现有会话（内存中）
     session = wifi_store.get(student_id)
     if session:
         return session
 
-    # 2. 检查是否有保存的凭据
     cred = wifi_credential_store.get(student_id)
-    if not cred or not cred.password:
+    if not cred or not cred.get_password():
         raise HTTPException(status_code=401, detail="请先登录校园网")
 
-    # 3. 如果有保存的 cookie，先尝试用它创建会话（快速路径）
     if cred.vpn_cookie:
-        print(f"[DEBUG] Trying saved cookie for {student_id}")
+        logger.debug("Trying saved cookie for %s", student_id)
         client = httpx.AsyncClient(follow_redirects=True, timeout=60.0)
         client.cookies.set("wengine_vpn_ticketelib_ustb_edu_cn", cred.vpn_cookie, domain="elib.ustb.edu.cn")
 
-        # 验证 cookie 是否有效：尝试获取流量信息
         try:
             result = await get_flow_info(client, cred.vpn_cookie)
             if result:
-                print(f"[DEBUG] Saved cookie is valid!")
+                logger.debug("Saved cookie is valid!")
                 session = WifiSession(
                     client=client,
                     student_id=student_id,
@@ -80,20 +90,18 @@ async def get_or_create_wifi_session(student_id: str) -> WifiSession:
                 wifi_store.set(student_id, session)
                 return session
             else:
-                print(f"[DEBUG] Saved cookie returned no data, will re-login")
+                logger.debug("Saved cookie returned no data, will re-login")
                 await client.aclose()
         except Exception as e:
-            print(f"[DEBUG] Saved cookie failed: {e}, will re-login")
+            logger.debug("Saved cookie failed: %s, will re-login", e)
             await client.aclose()
 
-    # 4. Cookie 无效或不存在，使用 Playwright 重新登录（慢速路径）
-    print(f"[DEBUG] Using Playwright to login for {student_id}")
+    logger.debug("Using Playwright to login for %s", student_id)
     try:
-        vpn_cookie, client = await login_vpn_only(student_id, cred.password)
+        vpn_cookie, client = await login_vpn_only(student_id, cred.get_password())
         if not vpn_cookie or not client:
             raise HTTPException(status_code=401, detail="校园网密码错误，请重新登录")
 
-        # 创建新会话
         session = WifiSession(
             client=client,
             student_id=student_id,
@@ -124,14 +132,11 @@ async def get_standalone_status(request: Request):
     if not wifi_student_id:
         return {"logged_in": False, "student_id": None, "has_credential": False}
 
-    # 检查是否有有效会话
     session = wifi_store.get(wifi_student_id)
     if session:
         return {"logged_in": True, "student_id": wifi_student_id, "has_credential": True}
 
-    # 检查是否有保存的凭据
     has_credential = wifi_credential_store.has_credential(wifi_student_id)
-
     return {"logged_in": False, "student_id": wifi_student_id, "has_credential": has_credential}
 
 
@@ -148,14 +153,11 @@ async def get_wifi_status(request: Request):
     """
     student_id = get_student_id(request)
 
-    # 检查是否有有效会话
     session = wifi_store.get(student_id)
     if session:
         return {"logged_in": True, "has_credential": True}
 
-    # 检查是否有保存的凭据
     has_credential = wifi_credential_store.has_credential(student_id)
-
     return {"logged_in": False, "has_credential": has_credential}
 
 
@@ -173,10 +175,8 @@ async def wifi_login(request: Request, body: WifiLoginRequest):
         if not vpn_cookie or not client:
             raise HTTPException(status_code=401, detail="校园网密码错误")
 
-        # 保存凭据
         wifi_credential_store.save_credential(student_id, body.password, vpn_cookie)
 
-        # 创建会话
         session = WifiSession(
             client=client,
             student_id=student_id,
@@ -190,8 +190,7 @@ async def wifi_login(request: Request, body: WifiLoginRequest):
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="校园网服务响应超时，请稍后重试")
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.exception("WiFi login failed for %s", student_id)
         raise HTTPException(status_code=500, detail=f"登录失败: {str(e)}")
 
 
@@ -207,10 +206,8 @@ async def wifi_standalone_login(response: Response, body: WifiStandaloneLoginReq
         if not vpn_cookie or not client:
             raise HTTPException(status_code=401, detail="学号或密码错误")
 
-        # 保存凭据
         wifi_credential_store.save_credential(body.student_id, body.password, vpn_cookie)
 
-        # 创建会话
         session = WifiSession(
             client=client,
             student_id=body.student_id,
@@ -218,12 +215,11 @@ async def wifi_standalone_login(response: Response, body: WifiStandaloneLoginReq
         )
         wifi_store.set(body.student_id, session)
 
-        # 设置 cookie 用于独立模式
         response.set_cookie(
             key="wifi_student_id",
             value=body.student_id,
             httponly=True,
-            max_age=30 * 24 * 60 * 60,  # 30天
+            max_age=30 * 24 * 60 * 60,
             samesite="lax",
         )
 
@@ -233,8 +229,7 @@ async def wifi_standalone_login(response: Response, body: WifiStandaloneLoginReq
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="校园网服务响应超时，请稍后重试")
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        logger.exception("WiFi standalone login failed for %s", body.student_id)
         raise HTTPException(status_code=500, detail=f"登录失败: {str(e)}")
 
 
@@ -243,7 +238,6 @@ async def wifi_logout(request: Request):
     """登出校园网（清除保存的凭据）"""
     student_id = get_student_id(request)
 
-    # 关闭客户端
     session = wifi_store.get(student_id)
     if session and session.client:
         try:
@@ -339,12 +333,10 @@ async def get_devices(request: Request):
         raise HTTPException(status_code=500, detail=f"获取设备列表失败: {str(e)}")
 
 
-class UnbindMacRequest(BaseModel):
-    mac_address: str
-
-
 @router.get("/mac-vendor")
-async def get_mac_vendor(mac: str):
+async def get_mac_vendor(
+    mac: str = Query(..., description="MAC地址"),
+):
     """
     查询MAC地址厂商（离线数据库）
 
@@ -360,6 +352,11 @@ async def get_mac_vendor(mac: str):
             "is_random": 是否为随机MAC地址
         }
     """
+    # 验证 MAC 地址格式
+    cleaned = re.sub(r"[:\-]", "", mac).upper()
+    if not re.match(r"^[0-9A-F]{12}$", cleaned):
+        raise HTTPException(status_code=422, detail="MAC地址格式不正确")
+
     from ..services.mac_vendor import get_vendor
     return get_vendor(mac)
 
@@ -394,12 +391,15 @@ async def unbind_mac_address(request: Request, body: UnbindMacRequest):
 
 
 @router.get("/bills")
-async def get_bills(request: Request, year: int = None):
+async def get_bills(
+    request: Request,
+    year: int = Query(None, ge=2000, le=2100, description="年份"),
+):
     """
     获取历史账单
 
     Args:
-        year: 年份（可选，默认当前年份）
+        year: 年份（可选，默认当前年份，范围2000-2100）
 
     Returns:
         {

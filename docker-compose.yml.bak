@@ -1,6 +1,6 @@
 services:
   backend:
-    build: ./backend
+    image: xichun/ustb-manager-backend:latest
     container_name: ustb-backend
     restart: unless-stopped
     environment:
@@ -10,7 +10,7 @@ services:
       - ustb-network
 
   frontend:
-    build: ./frontend
+    image: xichun/ustb-manager-frontend:latest
     container_name: ustb-frontend
     restart: unless-stopped
     ports:

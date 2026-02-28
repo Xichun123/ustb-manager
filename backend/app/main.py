@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import CORS_ORIGINS
 from .services.session_store import store
 from .api import auth, byyt, grades, schedule, wifi, courses
+from .exceptions import BYYTSessionExpired, byyt_session_expired_handler, generic_exception_handler
 
 logging.basicConfig(level=logging.INFO)
 
@@ -107,6 +108,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 全局异常处理器
+app.add_exception_handler(BYYTSessionExpired, byyt_session_expired_handler)
+app.add_exception_handler(Exception, generic_exception_handler)
 
 app.include_router(auth.router, prefix="/api")
 app.include_router(byyt.router, prefix="/api")
