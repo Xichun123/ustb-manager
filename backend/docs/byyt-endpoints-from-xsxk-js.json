@@ -1,0 +1,250 @@
+[
+  {
+    "url": "Xsxk/queryKxrw",
+    "method": "POST",
+    "js_function": "cxqhquery()",
+    "params": {
+      "queryform": "包含查询条件的表单对象，含学年(xn)、学期(xq)、课程类别等筛选字段"
+    },
+    "response": "返回可选任务列表数据，用于更新表格",
+    "description": "查询可选课程任务列表"
+  },
+  {
+    "url": "Xsxk/queryYxkc",
+    "method": "POST",
+    "js_function": "cxqhquery()",
+    "params": {
+      "queryform": "包含查询条件的表单对象"
+    },
+    "response": "返回已选课程列表",
+    "description": "查询已选课程列表"
+  },
+  {
+    "url": "Xsxk/queryXkgwc",
+    "method": "POST",
+    "js_function": "cxqhquery()",
+    "params": {
+      "queryform": "包含查询条件的表单对象"
+    },
+    "response": "返回购物车中的课程列表",
+    "description": "查询选课购物车列表"
+  },
+  {
+    "url": "Xskbcx/queryXskbcxList",
+    "method": "POST",
+    "js_function": "kbcx()",
+    "params": {
+      "bs": "标识类型，固定值 '2'",
+      "xn": "学年",
+      "xq": "学期"
+    },
+    "response": "返回个人课表数据，包含每周每节的课程安排",
+    "description": "查询学生个人课表"
+  },
+  {
+    "url": "Xskbcx/queryBjkbcxList",
+    "method": "POST",
+    "js_function": "kbcx()",
+    "params": {
+      "bs": "标识类型，固定值 '2'",
+      "xn": "学年",
+      "xq": "学期"
+    },
+    "response": "返回班级课表数据",
+    "description": "查询班级课表"
+  },
+  {
+    "url": "Xskbcx/queryGwckbcxList",
+    "method": "POST",
+    "js_function": "kbcx()",
+    "params": {
+      "bs": "标识类型，固定值 '2'",
+      "xn": "学年",
+      "xq": "学期"
+    },
+    "response": "返回购物车课表数据",
+    "description": "查询购物车课表"
+  },
+  {
+    "url": "Xsxk/addGouwuche",
+    "method": "POST",
+    "js_function": "add_xuankegwc()",
+    "params": {
+      "queryform": "包含课程任务ID等选课信息的表单对象"
+    },
+    "response": "返回操作结果，成功后提示并刷新列表",
+    "description": "添加课程到选课购物车"
+  },
+  {
+    "url": "Xsxk/addXuanke",
+    "method": "POST",
+    "js_function": "add_xuanke()",
+    "params": {
+      "queryform": "包含购物车课程ID等信息的表单对象"
+    },
+    "response": "返回操作结果，成功后从购物车提交至已选",
+    "description": "从购物车提交选课（确认选课）"
+  },
+  {
+    "url": "Xsxk/tuike",
+    "method": "POST",
+    "js_function": "tuike()",
+    "params": {
+      "id": "已选课程记录ID"
+    },
+    "response": "返回退课结果，成功后刷新已选课程列表",
+    "description": "退课操作"
+  },
+  {
+    "url": "Xsxk/delGouwuche",
+    "method": "POST",
+    "js_function": "del_gouwuche()",
+    "params": {
+      "ids": "购物车项目ID，多个用逗号分隔"
+    },
+    "response": "返回删除结果，成功后刷新购物车列表",
+    "description": "删除购物车中的课程"
+  },
+  {
+    "url": "Xsxk/cxmtctPd",
+    "method": "POST",
+    "js_function": "add_xuankegwc()",
+    "params": {
+      "queryform": "包含课程时间信息的表单对象"
+    },
+    "response": "返回是否存在时间冲突的判断结果",
+    "description": "检测选课时间冲突（在加入购物车前调用）"
+  },
+  {
+    "url": "Xsxk/updXkxsByyx",
+    "method": "POST",
+    "js_function": "updXkxsByyx()",
+    "params": {
+      "p_id": "已选课程记录ID",
+      "p_xkxs": "选课系数/学分值"
+    },
+    "response": "修改成功后刷新已选课程列表",
+    "description": "修改已选课程的选课系数"
+  },
+  {
+    "url": "Xsxk/updXkxsBygwc",
+    "method": "POST",
+    "js_function": "upd_xkxsBygwc()",
+    "params": {
+      "p_id": "购物车课程记录ID",
+      "p_xkxs": "选课系数/学分值"
+    },
+    "response": "确认后修改系数并刷新列表",
+    "description": "修改购物车中课程的选课系数"
+  },
+  {
+    "url": "Xsxk/queryXkdqXnxq",
+    "method": "POST",
+    "js_function": "mounted()",
+    "params": {
+      "queryform": "基础查询表单"
+    },
+    "response": "返回当前选课的学年和学期信息",
+    "description": "查询当前选课学年学期（页面初始化时调用）"
+  },
+  {
+    "url": "Xsxk/queryKxrwByKcdm_js",
+    "method": "POST",
+    "js_function": "cxkcdm_js()",
+    "params": {
+      "queryform": "包含课程代码(kcdm)的查询表单"
+    },
+    "response": "返回匹配课程代码的课程任务列表",
+    "description": "按课程代码精确查询可选课程任务"
+  },
+  {
+    "url": "Xsxktz/queryXlcxList",
+    "method": "POST",
+    "js_function": "watch.p_xnxq（学年学期变更监听）",
+    "params": {
+      "queryform": "包含学年学期的查询表单"
+    },
+    "response": "返回节次列表数据",
+    "description": "查询节次列表（上课时间段）"
+  },
+  {
+    "url": "Xsxk/queryXkggZx",
+    "method": "POST",
+    "js_function": "mounted()",
+    "params": {
+      "xn": "学年",
+      "xq": "学期"
+    },
+    "response": "返回选课公告内容，显示弹窗",
+    "description": "查询选课公告信息"
+  },
+  {
+    "url": "Xskbcx/queryKkxqList",
+    "method": "POST",
+    "js_function": "mounted()",
+    "params": {
+      "queryform": "基础查询表单"
+    },
+    "response": "返回开课学期列表，用于构建学年学期选择器",
+    "description": "查询开课学期列表"
+  },
+  {
+    "url": "Xsxk/queryJiaofei",
+    "method": "POST",
+    "js_function": "query_jiaofei()",
+    "params": {
+      "ids": "课程任务ID，多个用逗号分隔"
+    },
+    "response": "返回缴费任务列表和总金额信息",
+    "description": "查询课程缴费信息"
+  },
+  {
+    "url": "Xsxk/updXuefeijiaofei",
+    "method": "POST",
+    "js_function": "upd_jiaofei()",
+    "params": {
+      "queryform": "包含缴费信息的表单对象"
+    },
+    "response": "缴费成功后刷新列表",
+    "description": "学费缴费处理"
+  },
+  {
+    "url": "Xsxk/queryXsxkrzList",
+    "method": "POST",
+    "js_function": "rzshow()",
+    "params": {
+      "rzform": "日志查询表单，包含查询时间范围等"
+    },
+    "response": "返回选课操作日志列表",
+    "description": "查询选课操作日志"
+  },
+  {
+    "url": "Xsxk/queryXkxsDet",
+    "method": "POST",
+    "js_function": "cxqhquery()",
+    "params": {
+      "queryform": "包含学生信息的查询表单"
+    },
+    "response": "返回学生年级等详细信息",
+    "description": "查询学生选课详情信息"
+  },
+  {
+    "url": "xkgzsz/downggfj",
+    "method": "POST",
+    "js_function": "downggfj()",
+    "params": {
+      "savename": "服务器端保存的文件名",
+      "filename": "下载后显示的文件名"
+    },
+    "response": "触发文件下载",
+    "description": "下载选课公告附件"
+  },
+  {
+    "url": "cjgl/grcjcx/cjxqList",
+    "method": "GET",
+    "js_function": "xxjdztc()",
+    "params": {},
+    "response": "页面跳转到学习进度查询",
+    "description": "跳转到学习进度/成绩详情页面"
+  }
+]

@@ -1,0 +1,312 @@
+[
+  {
+    "url": "UserManager/queryxsxx",
+    "method": "POST",
+    "params_format": "空字符串 data=\"\" 或无 body",
+    "response_format": "直接返回对象: {\"XH\": \"学号\", \"XM\": \"姓名\", \"content\": {\"XH\": ...}} — 可能有两种结构: 顶层含 XH 或 content.XH",
+    "python_function": "get_student_info",
+    "python_file": "backend/app/services/grades_service.py",
+    "module": "grades",
+    "description": "查询学生基本信息（学号、姓名等），也用于认证后验证会话有效性"
+  },
+  {
+    "url": "user/me",
+    "method": "POST",
+    "params_format": "空字符串 data=\"\"",
+    "response_format": "返回当前用户完整信息（包含角色、权限等），具体结构由 BYYT 系统定义",
+    "python_function": "get_user_info",
+    "python_file": "backend/app/services/grades_service.py",
+    "module": "grades",
+    "description": "获取当前登录用户完整信息（含角色权限）"
+  },
+  {
+    "url": "component/querydangqianxnxq",
+    "method": "POST",
+    "params_format": "空字符串 data=\"\"",
+    "response_format": "直接返回对象: {\"XN\": \"2025-2026\", \"XQ\": \"1\", ...} 或 {\"code\": 200, \"content\": {...}}",
+    "python_function": "get_current_term",
+    "python_file": "backend/app/services/schedule_service.py",
+    "module": "schedule",
+    "description": "获取当前学年学期"
+  },
+  {
+    "url": "component/queryXnxq",
+    "method": "POST",
+    "params_format": "data={\"data\": encrypt_empty()} 或 data=\"\" — schedule模块使用加密参数，grades模块使用空字符串",
+    "response_format": "{\"code\": 200, \"content\": [{\"xn\": \"2025-2026\", \"xq\": \"1\"}, ...]} 或直接返回数组",
+    "python_function": "get_term_list",
+    "python_file": "backend/app/services/schedule_service.py",
+    "module": "schedule",
+    "description": "获取学年学期列表（schedule模块版本，使用加密参数）"
+  },
+  {
+    "url": "component/queryXnxq",
+    "method": "POST",
+    "params_format": "data=\"\"",
+    "response_format": "返回数组: [{\"xn\": \"...\", \"xq\": \"...\"}, ...]",
+    "python_function": "get_term_list",
+    "python_file": "backend/app/services/grades_service.py",
+    "module": "grades",
+    "description": "获取学年学期列表（grades模块版本，使用空字符串）"
+  },
+  {
+    "url": "component/queryzclist",
+    "method": "POST",
+    "params_format": "data={\"xn\": \"学年\", \"xq\": \"学期\"}",
+    "response_format": "返回数组，包含各周次信息",
+    "python_function": "get_week_list",
+    "python_file": "backend/app/services/schedule_service.py",
+    "module": "schedule",
+    "description": "获取指定学年学期的周次列表"
+  },
+  {
+    "url": "component/queryRlZcSj",
+    "method": "POST",
+    "params_format": "data={\"xn\": \"学年\", \"xq\": \"学期\", \"djz\": \"周次(数字字符串)\"}",
+    "response_format": "{\"code\": 200, \"content\": [{\"xqj\": \"星期几\", \"rq\": \"日期\"}, ...]} 或直接返回数组",
+    "python_function": "get_week_dates",
+    "python_file": "backend/app/services/schedule_service.py",
+    "module": "schedule",
+    "description": "获取指定周的日期列表（日历周次时间）"
+  },
+  {
+    "url": "xszykb/queryxszykbzong",
+    "method": "POST",
+    "params_format": "data={\"xn\": \"学年\", \"xq\": \"学期\"}",
+    "response_format": "返回数组: [{\"KEY\": \"xq1_jc1\", \"SKSJ\": \"课程名\\n教师\\n周次\\n地点\\n节次\", \"SKSJ_EN\": \"...\", \"KSJC\": 开始节次, \"JSJC\": 结束节次, \"RWH\": \"任务号\", \"ZC\": \"周次位图\", \"PYLX\": \"培养类型\"}, ...]",
+    "python_function": "get_full_schedule",
+    "python_file": "backend/app/services/schedule_service.py",
+    "module": "schedule",
+    "description": "获取学生总课表（整学期全部课程）"
+  },
+  {
+    "url": "xszykb/queryxszykbzhou",
+    "method": "POST",
+    "params_format": "data={\"xn\": \"学年\", \"xq\": \"学期\", \"zc\": \"周次(数字字符串)\"}",
+    "response_format": "返回数组，结构同 queryxszykbzong",
+    "python_function": "get_week_schedule",
+    "python_file": "backend/app/services/schedule_service.py",
+    "module": "schedule",
+    "description": "获取学生周课表（指定周的课程）"
+  },
+  {
+    "url": "component/queryKsxxByXs",
+    "method": "POST",
+    "params_format": "空字符串 data=\"\"",
+    "response_format": "返回数组: [{\"KCDM\": \"课程代码\", \"KCMC\": \"课程名\", \"KCMC_EN\": \"英文名\", \"KSSJDMC\": \"考试时段(期末/期中)\", \"KSRQ\": \"考试日期\", \"KSRQ2\": \"日期显示\", \"KSJTSJ\": \"具体时间\", \"XQJMC\": \"星期几\", \"DJZ\": 周次, \"KSJC\": 开始节次, \"JSJC\": 结束节次, \"JXLMC\": \"教学楼\", \"JXCDMC\": \"教室\", \"XIAOQUBMC\": \"校区\", \"XNXQMC\": \"学期\", \"JKJSBZ\": \"备注\"}, ...]",
+    "python_function": "get_exam_schedule",
+    "python_file": "backend/app/services/schedule_service.py",
+    "module": "schedule",
+    "description": "获取学生考试安排"
+  },
+  {
+    "url": "cjgl/grcjcx/dyxwList",
+    "method": "POST",
+    "params_format": "data={\"pageNum\": 页码, \"pageSize\": 每页数量, \"total\": 0, \"xjid\": \"学号\", \"sfgld\": \"1\", \"pxzd\": \"\", \"pxfx\": \"\", \"xn\": \"学年\", \"xq\": \"学期\", \"kcxz\": \"课程性质\", \"kclb\": \"课程类别\", \"key\": \"\", \"pylx\": \"1\", \"sffx\": \"\", \"sfcxfxcj\": \"0\", \"sfsjqx\": \"1\"}",
+    "response_format": "{\"code\": 200, \"content\": {\"list\": [...], \"total\": 数量, ...}}",
+    "python_function": "get_grades",
+    "python_file": "backend/app/services/grades_service.py",
+    "module": "grades",
+    "description": "获取个人成绩列表（带分页和筛选）"
+  },
+  {
+    "url": "xspyyjsfasq/queryGrjhKcList1",
+    "method": "POST",
+    "params_format": "data={\"multiple\": \"false\", \"pylx\": \"1\", \"pylb\": \"1\", \"bgid\": \"\", \"xsid\": \"\", \"xh\": \"\", \"fah\": \"方案号\", \"kcmcdm\": \"\", \"yxdm\": \"\", \"xqdm\": \"\", \"kclbdm\": \"\", \"kcxzdm\": \"\", \"sffaw\": \"\", \"iskcztpx\": \"\", \"order1\": \"\", \"order2\": \"\"}",
+    "response_format": "{\"code\": 200, \"content\": [{\"kclbmc\": \"课程类别名\", \"kcxzmc\": \"课程性质名\", \"xf\": 学分, \"kcdm\": \"课程代码\"}, ...]}",
+    "python_function": "get_plan_course_list",
+    "python_file": "backend/app/services/grades_service.py",
+    "module": "grades",
+    "description": "获取培养方案课程列表（培养计划中的全部课程要求）"
+  },
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/getXss",
+    "method": "POST",
+    "params_format": "json={\"xjidorxh\": \"学号\"}",
+    "response_format": "{\"code\": 200, \"content\": [{\"fah\": \"方案号\", ...}]}",
+    "python_function": "get_student_plan",
+    "python_file": "backend/app/services/grades_service.py",
+    "module": "grades",
+    "description": "获取学生方案信息（含培养方案号fah，用于查询培养方案课程）"
+  },
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/queryqxnxq",
+    "method": "POST",
+    "params_format": "空字符串 data=\"\"",
+    "response_format": "返回可选学年学期数据（具体结构由BYYT系统定义）",
+    "python_function": "get_available_terms",
+    "python_file": "backend/app/services/grades_service.py",
+    "module": "grades",
+    "description": "查询成绩查询可选学年学期"
+  },
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/queryBxkqk",
+    "method": "POST",
+    "params_format": "json={\"xh\": \"学号\", \"pylx\": \"1\", \"nj\": \"年级(学号前4位)\", \"jzxnxq\": \"截止学年学期\", \"xjid\": \"学号\", \"fah\": \"\", \"sfcxxfj\": \"0\"}",
+    "response_format": "{\"code\": 200, \"content\": {...}} — 必修课完成情况数据",
+    "python_function": "get_required_course_status",
+    "python_file": "backend/app/services/grades_service.py",
+    "module": "grades",
+    "description": "查询必修课完成情况"
+  },
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/getXs",
+    "method": "POST",
+    "params_format": "json={\"xjidorxh\": \"学号\"}",
+    "response_format": "{\"code\": 200, \"content\": [{\"fah\": \"方案号\", \"kclb_list\": [{\"dm\": \"代码\", \"mc\": \"名称\"}, ...], ...}]}",
+    "python_function": "get_student_xs_info",
+    "python_file": "backend/app/services/grades_service.py",
+    "module": "grades",
+    "description": "获取学生信息（含培养方案号fah和课程类别列表）"
+  },
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/queryXflbyq1",
+    "method": "POST",
+    "params_format": "json={\"current\": 1, \"pageSize\": 500, \"xjid\": \"学号\", \"zyfxdm\": null, \"pylx\": \"1\", \"fah\": \"方案号\"}",
+    "response_format": "{\"xflbyqkc\": [{\"kcdm\": \"课程代码\", \"kcmc\": \"课程名\", \"xf\": 学分, \"xs\": 学时, \"xscj\": \"学生成绩\", \"zzcj\": \"最终成绩\", \"kclbdm\": \"课程类别代码\", \"kclbmc\": \"课程类别名\", \"xnxqmc\": \"学期名\"}, ...]}",
+    "python_function": "query_xflbyq",
+    "python_file": "backend/app/services/grades_service.py",
+    "module": "grades",
+    "description": "查询学分类别要求课程列表（含已修课程成绩，用于学分完成度统计）"
+  },
+  {
+    "url": "Xsxk/queryXkdqXnxq",
+    "method": "POST",
+    "params_format": "application/x-www-form-urlencoded: cxsfmt=0&p_pylx=1&mxpylx=1&p_sfgldjr=0&p_sfredis=0&p_sfsyxkgwc=0&p_xktjz=&... (完整queryform参数，含p_xn/p_xq/p_xnxq/p_dqxn/p_dqxq/p_dqxnxq等)",
+    "response_format": "返回选课系统当前学年学期信息（含选课开放时间等）",
+    "python_function": "get_course_term_info",
+    "python_file": "backend/app/services/course_service.py",
+    "module": "courses",
+    "description": "获取选课系统当前学年学期信息（选课模块入口）"
+  },
+  {
+    "url": "Xsxk/queryYxkc",
+    "method": "POST",
+    "params_format": "queryform参数: cxsfmt=1&p_pylx=1&mxpylx=1&p_xn=学年&p_xq=学期&p_xnxq=学年学期&p_dqxn=当前学年&p_dqxq=当前学期&p_dqxnxq=当前学年学期&p_xkfsdm=yixuan&...",
+    "response_format": "{\"yxkcList\": [{\"rwh\": \"任务号\", \"kcdm\": \"课程代码\", \"kcmc\": \"课程名\", \"kcmc_en\": \"英文名\", \"kcxzmc\": \"课程性质\", \"kclbmc\": \"课程类别\", \"xf\": \"学分\", \"xs\": \"学时\", \"xkfsmc\": \"选课方式\", \"kkyxmc\": \"学院\", \"xiaoqumc\": \"校区\", \"zrl\": \"容量\", \"yxzrs\": \"已选人数\", \"dgjsmc\": \"教师\", \"sksj\": \"上课时间\", \"skdd\": \"上课地点\", \"pkjgmx\": \"排课HTML\", \"xksj\": \"选课时间\", \"xkbj\": \"选课标记\", \"cqzt\": \"抽签状态\"}, ...]}",
+    "python_function": "get_selected_courses",
+    "python_file": "backend/app/services/course_service.py",
+    "module": "courses",
+    "description": "获取已选课程列表"
+  },
+  {
+    "url": "Xsxk/queryKxrw",
+    "method": "POST",
+    "params_format": "queryform参数: ...&p_xkfsdm=bx-b-b&p_gjz=关键字&p_xiaoqu=校区&p_kkyx=学院&p_kclb=类别&p_kc_gjz=课程关键字&pageNum=页码&pageSize=每页数量&...",
+    "response_format": "{\"kxrwList\": {\"list\": [{\"rwh\": \"任务号\", \"id\": \"ID\", \"kcdm\": \"课程代码\", \"kcmc\": \"课程名\", \"xf\": \"学分\", \"zxs\": \"总学时\", \"rwlxmc\": \"选课方式\", \"kkyxmc\": \"学院\", \"zrl\": \"容量\", \"yxzrs\": \"已选人数\", \"dgjsmc\": \"教师\", \"sksj\": \"上课时间\", \"skdd\": \"地点\", \"xkzt\": \"未选/已选\", \"kxh\": \"课序号\"}, ...], \"total\": 总数}}",
+    "python_function": "get_available_courses",
+    "python_file": "backend/app/services/course_service.py",
+    "module": "courses",
+    "description": "获取可选课程任务列表（带分页和筛选条件）"
+  },
+  {
+    "url": "Xsxk/addGouwuche",
+    "method": "POST",
+    "params_format": "queryform参数: ...&p_id=课程ID&p_xktjz=rwtjzyx(直接选课)或rwtjzgwc(加入购物车)&...",
+    "response_format": "{\"jg\": \"1\"(成功)/\"0\"(失败), \"message\": \"提示信息\"}",
+    "python_function": "select_course / add_to_cart",
+    "python_file": "backend/app/services/course_service.py",
+    "module": "courses",
+    "description": "选课或添加到购物车（通过 p_xktjz 参数区分: rwtjzyx=直接选课, rwtjzgwc=加入购物车）"
+  },
+  {
+    "url": "Xsxk/tuike",
+    "method": "POST",
+    "params_format": "queryform参数: ...&p_id=课程ID&...",
+    "response_format": "{\"jg\": \"1\"(成功)/\"0\"(失败), \"message\": \"提示信息\"}",
+    "python_function": "drop_course",
+    "python_file": "backend/app/services/course_service.py",
+    "module": "courses",
+    "description": "退课（从已选课程中退选）"
+  },
+  {
+    "url": "Xsxk/delGouwuche",
+    "method": "POST",
+    "params_format": "queryform参数: ...&p_ids[]=课程ID1&p_ids[]=课程ID2&...",
+    "response_format": "{\"jg\": \"1\"(成功)/\"0\"(失败), \"message\": \"提示信息\"}",
+    "python_function": "remove_from_cart",
+    "python_file": "backend/app/services/course_service.py",
+    "module": "courses",
+    "description": "从购物车移除课程（支持批量）"
+  },
+  {
+    "url": "Xsxk/addXuanke",
+    "method": "POST",
+    "params_format": "queryform参数: ...&p_xktjz=gwctjzyx(购物车提交至已选)&...",
+    "response_format": "{\"jg\": \"1\"(成功)/\"0\"(失败), \"message\": \"提示信息\"}",
+    "python_function": "submit_cart",
+    "python_file": "backend/app/services/course_service.py",
+    "module": "courses",
+    "description": "提交购物车（将购物车中课程确认选课）"
+  },
+  {
+    "url": "Xsxk/queryXkgwc",
+    "method": "POST",
+    "params_format": "queryform参数: ...&p_xkfsdm=选课方式代码&...",
+    "response_format": "{\"gwcList\": [{...课程对象，结构同 yxkcList...}]}",
+    "python_function": "get_cart",
+    "python_file": "backend/app/services/course_service.py",
+    "module": "courses",
+    "description": "查询选课购物车内课程"
+  },
+  {
+    "url": "Xsxk/queryXsxkrzList",
+    "method": "POST",
+    "params_format": "queryform参数（标准选课参数）",
+    "response_format": "返回数组或 {\"list\": [...]} — 选课操作日志列表",
+    "python_function": "get_selection_log",
+    "python_file": "backend/app/services/course_service.py",
+    "module": "courses",
+    "description": "查询选课操作日志（选课/退课记录）"
+  },
+  {
+    "url": "component/queryKkyx",
+    "method": "POST",
+    "params_format": "data=\"nodataqx=1\"",
+    "response_format": "返回数组: [{\"YXDM\": \"学院代码\", \"YXMC\": \"学院名称\"} 或 {\"DM\": \"代码\", \"MC\": \"名称\"}, ...]",
+    "python_function": "get_colleges",
+    "python_file": "backend/app/services/course_service.py",
+    "module": "courses",
+    "description": "获取开课学院列表"
+  },
+  {
+    "url": "component/queryDmb",
+    "method": "POST",
+    "params_format": "data={\"dmbdm\": \"byyt_kclb\", \"mbmc\": \"\"}",
+    "response_format": "返回数组: [{\"DM\": \"代码\", \"MC\": \"名称\"}, ...]",
+    "python_function": "get_course_categories",
+    "python_file": "backend/app/services/course_service.py",
+    "module": "courses",
+    "description": "获取课程类别列表（通过代码表查询）"
+  },
+  {
+    "url": "component/queryXiaoqu?pylx=3",
+    "method": "POST",
+    "params_format": "空字符串 data=\"\"，URL中带 pylx=3 查询参数",
+    "response_format": "{\"code\": 200, \"content\": [{\"dm\": \"代码\", \"mc\": \"名称\"}, ...]} 或直接返回数组",
+    "python_function": "get_campuses",
+    "python_file": "backend/app/services/course_service.py",
+    "module": "courses",
+    "description": "获取校区列表"
+  },
+  {
+    "url": "/jwapp/sys/wdcj/modules/wdcj/xscjcx.do",
+    "method": "GET",
+    "params_format": "URL查询参数: XNXQDM=学期代码(可选)",
+    "response_format": "BYYT原始成绩数据（jwapp系统格式）",
+    "python_function": "get_grades (byyt_proxy)",
+    "python_file": "backend/app/services/byyt_proxy.py",
+    "module": "byyt",
+    "description": "BYYT代理: 获取成绩（jwapp路径，不同于 cjgl 路径的成绩接口）"
+  },
+  {
+    "url": "/jwapp/sys/emappagelog/config/index.do",
+    "method": "GET",
+    "params_format": "无参数",
+    "response_format": "BYYT原始用户档案数据（jwapp系统格式）",
+    "python_function": "get_profile (byyt_proxy)",
+    "python_file": "backend/app/services/byyt_proxy.py",
+    "module": "byyt",
+    "description": "BYYT代理: 获取用户档案信息"
+  }
+]

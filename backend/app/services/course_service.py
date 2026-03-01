@@ -65,51 +65,12 @@ async def get_selected_courses(
         dqxnxq: 当前学年学期
     """
 
+    params = _build_queryform(
+        xn, xq, xnxq, dqxn, dqxq, dqxnxq,
+        xkfsdm="yixuan",
+    )
+
     def _fetch():
-        params = {
-            "cxsfmt": "1",
-            "p_pylx": "1",
-            "mxpylx": "1",
-            "p_sfgldjr": "0",
-            "p_sfredis": "0",
-            "p_sfsyxkgwc": "0",
-            "p_xktjz": "",
-            "p_chaxunxh": "",
-            "p_gjz": "",
-            "p_skjs": "",
-            "p_xn": xn,
-            "p_xq": xq,
-            "p_xnxq": xnxq,
-            "p_dqxn": dqxn,
-            "p_dqxq": dqxq,
-            "p_dqxnxq": dqxnxq,
-            "p_xkfsdm": "yixuan",  # 已选
-            "p_xiaoqu": "",
-            "p_kkyx": "",
-            "p_kclb": "",
-            "p_xkxs": "",
-            "p_dyc": "",
-            "p_kkxnxq": "",
-            "p_id": "",
-            "p_sfhlctkc": "0",
-            "p_sfhllrlkc": "0",
-            "p_kxsj_xqj": "",
-            "p_kxsj_ksjc": "",
-            "p_kxsj_jsjc": "",
-            "p_kcdm_js": "",
-            "p_kcdm_cxrw": "",
-            "p_kcdm_cxrw_zckc": "",
-            "p_kc_gjz": "",
-            "p_xzcxtjz_nj": "",
-            "p_xzcxtjz_yx": "",
-            "p_xzcxtjz_zy": "",
-            "p_xzcxtjz_zyfx": "",
-            "p_xzcxtjz_bj": "",
-            "p_sfxsgwckb": "1",
-            "p_skyy": "",
-            "p_sfmxzj": "",
-            "p_chaxunxkfsdm": "",
-        }
         resp = session.client.post(
             "https://byyt.ustb.edu.cn/Xsxk/queryYxkc",
             data=params,
@@ -249,54 +210,19 @@ async def get_available_courses(
         page_size: 每页数量
     """
 
+    params = _build_queryform(
+        xn, xq, xnxq, dqxn, dqxq, dqxnxq,
+        xkfsdm=xkfsdm,
+        p_gjz=gjz,
+        p_xiaoqu=xiaoqu,
+        p_kkyx=kkyx,
+        p_kclb=kclb,
+        p_kc_gjz=gjz,
+        pageNum=str(page_num),
+        pageSize=str(page_size),
+    )
+
     def _fetch():
-        # 使用 queryKxrw 接口获取可选课程任务
-        params = {
-            "cxsfmt": "1",
-            "p_pylx": "1",
-            "mxpylx": "1",
-            "p_sfgldjr": "0",
-            "p_sfredis": "0",
-            "p_sfsyxkgwc": "0",
-            "p_xktjz": "",
-            "p_chaxunxh": "",
-            "p_gjz": gjz,
-            "p_skjs": "",
-            "p_xn": xn,
-            "p_xq": xq,
-            "p_xnxq": xnxq,
-            "p_dqxn": dqxn,
-            "p_dqxq": dqxq,
-            "p_dqxnxq": dqxnxq,
-            "p_xkfsdm": xkfsdm,
-            "p_xiaoqu": xiaoqu,
-            "p_kkyx": kkyx,
-            "p_kclb": kclb,
-            "p_xkxs": "",
-            "p_dyc": "",
-            "p_kkxnxq": "",
-            "p_id": "",
-            "p_sfhlctkc": "0",
-            "p_sfhllrlkc": "0",
-            "p_kxsj_xqj": "",
-            "p_kxsj_ksjc": "",
-            "p_kxsj_jsjc": "",
-            "p_kcdm_js": "",
-            "p_kcdm_cxrw": "",
-            "p_kcdm_cxrw_zckc": "",
-            "p_kc_gjz": gjz,
-            "p_xzcxtjz_nj": "",
-            "p_xzcxtjz_yx": "",
-            "p_xzcxtjz_zy": "",
-            "p_xzcxtjz_zyfx": "",
-            "p_xzcxtjz_bj": "",
-            "p_sfxsgwckb": "1",
-            "p_skyy": "",
-            "p_sfmxzj": "",
-            "p_chaxunxkfsdm": "",
-            "pageNum": str(page_num),
-            "pageSize": str(page_size),
-        }
         resp = session.client.post(
             "https://byyt.ustb.edu.cn/Xsxk/queryKxrw",
             data=params,
@@ -306,13 +232,6 @@ async def get_available_courses(
         return resp.json()
 
     result = await asyncio.to_thread(_fetch)
-
-    # 调试日志：打印 BYYT 返回的原始数据结构
-    logger.info(f"BYYT queryKxrw response keys: {result.keys() if isinstance(result, dict) else type(result)}")
-    logger.info(f"BYYT queryKxrw xkfsdm={xkfsdm}, kxrwList type: {type(result.get('kxrwList', None)) if isinstance(result, dict) else 'N/A'}")
-    # 如果没有kxrwList，打印完整响应
-    if isinstance(result, dict) and 'kxrwList' not in result:
-        logger.warning(f"BYYT queryKxrw no kxrwList, full response: {result}")
 
     # 解析返回数据
     courses = []
@@ -336,6 +255,308 @@ async def get_available_courses(
         "total_credits": sum(float(c.get("credits", 0)) for c in courses),
         "selection_method": xkfsdm,
     }
+
+
+def _build_queryform(
+    xn: str, xq: str, xnxq: str,
+    dqxn: str, dqxq: str, dqxnxq: str,
+    xkfsdm: str = "",
+    **overrides,
+) -> Dict:
+    """构造选课系统的标准 queryform 参数"""
+    form = {
+        "cxsfmt": "1",
+        "p_pylx": "1",
+        "mxpylx": "1",
+        "p_sfgldjr": "0",
+        "p_sfredis": "0",
+        "p_sfsyxkgwc": "0",
+        "p_xktjz": "",
+        "p_chaxunxh": "",
+        "p_gjz": "",
+        "p_skjs": "",
+        "p_xn": xn,
+        "p_xq": xq,
+        "p_xnxq": xnxq,
+        "p_dqxn": dqxn,
+        "p_dqxq": dqxq,
+        "p_dqxnxq": dqxnxq,
+        "p_xkfsdm": xkfsdm,
+        "p_xiaoqu": "",
+        "p_kkyx": "",
+        "p_kclb": "",
+        "p_xkxs": "",
+        "p_dyc": "",
+        "p_kkxnxq": "",
+        "p_id": "",
+        "p_sfhlctkc": "0",
+        "p_sfhllrlkc": "0",
+        "p_kxsj_xqj": "",
+        "p_kxsj_ksjc": "",
+        "p_kxsj_jsjc": "",
+        "p_kcdm_js": "",
+        "p_kcdm_cxrw": "",
+        "p_kcdm_cxrw_zckc": "",
+        "p_kc_gjz": "",
+        "p_xzcxtjz_nj": "",
+        "p_xzcxtjz_yx": "",
+        "p_xzcxtjz_zy": "",
+        "p_xzcxtjz_zyfx": "",
+        "p_xzcxtjz_bj": "",
+        "p_sfxsgwckb": "1",
+        "p_skyy": "",
+        "p_sfmxzj": "",
+        "p_chaxunxkfsdm": "",
+    }
+    form.update(overrides)
+    return form
+
+
+async def select_course(
+    session: Session,
+    course_id: str,
+    xn: str, xq: str, xnxq: str,
+    dqxn: str, dqxq: str, dqxnxq: str,
+    xkfsdm: str = "bx-b-b",
+) -> Dict:
+    """选课（先到先得模式：直接选课）
+
+    Args:
+        course_id: 课程任务 ID（可选课程列表中的 id 字段）
+        xkfsdm: 选课方式代码
+    Returns:
+        {"success": bool, "message": str}
+    """
+    params = _build_queryform(
+        xn, xq, xnxq, dqxn, dqxq, dqxnxq,
+        xkfsdm=xkfsdm,
+        p_id=course_id,
+        p_xktjz="rwtjzyx",  # 任务提交至已选（直接选课）
+    )
+
+    def _fetch():
+        resp = session.client.post(
+            "https://byyt.ustb.edu.cn/Xsxk/addGouwuche",
+            data=params,
+        )
+        _check_byyt_response(resp)
+        resp.raise_for_status()
+        return resp.json()
+
+    result = await asyncio.to_thread(_fetch)
+    return {
+        "success": result.get("jg") == "1",
+        "message": result.get("message", ""),
+    }
+
+
+async def drop_course(
+    session: Session,
+    course_id: str,
+    xn: str, xq: str, xnxq: str,
+    dqxn: str, dqxq: str, dqxnxq: str,
+    xkfsdm: str = "bx-b-b",
+) -> Dict:
+    """退课
+
+    Args:
+        course_id: 已选课程的 ID（已选课程列表中的 id 字段）
+    Returns:
+        {"success": bool, "message": str}
+    """
+    params = _build_queryform(
+        xn, xq, xnxq, dqxn, dqxq, dqxnxq,
+        xkfsdm=xkfsdm,
+        p_id=course_id,
+    )
+
+    def _fetch():
+        resp = session.client.post(
+            "https://byyt.ustb.edu.cn/Xsxk/tuike",
+            data=params,
+        )
+        _check_byyt_response(resp)
+        resp.raise_for_status()
+        return resp.json()
+
+    result = await asyncio.to_thread(_fetch)
+    return {
+        "success": result.get("jg") == "1",
+        "message": result.get("message", ""),
+    }
+
+
+async def add_to_cart(
+    session: Session,
+    course_id: str,
+    xn: str, xq: str, xnxq: str,
+    dqxn: str, dqxq: str, dqxnxq: str,
+    xkfsdm: str = "bx-b-b",
+) -> Dict:
+    """添加课程到购物车
+
+    Args:
+        course_id: 课程任务 ID
+    Returns:
+        {"success": bool, "message": str}
+    """
+    params = _build_queryform(
+        xn, xq, xnxq, dqxn, dqxq, dqxnxq,
+        xkfsdm=xkfsdm,
+        p_id=course_id,
+        p_xktjz="rwtjzgwc",  # 任务提交至购物车
+    )
+
+    def _fetch():
+        resp = session.client.post(
+            "https://byyt.ustb.edu.cn/Xsxk/addGouwuche",
+            data=params,
+        )
+        _check_byyt_response(resp)
+        resp.raise_for_status()
+        return resp.json()
+
+    result = await asyncio.to_thread(_fetch)
+    return {
+        "success": result.get("jg") == "1",
+        "message": result.get("message", ""),
+    }
+
+
+async def remove_from_cart(
+    session: Session,
+    course_ids: List[str],
+    xn: str, xq: str, xnxq: str,
+    dqxn: str, dqxq: str, dqxnxq: str,
+    xkfsdm: str = "bx-b-b",
+) -> Dict:
+    """从购物车移除课程
+
+    Args:
+        course_ids: 要移除的课程 ID 列表
+    Returns:
+        {"success": bool, "message": str}
+    """
+    params = _build_queryform(
+        xn, xq, xnxq, dqxn, dqxq, dqxnxq,
+        xkfsdm=xkfsdm,
+    )
+    # p_ids 需要以数组形式传递
+    for cid in course_ids:
+        params.setdefault("p_ids[]", [])
+        if isinstance(params["p_ids[]"], list):
+            params["p_ids[]"].append(cid)
+
+    def _fetch():
+        resp = session.client.post(
+            "https://byyt.ustb.edu.cn/Xsxk/delGouwuche",
+            data=params,
+        )
+        _check_byyt_response(resp)
+        resp.raise_for_status()
+        return resp.json()
+
+    result = await asyncio.to_thread(_fetch)
+    return {
+        "success": result.get("jg") == "1",
+        "message": result.get("message", ""),
+    }
+
+
+async def submit_cart(
+    session: Session,
+    xn: str, xq: str, xnxq: str,
+    dqxn: str, dqxq: str, dqxnxq: str,
+    xkfsdm: str = "bx-b-b",
+) -> Dict:
+    """提交购物车（将购物车中的课程确认选课）
+
+    Returns:
+        {"success": bool, "message": str}
+    """
+    params = _build_queryform(
+        xn, xq, xnxq, dqxn, dqxq, dqxnxq,
+        xkfsdm=xkfsdm,
+        p_xktjz="gwctjzyx",  # 购物车提交至已选
+    )
+
+    def _fetch():
+        resp = session.client.post(
+            "https://byyt.ustb.edu.cn/Xsxk/addXuanke",
+            data=params,
+        )
+        _check_byyt_response(resp)
+        resp.raise_for_status()
+        return resp.json()
+
+    result = await asyncio.to_thread(_fetch)
+    return {
+        "success": result.get("jg") == "1",
+        "message": result.get("message", ""),
+    }
+
+
+async def get_cart(
+    session: Session,
+    xn: str, xq: str, xnxq: str,
+    dqxn: str, dqxq: str, dqxnxq: str,
+    xkfsdm: str = "bx-b-b",
+) -> Dict:
+    """查询选课购物车"""
+    params = _build_queryform(
+        xn, xq, xnxq, dqxn, dqxq, dqxnxq,
+        xkfsdm=xkfsdm,
+    )
+
+    def _fetch():
+        resp = session.client.post(
+            "https://byyt.ustb.edu.cn/Xsxk/queryXkgwc",
+            data=params,
+        )
+        _check_byyt_response(resp)
+        resp.raise_for_status()
+        return resp.json()
+
+    result = await asyncio.to_thread(_fetch)
+
+    courses = []
+    if isinstance(result, dict):
+        raw_courses = result.get("gwcList", [])
+        for course in raw_courses:
+            courses.append(_parse_course(course))
+
+    return {
+        "courses": courses,
+        "total": len(courses),
+        "total_credits": sum(float(c.get("credits", 0)) for c in courses),
+    }
+
+
+async def get_selection_log(
+    session: Session,
+    xn: str, xq: str, xnxq: str,
+    dqxn: str, dqxq: str, dqxnxq: str,
+) -> List[Dict]:
+    """查询选课操作日志"""
+    params = _build_queryform(
+        xn, xq, xnxq, dqxn, dqxq, dqxnxq,
+    )
+
+    def _fetch():
+        resp = session.client.post(
+            "https://byyt.ustb.edu.cn/Xsxk/queryXsxkrzList",
+            data=params,
+        )
+        _check_byyt_response(resp)
+        resp.raise_for_status()
+        return resp.json()
+
+    result = await asyncio.to_thread(_fetch)
+    if isinstance(result, list):
+        return result
+    if isinstance(result, dict):
+        return result.get("list", [])
+    return []
 
 
 async def get_colleges(session: Session) -> List[Dict]:

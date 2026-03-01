@@ -64,6 +64,21 @@ class CampusItem(BaseModel):
     name: str = Field(..., description="校区名称")
 
 
+class CourseOperationRequest(BaseModel):
+    course_id: str = Field(..., description="课程任务 ID")
+    method: str = Field("bx-b-b", description="选课方式代码")
+
+
+class CartRemoveRequest(BaseModel):
+    course_ids: List[str] = Field(..., description="要移除的课程 ID 列表")
+    method: str = Field("bx-b-b", description="选课方式代码")
+
+
+class CourseOperationResponse(BaseModel):
+    success: bool = Field(..., description="操作是否成功")
+    message: str = Field(..., description="操作结果消息")
+
+
 @router.get("/term-info", response_model=dict, summary="获取选课学期信息")
 async def get_term_info(session: Session = Depends(get_authenticated_session)):
     """
@@ -114,20 +129,15 @@ async def get_selected_courses(
     - total: 课程总数
     - total_credits: 总学分
     """
-    term_info = await course_service.get_course_term_info(session)
-
-    use_xn = xn or term_info.get("p_xn", "")
-    use_xq = xq or term_info.get("p_xq", "")
-    use_xnxq = f"{use_xn}{use_xq}" if use_xn and use_xq else term_info.get("p_xnxq", "")
-
+    tp = await _get_term_params(session, xn, xq)
     return await course_service.get_selected_courses(
         session,
-        xn=use_xn,
-        xq=use_xq,
-        xnxq=use_xnxq,
-        dqxn=term_info.get("p_dqxn", ""),
-        dqxq=term_info.get("p_dqxq", ""),
-        dqxnxq=term_info.get("p_dqxnxq", ""),
+        xn=tp["xn"],
+        xq=tp["xq"],
+        xnxq=tp["xnxq"],
+        dqxn=tp["dqxn"],
+        dqxq=tp["dqxq"],
+        dqxnxq=tp["dqxnxq"],
     )
 
 
@@ -164,20 +174,15 @@ async def get_available_courses(
     - total_credits: 总学分
     - selection_method: 当前查询的选课方式
     """
-    term_info = await course_service.get_course_term_info(session)
-
-    use_xn = xn or term_info.get("p_xn", "")
-    use_xq = xq or term_info.get("p_xq", "")
-    use_xnxq = f"{use_xn}{use_xq}" if use_xn and use_xq else term_info.get("p_xnxq", "")
-
+    tp = await _get_term_params(session, xn, xq)
     return await course_service.get_available_courses(
         session,
-        xn=use_xn,
-        xq=use_xq,
-        xnxq=use_xnxq,
-        dqxn=term_info.get("p_dqxn", ""),
-        dqxq=term_info.get("p_dqxq", ""),
-        dqxnxq=term_info.get("p_dqxnxq", ""),
+        xn=tp["xn"],
+        xq=tp["xq"],
+        xnxq=tp["xnxq"],
+        dqxn=tp["dqxn"],
+        dqxq=tp["dqxq"],
+        dqxnxq=tp["dqxnxq"],
         xkfsdm=method,
         kkyx=college or "",
         kclb=category or "",
@@ -226,3 +231,170 @@ async def get_campuses(session: Session = Depends(get_authenticated_session)):
     - name: 校区名称
     """
     return await course_service.get_campuses(session)
+
+
+# ==================== 辅助函数 ====================
+
+async def _get_term_params(session: Session, xn: Optional[str] = None, xq: Optional[str] = None):
+    """获取学期参数，未指定时自动使用当前学期"""
+    term_info = await course_service.get_course_term_info(session)
+    use_xn = xn or term_info.get("p_xn", "")
+    use_xq = xq or term_info.get("p_xq", "")
+    use_xnxq = f"{use_xn}{use_xq}" if use_xn and use_xq else term_info.get("p_xnxq", "")
+    return {
+        "xn": use_xn,
+        "xq": use_xq,
+        "xnxq": use_xnxq,
+        "dqxn": term_info.get("p_dqxn", ""),
+        "dqxq": term_info.get("p_dqxq", ""),
+        "dqxnxq": term_info.get("p_dqxnxq", ""),
+    }
+
+
+# ==================== 选课操作 ====================
+
+
+@router.post("/select", response_model=CourseOperationResponse, summary="选课")
+async def select_course(
+    req: CourseOperationRequest,
+    session: Session = Depends(get_authenticated_session),
+):
+    """
+    ## 业务说明
+    直接选择一门课程（先到先得模式）。
+
+    ## 参数说明
+    - `course_id`: 课程任务 ID，可通过 `/courses/available` 获取可选课程列表中的 `id` 字段
+    - `method`: 选课方式代码（默认 bx-b-b 必修）
+
+    ## 选课方式代码
+    - `bx-b-b`: 必修课
+    - `mooc-b-b`: MOOC
+    - `sztzk`: 素质拓展课
+    - `zytzk`: 专业拓展课
+    - `ggkrw`: 公共课
+
+    ## 返回数据
+    - `success`: 是否成功
+    - `message`: 操作结果描述
+    """
+    tp = await _get_term_params(session)
+    return await course_service.select_course(
+        session, req.course_id, **tp, xkfsdm=req.method,
+    )
+
+
+@router.post("/drop", response_model=CourseOperationResponse, summary="退课")
+async def drop_course(
+    req: CourseOperationRequest,
+    session: Session = Depends(get_authenticated_session),
+):
+    """
+    ## 业务说明
+    退选一门已选课程。
+
+    ## 参数说明
+    - `course_id`: 已选课程的 ID，可通过 `/courses/selected` 获取
+    - `method`: 选课方式代码
+
+    ## 注意事项
+    - 退课有时间限制，超过退课截止时间将无法退课
+    - 必修课退课需谨慎
+    """
+    tp = await _get_term_params(session)
+    return await course_service.drop_course(
+        session, req.course_id, **tp, xkfsdm=req.method,
+    )
+
+
+# ==================== 购物车操作 ====================
+
+
+@router.get("/cart", response_model=SelectedCoursesResponse, summary="查询选课购物车")
+async def get_cart(
+    session: Session = Depends(get_authenticated_session),
+    method: str = Query("bx-b-b", description="选课方式代码"),
+):
+    """
+    ## 业务说明
+    查询当前购物车中的课程列表。
+
+    ## 返回数据
+    - `courses`: 购物车中的课程列表
+    - `total`: 课程总数
+    - `total_credits`: 总学分
+    """
+    tp = await _get_term_params(session)
+    return await course_service.get_cart(session, **tp, xkfsdm=method)
+
+
+@router.post("/cart/add", response_model=CourseOperationResponse, summary="添加课程到购物车")
+async def add_to_cart(
+    req: CourseOperationRequest,
+    session: Session = Depends(get_authenticated_session),
+):
+    """
+    ## 业务说明
+    将一门可选课程添加到购物车（不直接选课）。
+
+    ## 使用场景
+    - 意愿选课模式下先加入购物车
+    - 需要比较多门课程后再确认选课
+    """
+    tp = await _get_term_params(session)
+    return await course_service.add_to_cart(
+        session, req.course_id, **tp, xkfsdm=req.method,
+    )
+
+
+@router.post("/cart/remove", response_model=CourseOperationResponse, summary="从购物车移除课程")
+async def remove_from_cart(
+    req: CartRemoveRequest,
+    session: Session = Depends(get_authenticated_session),
+):
+    """
+    ## 业务说明
+    从购物车中移除一门或多门课程。
+
+    ## 参数说明
+    - `course_ids`: 要移除的课程 ID 列表（支持批量操作）
+    """
+    tp = await _get_term_params(session)
+    return await course_service.remove_from_cart(
+        session, req.course_ids, **tp, xkfsdm=req.method,
+    )
+
+
+@router.post("/cart/submit", response_model=CourseOperationResponse, summary="提交购物车确认选课")
+async def submit_cart(
+    session: Session = Depends(get_authenticated_session),
+    method: str = Query("bx-b-b", description="选课方式代码"),
+):
+    """
+    ## 业务说明
+    将购物车中的所有课程提交确认选课。
+
+    ## 注意事项
+    - 购物车中的所有课程将被批量提交
+    - 提交后无法撤回，需要通过退课操作
+    """
+    tp = await _get_term_params(session)
+    return await course_service.submit_cart(session, **tp, xkfsdm=method)
+
+
+# ==================== 选课日志 ====================
+
+
+@router.get("/selection-log", response_model=list, summary="查询选课操作日志")
+async def get_selection_log(
+    session: Session = Depends(get_authenticated_session),
+):
+    """
+    ## 业务说明
+    查询本学期的选课操作日志。
+
+    ## 返回数据
+    选课操作记录列表，包含选课/退课的操作时间和详情。
+    """
+    tp = await _get_term_params(session)
+    return await course_service.get_selection_log(session, **tp)

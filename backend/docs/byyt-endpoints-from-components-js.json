@@ -1,0 +1,842 @@
+[
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/getXs",
+    "method": "POST",
+    "source_file": "inco.component.cjcx.js",
+    "js_function": "xzXs()",
+    "params": "xjidorxh (student ID or student number)",
+    "response": "Student info: xh, nj, pylx, xjid, fah",
+    "module": "grades",
+    "description": "获取学生信息（成绩查询用）"
+  },
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/queryMkyq",
+    "method": "POST",
+    "source_file": "inco.component.cjcx.js",
+    "js_function": "queryMkyq()",
+    "params": "xjid, pylx, fah",
+    "response": "Module requirements tree data; sfxsMkyq flag",
+    "module": "grades",
+    "description": "查询模块要求（成绩综合统计）"
+  },
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/queryZyfxTjinfo",
+    "method": "POST",
+    "source_file": "inco.component.cjcx.js",
+    "js_function": "queryFakztree()",
+    "params": "fah, zyfxdm, xjid, pylx",
+    "response": "Major direction info in mkyqParameter.kzdata",
+    "module": "grades",
+    "description": "查询专业方向统计信息"
+  },
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/queryInfo",
+    "method": "POST",
+    "source_file": "inco.component.cjcx.js",
+    "js_function": "queryFakztree()",
+    "params": "id, xjid, kzlx, kcxzdm, kclbdm, pylx",
+    "response": "Course group data in mkyqParameter.kzdata",
+    "module": "grades",
+    "description": "查询课程组详细信息"
+  },
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/queryFaKzkc",
+    "method": "POST",
+    "source_file": "inco.component.cjcx.js",
+    "js_function": "query_fakzkc()",
+    "params": "pagination, xjid, nj, pylx, fah, sort params",
+    "response": "Course list in mkyqParameter.data with total count",
+    "module": "grades",
+    "description": "查询方案课组课程列表"
+  },
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/queryCjlbkclb",
+    "method": "POST",
+    "source_file": "inco.component.cjcx.js",
+    "js_function": "queryCjlbkclb()",
+    "params": "pagination, xjid, pylx, kclbdms, filters, sort params",
+    "response": "Grade category course list in cjlbkclbData",
+    "module": "grades",
+    "description": "查询成绩类别课程类别"
+  },
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/queryXflbyq",
+    "method": "POST",
+    "source_file": "inco.component.cjcx.js",
+    "js_function": "queryXflbyq()",
+    "params": "pagination, xjid, pylx, fah, sort params",
+    "response": "sfxsXflbyq flag; xflbyqData",
+    "module": "grades",
+    "description": "查询学分类别要求"
+  },
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/queryJzxnxq",
+    "method": "POST",
+    "source_file": "inco.component.cjcx.js",
+    "js_function": "queryJzxnxq()",
+    "params": "xsquery object",
+    "response": "Array of deadline semesters; jzxnxq",
+    "module": "grades",
+    "description": "查询截止学年学期"
+  },
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/queryBxkqk",
+    "method": "POST",
+    "source_file": "inco.component.cjcx.js",
+    "js_function": "queryBxkqk()",
+    "params": "xh, pylx, nj, jzxnxq, xjid, fah",
+    "response": "Required/completed course stats in bxkParameter",
+    "module": "grades",
+    "description": "查询必修课情况（已修/未修统计）"
+  },
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/queryXxjdbxk",
+    "method": "POST",
+    "source_file": "inco.component.cjcx.js",
+    "js_function": "queryXxjdbxk()",
+    "params": "pagination, xh, pylx, nj, jzxnxq, xjid, filters, sort",
+    "response": "Uncompleted required courses in bxktjData",
+    "module": "grades",
+    "description": "查询学习进度必修课（未完成的必修课列表）"
+  },
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/queryZxcjPage",
+    "method": "POST",
+    "source_file": "inco.component.cjcx.js",
+    "js_function": "queryZxcjPage()",
+    "params": "pagination, xh, xjid, pylx, sort params",
+    "response": "zxcjData; grade metrics (kskxfj, pjxfj, zxf)",
+    "module": "grades",
+    "description": "查询主修成绩分页列表"
+  },
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/querySlj",
+    "method": "POST",
+    "source_file": "inco.component.cjcx.js",
+    "js_function": "cxslj()",
+    "params": "xsquery",
+    "response": "sljData for scholarship/awards modal",
+    "module": "grades",
+    "description": "查询奖学金/获奖信息"
+  },
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/queryYd",
+    "method": "POST",
+    "source_file": "inco.component.cjcx.js",
+    "js_function": "cxyd()",
+    "params": "xsquery",
+    "response": "ydData for student status changes modal",
+    "module": "grades",
+    "description": "查询学籍异动信息"
+  },
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/queryFxcjPage",
+    "method": "POST",
+    "source_file": "inco.component.cjcx.js",
+    "js_function": "queryFxcjPage() / queryFxcjPage1()",
+    "params": "pagination, xh, xjid, pylx, sort params",
+    "response": "fxcjData and wczxf for minor program grades",
+    "module": "grades",
+    "description": "查询辅修成绩分页列表"
+  },
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/queryZxcjBhgPage",
+    "method": "POST",
+    "source_file": "inco.component.cjcx.js",
+    "js_function": "queryZxcjBhgPage()",
+    "params": "pagination, xh, xjid, pylx, sort params",
+    "response": "zxcjBhgData for retake/makeup grades",
+    "module": "grades",
+    "description": "查询主修不合格成绩（补考/重修）"
+  },
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/queryBxkhgcjPage",
+    "method": "POST",
+    "source_file": "inco.component.cjcx.js",
+    "js_function": "queryBxkhgcjPage()",
+    "params": "pagination, xh, pylx, xjid, sort params",
+    "response": "bxkhgcjData with required course pass records",
+    "module": "grades",
+    "description": "查询必修课合格成绩分页"
+  },
+  {
+    "url": "cjgl/yjsxxjd/cjcx",
+    "method": "POST",
+    "source_file": "inco.component.cj.js",
+    "js_function": "cjcx()",
+    "params": "implicit (session-based)",
+    "response": "data.content array; sfkcx property from first element",
+    "module": "grades",
+    "description": "研究生学习进度成绩查询"
+  },
+  {
+    "url": "cjgl/grcjcx/go/{pylx}",
+    "method": "GET",
+    "source_file": "inco.component.cj.js",
+    "js_function": "ckgdcj() (navigation)",
+    "params": "pylx (培养类型) in URL path",
+    "response": "Page navigation (not direct API call)",
+    "module": "grades",
+    "description": "查看更多成绩（页面导航）"
+  },
+  {
+    "url": "component/queryKbjg",
+    "method": "POST",
+    "source_file": "inco.component.kebiaoshow.js",
+    "js_function": "queryKbjg()",
+    "params": "xn (学年), xq (学期), pylx (培养类型)",
+    "response": "self.jcList = res.content (schedule data)",
+    "module": "schedule",
+    "description": "查询课表结果"
+  },
+  {
+    "url": "component/queryRlZcSj",
+    "method": "POST",
+    "source_file": "inco.component.kebiaoshow.js",
+    "js_function": "queryKbjg() / updateZc(zc)",
+    "params": "xn, xq, djz (当前周次)",
+    "response": "self.rqList = res.content (date list for schedule)",
+    "module": "schedule",
+    "description": "查询日历周次时间（课表日期数据）"
+  },
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/wtgbxkcx",
+    "method": "POST",
+    "source_file": "inco.component.xxjd.js",
+    "js_function": "query()",
+    "params": "xjid, falb, jzxn, jzxq, fah",
+    "response": "self.data = res; self.show=true",
+    "module": "grades",
+    "description": "查询未通过必修课（学习进度模块）"
+  },
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/querybyyq",
+    "method": "POST",
+    "source_file": "inco.component.xxjd.js",
+    "js_function": "querybyyq()",
+    "params": "xh, zyfx, pylx, fah",
+    "response": "self.byyqdata with graduation requirements",
+    "module": "grades",
+    "description": "查询毕业要求"
+  },
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/querysfxsbyyq",
+    "method": "POST",
+    "source_file": "inco.component.xxjd.js",
+    "js_function": "nested in queryMkyq()",
+    "params": "xh, zyfx, pylx, fah",
+    "response": "Conditional flag to call querybyyq()",
+    "module": "grades",
+    "description": "查询是否显示毕业要求"
+  },
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/getXss",
+    "method": "POST",
+    "source_file": "inco.component.xxjd.js",
+    "js_function": "init()",
+    "params": "none",
+    "response": "Populates student query info",
+    "module": "grades",
+    "description": "获取学生信息（学习进度初始化）"
+  },
+  {
+    "url": "cjgl/cjzhtjcx/cjcx/queryqxnxq",
+    "method": "POST",
+    "source_file": "inco.component.xxjd.js",
+    "js_function": "init()",
+    "params": "none",
+    "response": "Sets academic year/semester info",
+    "module": "grades",
+    "description": "查询全部学年学期（学习进度用）"
+  },
+  {
+    "url": "component/queryKsxxByXs",
+    "method": "POST",
+    "source_file": "inco.component.KsxxByBox.js",
+    "js_function": "query()",
+    "params": "{}",
+    "response": "dataList array (exam info for students)",
+    "module": "exam",
+    "description": "查询学生考试信息"
+  },
+  {
+    "url": "component/queryKsxxByJk",
+    "method": "POST",
+    "source_file": "inco.component.KsxxByBox.js",
+    "js_function": "query()",
+    "params": "{}",
+    "response": "dataList array (exam info for supervisors)",
+    "module": "exam",
+    "description": "查询监考考试信息"
+  },
+  {
+    "url": "component/queryKsxxBySk",
+    "method": "POST",
+    "source_file": "inco.component.KsxxByBox.js",
+    "js_function": "query()",
+    "params": "{}",
+    "response": "dataList2 array (exam info for teachers)",
+    "module": "exam",
+    "description": "查询授课教师考试信息"
+  },
+  {
+    "url": "component/queryJsKsxxcxList",
+    "method": "POST",
+    "source_file": "inco.component.KsxxByBox.js",
+    "js_function": "query()",
+    "params": "{}",
+    "response": "dataList array (teacher exam list)",
+    "module": "exam",
+    "description": "查询教师考试信息列表"
+  },
+  {
+    "url": "component/queryJkxxcxMs",
+    "method": "POST",
+    "source_file": "inco.component.KsxxByBox.js",
+    "js_function": "created()",
+    "params": "{}",
+    "response": "ms (mode value for display)",
+    "module": "exam",
+    "description": "查询监考信息查询模式"
+  },
+  {
+    "url": "component/queryKsxxTitle",
+    "method": "POST",
+    "source_file": "inco.component.KsxxByBox.js",
+    "js_function": "created()",
+    "params": "{}",
+    "response": "ksxx_title (exam info title)",
+    "module": "exam",
+    "description": "查询考试信息标题"
+  },
+  {
+    "url": "kscxtj/queryJkcxByXh",
+    "method": "GET",
+    "source_file": "inco.component.KsxxByBox.js",
+    "js_function": "wyxk() (navigation)",
+    "params": "none (page URL)",
+    "response": "Opens new window for exam query",
+    "module": "exam",
+    "description": "按学号查询监考信息（页面导航）"
+  },
+  {
+    "url": "kscxtj/queryJskccxByXh",
+    "method": "GET",
+    "source_file": "inco.component.KsxxByBox.js",
+    "js_function": "wyxk() (navigation)",
+    "params": "none (page URL)",
+    "response": "Opens new window for teacher course exam query",
+    "module": "exam",
+    "description": "按学号查询教师课程考试（页面导航）"
+  },
+  {
+    "url": "kscxtj/queryXskscxByXh",
+    "method": "GET",
+    "source_file": "inco.component.KsxxByBox.js",
+    "js_function": "wyxk() (navigation)",
+    "params": "none (page URL)",
+    "response": "Opens new window for student exam query",
+    "module": "exam",
+    "description": "按学号查询学生考试（页面导航）"
+  },
+  {
+    "url": "kscxtj/queryJkcxByXh_hd",
+    "method": "GET",
+    "source_file": "inco.component.KsxxByBox.js",
+    "js_function": "wyxk() (navigation)",
+    "params": "none (page URL)",
+    "response": "Opens new window",
+    "module": "exam",
+    "description": "按学号查询监考信息（活动版）"
+  },
+  {
+    "url": "kscxtj/queryJskccxByXh_hd",
+    "method": "GET",
+    "source_file": "inco.component.KsxxByBox.js",
+    "js_function": "wyxk() (navigation)",
+    "params": "none (page URL)",
+    "response": "Opens new window",
+    "module": "exam",
+    "description": "按学号查询教师课程考试（活动版）"
+  },
+  {
+    "url": "kscxtj/queryJsKsxxcx",
+    "method": "GET",
+    "source_file": "inco.component.KsxxByBox.js",
+    "js_function": "wyxk() (navigation)",
+    "params": "none (page URL)",
+    "response": "Opens new window for teacher exam info",
+    "module": "exam",
+    "description": "查询教师考试信息查询页面（导航）"
+  },
+  {
+    "url": "component/sys_param",
+    "method": "POST",
+    "source_file": "inco.component.xueji.js",
+    "js_function": "created()",
+    "params": "{mkdm: 'RWMK'}",
+    "response": "System params: RWAP_SFKWHDWRL, QJCS_QFBY from res.content",
+    "module": "student_info",
+    "description": "查询系统参数配置"
+  },
+  {
+    "url": "component/queryXjzt",
+    "method": "POST",
+    "source_file": "inco.component.xueji.js",
+    "js_function": "queryXjzt()",
+    "params": "none",
+    "response": "self.xjztList array (student status list)",
+    "module": "student_info",
+    "description": "查询学籍状态列表"
+  },
+  {
+    "url": "component/queryXueji",
+    "method": "POST",
+    "source_file": "inco.component.xueji.js",
+    "js_function": "query()",
+    "params": "key, glyx, zydm, sfsysjqx, pylx, bjdm, nj, pcxs, sfzx, xjzt, p_xzxsfw_xk, sffxxs, fankcdm, sffankc, sfyczh, cxtjsql, sfqrz, dsxx, xjzt_qh, pageNum, pageSize",
+    "response": "self.data = res.list (student records)",
+    "module": "student_info",
+    "description": "查询学籍信息列表"
+  },
+  {
+    "url": "component/queryXuejiBfy",
+    "method": "POST",
+    "source_file": "inco.component.xueji.js",
+    "js_function": "qx()",
+    "params": "self.param (same as queryXueji)",
+    "response": "res.list for select all logic",
+    "module": "student_info",
+    "description": "查询学籍信息（不分页，全选用）"
+  },
+  {
+    "url": "component/queryStudentDefValue",
+    "method": "POST",
+    "source_file": "inco.component.xueji.js",
+    "js_function": "handleInput()",
+    "params": "{xhs: [array of student IDs]}",
+    "response": "self.tagList (student default values)",
+    "module": "student_info",
+    "description": "查询学生默认值（标签列表）"
+  },
+  {
+    "url": "user/mk",
+    "method": "POST",
+    "source_file": "inco.component.quanbugongneng.js",
+    "js_function": "mounted()",
+    "params": "{}",
+    "response": "User menu data with qxdm values",
+    "module": "other",
+    "description": "查询用户菜单权限"
+  },
+  {
+    "url": "user/getMknodeMore",
+    "method": "POST",
+    "source_file": "inco.component.quanbugongneng.js",
+    "js_function": "mounted()",
+    "params": "{mkdm: qxdms} (array of module codes)",
+    "response": "Child menu items mapped by qxdm",
+    "module": "other",
+    "description": "查询菜单子节点详情"
+  },
+  {
+    "url": "component/shouCang",
+    "method": "POST",
+    "source_file": "inco.component.quanbugongneng.js",
+    "js_function": "shoucang()",
+    "params": "{qxdm, jsdm}",
+    "response": "Success message; updates favorites",
+    "module": "other",
+    "description": "添加功能收藏"
+  },
+  {
+    "url": "component/qxshouCang",
+    "method": "POST",
+    "source_file": "inco.component.quanbugongneng.js",
+    "js_function": "qxshoucang()",
+    "params": "{qxdm, jsdm}",
+    "response": "Success message; removes from favorites",
+    "module": "other",
+    "description": "取消功能收藏"
+  },
+  {
+    "url": "component/queryXwxx",
+    "method": "POST",
+    "source_file": "inco.component.xwxxByBox.js",
+    "js_function": "watch / created()",
+    "params": "{xh, xjid}",
+    "response": "Degree info: txcjbmb, zhkp, ktbg, zqjc, zjbg, lw, xwsy, pycc, pylx, ms, xsxx, xspyjh, xshd, ldjy, bysc, etc.",
+    "module": "student_info",
+    "description": "查询学位信息"
+  },
+  {
+    "url": "xspyjhwcqk/queryGrjhBglist",
+    "method": "POST",
+    "source_file": "grjh_wcqk_info.js",
+    "js_function": "on_query()",
+    "params": "fah, xh, pylx, order1, order2",
+    "response": "r.content (personal plan report list)",
+    "module": "plan",
+    "description": "查询个人计划报告列表（培养计划完成情况）"
+  },
+  {
+    "url": "xspyyjsfasq/validationXsFa",
+    "method": "POST",
+    "source_file": "grjh_famzqk_info.js",
+    "js_function": "on_query()",
+    "params": "pylx, fah, xh, czlx: 'bg'",
+    "response": "r.content with kztree, byyq, kcyq, skyyyq",
+    "module": "plan",
+    "description": "验证学生方案（方案满足情况查询）"
+  },
+  {
+    "url": "component/queryKeChengNew",
+    "method": "POST",
+    "source_file": "inco.component.kcNew.js",
+    "js_function": "query()",
+    "params": "key, kcxz, kclb, kkyx, sffankc, xh, sfqb, sfzcxtpylx, kcztdm, pylx, kzdm, hckcids, setzkcid, setcskcid, kcxlkccs, nodataqx, kzsjqx, pageNum, pageSize",
+    "response": "self.data = res.list; pagination data",
+    "module": "courses",
+    "description": "查询课程列表（新版）"
+  },
+  {
+    "url": "component/queryKeChengDefValue",
+    "method": "POST",
+    "source_file": "inco.component.kcNew.js",
+    "js_function": "handleInput()",
+    "params": "{kcdms: [array of course codes]}",
+    "response": "self.tagList (course default values)",
+    "module": "courses",
+    "description": "查询课程默认值（标签列表）"
+  },
+  {
+    "url": "kck/xxxxkzkc/queryGgkz",
+    "method": "POST",
+    "source_file": "inco.component.kcNew.js",
+    "js_function": "query() (course group modal)",
+    "params": "pylb, lx, key",
+    "response": "res.content.list with pagination",
+    "module": "courses",
+    "description": "查询公共课组"
+  },
+  {
+    "url": "component/rcxxAdd",
+    "method": "POST",
+    "source_file": "inco.component.richeng.js",
+    "js_function": "save()",
+    "params": "bt, rcrq, sj, nr, lb, sfxs, sj1, xzrq",
+    "response": "res.jg=='1' for success",
+    "module": "other",
+    "description": "添加日程信息"
+  },
+  {
+    "url": "component/rcxxdel",
+    "method": "POST",
+    "source_file": "inco.component.richeng.js",
+    "js_function": "delerc(id)",
+    "params": "{id}",
+    "response": "res.jg=='1' for success",
+    "module": "other",
+    "description": "删除日程信息"
+  },
+  {
+    "url": "component/queryrclbdata",
+    "method": "POST",
+    "source_file": "inco.component.richeng.js",
+    "js_function": "csh()",
+    "params": "none",
+    "response": "self.rclbdata (calendar category data)",
+    "module": "other",
+    "description": "查询日程类别数据"
+  },
+  {
+    "url": "component/querygrrclist",
+    "method": "POST",
+    "source_file": "inco.component.richeng.js",
+    "js_function": "csh() / queryrcrl()",
+    "params": "optional {rcrq: year-month-01}",
+    "response": "self.grrcdata (personal calendar list)",
+    "module": "other",
+    "description": "查询个人日程列表"
+  },
+  {
+    "url": "component/queryrcxxlist",
+    "method": "POST",
+    "source_file": "inco.component.richeng.js",
+    "js_function": "dateclick() / csh()",
+    "params": "{rcrq: date}",
+    "response": "self.rcxxlist (calendar detail list)",
+    "module": "other",
+    "description": "查询日程详情列表"
+  },
+  {
+    "url": "tzgg/zdl",
+    "method": "POST",
+    "source_file": "inco.component.tongzhigonggao.js",
+    "js_function": "zdl(item)",
+    "params": "{tzggid: item.id}",
+    "response": "Modal closes on success",
+    "module": "notification",
+    "description": "通知公告置顶"
+  },
+  {
+    "url": "tzgg/addyd",
+    "method": "POST",
+    "source_file": "inco.component.tongzhigonggao.js",
+    "js_function": "on_modal_ts_visible_change() / JumpPageSc()",
+    "params": "{tzggid: item.id}",
+    "response": "Mark as read callback",
+    "module": "notification",
+    "description": "通知公告标记已读"
+  },
+  {
+    "url": "tzgg/savefk",
+    "method": "POST",
+    "source_file": "inco.component.tongzhigonggao.js",
+    "js_function": "savefk()",
+    "params": "tzggfkModal.tzggfkform",
+    "response": "Success/error message",
+    "module": "notification",
+    "description": "保存通知公告反馈"
+  },
+  {
+    "url": "bysj/sygc/downloadWj",
+    "method": "GET",
+    "source_file": "inco.component.tongzhigonggao.js",
+    "js_function": "viewFile() / dowload()",
+    "params": "savename, filename",
+    "response": "File download or preview",
+    "module": "notification",
+    "description": "下载通知公告附件"
+  },
+  {
+    "url": "component/queryglzd",
+    "method": "POST",
+    "source_file": "inco.component.tongzhigonggao.js",
+    "js_function": "queryglzd()",
+    "params": "{}",
+    "response": "glztdate array (related notifications)",
+    "module": "notification",
+    "description": "查询关联制度"
+  },
+  {
+    "url": "component/queryTongZhiGongGao",
+    "method": "POST",
+    "source_file": "inco.component.tongzhigonggao.js",
+    "js_function": "mounted()",
+    "params": "{}",
+    "response": "tzggdata array (notification list)",
+    "module": "notification",
+    "description": "查询通知公告列表"
+  },
+  {
+    "url": "user/{yhdm}/tzgg",
+    "method": "WebSocket",
+    "source_file": "inco.component.tongzhigonggao.js",
+    "js_function": "mounted() (WebSocket)",
+    "params": "yhdm in URL path",
+    "response": "Real-time notification push",
+    "module": "notification",
+    "description": "通知公告实时推送（WebSocket）"
+  },
+  {
+    "url": "kck/xxxxkzkc/queryXxkc",
+    "method": "POST",
+    "source_file": "inco.component.kcviewbyxk.js",
+    "js_function": "xxxx()",
+    "params": "{kcid}",
+    "response": "this.xxxxkzkc (course detail info)",
+    "module": "courses",
+    "description": "查询选修课程详情"
+  },
+  {
+    "url": "kck/xxxxkzkc/queryXxkcBySq",
+    "method": "POST",
+    "source_file": "inco.component.kcviewbyxk.js",
+    "js_function": "xxxx()",
+    "params": "{kcdm}",
+    "response": "this.xxkcms (course description)",
+    "module": "courses",
+    "description": "查询选修课程描述（按申请）"
+  },
+  {
+    "url": "kck/xxxxkzkc/queryKzxx",
+    "method": "POST",
+    "source_file": "inco.component.kcviewbyxk.js",
+    "js_function": "initTree() / getTrees()",
+    "params": "{kzdm, kzlx, kcid}",
+    "response": "Tree structure in data5 and kzList",
+    "module": "courses",
+    "description": "查询课组信息树"
+  },
+  {
+    "url": "kck/kcxxwh/xsckViewByxk",
+    "method": "POST",
+    "source_file": "inco.component.kcviewbyxk.js",
+    "js_function": "query()",
+    "params": "{kcid, rwh}",
+    "response": "Course data: saveform, kcdgEntity, kcxsbEntity",
+    "module": "courses",
+    "description": "学生查看课程详情（按选课）"
+  },
+  {
+    "url": "kck/kcxxwh/downFj",
+    "method": "GET",
+    "source_file": "inco.component.kcviewbyxk.js",
+    "js_function": "downloadfn()",
+    "params": "kcid, fjflag, downFlag",
+    "response": "File download",
+    "module": "courses",
+    "description": "下载课程附件"
+  },
+  {
+    "url": "kck/kcxxwh/downkcjjFj",
+    "method": "GET",
+    "source_file": "inco.component.kcviewbyxk.js",
+    "js_function": "downkcjjfj()",
+    "params": "sname, fname",
+    "response": "File download",
+    "module": "courses",
+    "description": "下载课程简介附件"
+  },
+  {
+    "url": "kck/kctdwh/downKctdFj",
+    "method": "GET",
+    "source_file": "inco.component.kcviewbyxk.js",
+    "js_function": "downloadKctdfn()",
+    "params": "id, downFlag",
+    "response": "File download (team teaching material)",
+    "module": "courses",
+    "description": "下载课程团队附件"
+  },
+  {
+    "url": "component/queryXnxq",
+    "method": "POST",
+    "source_file": "inco.component.xnxq.js",
+    "js_function": "mounted()",
+    "params": "{data: inco_encrypt(JSON.stringify({pylx, rwlx, cxtj}))}",
+    "response": "self.dataList = res.content (semester list)",
+    "module": "other",
+    "description": "查询学年学期列表"
+  },
+  {
+    "url": "component/queryXnxqCdjy",
+    "method": "POST",
+    "source_file": "inco.component.xnxq.js",
+    "js_function": "inco-i-xnxqcdjy component",
+    "params": "inherited from parent",
+    "response": "Semester list for course scheduling",
+    "module": "other",
+    "description": "查询学年学期（场地借用）"
+  },
+  {
+    "url": "component/queryXnxqpkgl",
+    "method": "POST",
+    "source_file": "inco.component.xnxq.js",
+    "js_function": "inco-i-xnxqpkgl component",
+    "params": "{pylx, rwlx}",
+    "response": "Semester list for course arrangement",
+    "module": "other",
+    "description": "查询学年学期（排课管理）"
+  },
+  {
+    "url": "component/queryXnxqksgl",
+    "method": "POST",
+    "source_file": "inco.component.xnxq.js",
+    "js_function": "inco-i-xnxqksgl component",
+    "params": "inherited",
+    "response": "Semester list for exam management",
+    "module": "other",
+    "description": "查询学年学期（考试管理）"
+  },
+  {
+    "url": "component/dq_xnxq",
+    "method": "POST",
+    "source_file": "inco.component.xnxq.js",
+    "js_function": "mounted()",
+    "params": "none",
+    "response": "res.content: XN, XQ, XNMC, XQMC, XNMC_EN, XQMC_EN",
+    "module": "other",
+    "description": "查询当前学年学期"
+  },
+  {
+    "url": "component/queryShouCang",
+    "method": "POST",
+    "source_file": "inco.component.jsxsshoucang.js",
+    "js_function": "querysc()",
+    "params": "{}",
+    "response": "self.scdata (favorites list)",
+    "module": "other",
+    "description": "查询收藏列表"
+  },
+  {
+    "url": "browserRedirect/getToken",
+    "method": "GET",
+    "source_file": "myvueplug.js",
+    "js_function": "fine_report_login()",
+    "params": "none",
+    "response": "Token for FineReport SSO",
+    "module": "other",
+    "description": "获取报表系统SSO Token"
+  },
+  {
+    "url": "mixins/load",
+    "method": "POST",
+    "source_file": "myvueplug.js",
+    "js_function": "$MM() / asyncDataFetch() / asyncData() / $load_ps()",
+    "params": "{id}",
+    "response": "JSON response (generic data loader)",
+    "module": "other",
+    "description": "通用混入数据加载"
+  },
+  {
+    "url": "core/zdylxx/api/{id}",
+    "method": "POST",
+    "source_file": "myvueplug.js",
+    "js_function": "queryColApi()",
+    "params": "{}",
+    "response": "JSON with content.nr",
+    "module": "other",
+    "description": "查询自定义列信息API"
+  },
+  {
+    "url": "system/property",
+    "method": "POST",
+    "source_file": "myvueplug.js",
+    "js_function": "___init___()",
+    "params": "none",
+    "response": "System properties stored in localStorage",
+    "module": "other",
+    "description": "查询系统属性配置"
+  },
+  {
+    "url": "fineReport/dian_zi_qian_zhang",
+    "method": "POST",
+    "source_file": "myvueplug.js",
+    "js_function": "Vue.prototype.$FineReport.qian_zhang()",
+    "params": "Form with report params",
+    "response": "WebSocket status updates",
+    "module": "other",
+    "description": "报表电子签章"
+  },
+  {
+    "url": "fineReport/batch_download",
+    "method": "POST",
+    "source_file": "myvueplug.js",
+    "js_function": "Vue.prototype.$FineReport.download()",
+    "params": "Template/format/reports data",
+    "response": "WebSocket progress updates",
+    "module": "other",
+    "description": "报表批量下载"
+  },
+  {
+    "url": "login/logout.jsp",
+    "method": "GET",
+    "source_file": "index.js",
+    "js_function": "logout()",
+    "params": "none (page redirect)",
+    "response": "Redirects to login page",
+    "module": "other",
+    "description": "用户登出"
+  }
+]
