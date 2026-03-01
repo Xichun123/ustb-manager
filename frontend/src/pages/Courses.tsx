@@ -1,12 +1,13 @@
-import { useEffect, useState, useMemo } from 'react'
-import { Card, Table, Select, Spin, Tag, Statistic, Row, Col, Modal, Descriptions, Input, Tooltip, message, Tabs } from 'antd'
-import { BookOutlined, ClockCircleOutlined, TeamOutlined, BankOutlined, CheckCircleOutlined } from '@ant-design/icons'
+import { useEffect, useState, useMemo, useCallback } from 'react'
+import { Card, Table, Select, Spin, Tag, Statistic, Row, Col, Modal, Descriptions, Input, Tooltip, message, Tabs, Alert, Button, Space } from 'antd'
+import { BookOutlined, ClockCircleOutlined, TeamOutlined, BankOutlined, CheckCircleOutlined, NotificationOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import { api } from '../services/api'
 import AppLayout from '../components/AppLayout'
 
 interface Course {
   task_id: string
+  internal_id?: string  // BYYT 内部 ID（退课用）
   course_code: string
   course_name: string
   course_name_en: string
@@ -102,6 +103,17 @@ export default function CoursesPage() {
   const [filterCategory, setFilterCategory] = useState<string | undefined>()
   const [filterCampus, setFilterCampus] = useState<string | undefined>()
 
+  // 公告
+  const [announcements, setAnnouncements] = useState<any[]>([])
+  const [showAnnouncements, setShowAnnouncements] = useState(true)
+
+  // 冲突检测
+  const [checkingConflict, setCheckingConflict] = useState<string | null>(null)
+
+  // 选课/退课操作中
+  const [selectingCourse, setSelectingCourse] = useState<string | null>(null)
+  const [droppingCourse, setDroppingCourse] = useState<string | null>(null)
+
   // 从当前课程数据中提取唯一的课程类别
   const categoryOptions = useMemo(() => {
     const categorySet = new Set<string>()
@@ -173,6 +185,16 @@ export default function CoursesPage() {
         } else if (termListRes.data.length > 0) {
           setSelectedTerm(termListRes.data[0].dm)
         }
+        // 加载公告
+        try {
+          const xn = termInfoRes.data.p_xn || termInfoRes.data.p_dqxn
+          const xq = termInfoRes.data.p_xq || termInfoRes.data.p_dqxq
+          const announcementsRes = await api.get('/courses/announcements', { params: { xn, xq } })
+          const list = Array.isArray(announcementsRes.data) ? announcementsRes.data : []
+          setAnnouncements(list)
+        } catch {
+          // 公告加载失败不影响主功能
+        }
       } catch (err) {
         console.error('Failed to init courses:', err)
         message.error('获取学期信息失败')
@@ -232,6 +254,83 @@ export default function CoursesPage() {
     setFilterCategory(undefined)
     setFilterCampus(undefined)
   }
+
+  // 冲突检测
+  const handleCheckConflict = useCallback(async (course: Course) => {
+    setCheckingConflict(course.task_id)
+    try {
+      const res = await api.post('/courses/check-conflict', {
+        course_id: course.task_id,
+        method: courseMethod,
+      })
+      if (res.data.has_conflict) {
+        Modal.warning({
+          title: '存在时间冲突',
+          content: res.data.message || `"${course.course_name}" 与已选课程存在时间冲突`,
+        })
+      } else {
+        message.success(`"${course.course_name}" 无时间冲突`)
+      }
+    } catch {
+      message.error('冲突检测失败')
+    } finally {
+      setCheckingConflict(null)
+    }
+  }, [courseMethod])
+
+  // 选课
+  const handleSelectCourse = useCallback(async (course: Course) => {
+    setSelectingCourse(course.task_id)
+    try {
+      const res = await api.post('/courses/select', {
+        course_id: course.task_id,
+        method: courseMethod,
+      })
+      if (res.data.success) {
+        message.success(res.data.message || `"${course.course_name}" 选课成功`)
+        // 刷新课程列表
+        setCourses(prev => prev.map(c =>
+          c.task_id === course.task_id ? { ...c, is_selected: true } : c
+        ))
+      } else {
+        message.error(res.data.message || '选课失败')
+      }
+    } catch (err: any) {
+      message.error(err.response?.data?.detail || '选课失败')
+    } finally {
+      setSelectingCourse(null)
+    }
+  }, [courseMethod])
+
+  // 退课
+  const handleDropCourse = useCallback(async (course: Course) => {
+    Modal.confirm({
+      title: '确认退课',
+      content: `确定要退选 "${course.course_name}" 吗？`,
+      okText: '确认退课',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: async () => {
+        setDroppingCourse(course.task_id)
+        try {
+          const res = await api.post('/courses/drop', {
+            course_id: course.internal_id || course.task_id,
+            method: course.selection_method_code || 'bx-b-b',
+          })
+          if (res.data.success) {
+            message.success(res.data.message || `"${course.course_name}" 退课成功`)
+            setCourses(prev => prev.filter(c => c.task_id !== course.task_id))
+          } else {
+            message.error(res.data.message || '退课失败')
+          }
+        } catch (err: any) {
+          message.error(err.response?.data?.detail || '退课失败')
+        } finally {
+          setDroppingCourse(null)
+        }
+      },
+    })
+  }, [])
 
   // 表格列定义
   const columns: ColumnsType<Course> = [
@@ -338,11 +437,80 @@ export default function CoursesPage() {
       key: 'selection_time',
       width: 160,
       sorter: (a: Course, b: Course) => new Date(a.selection_time).getTime() - new Date(b.selection_time).getTime(),
-    }] : []),
+    }, {
+      title: '操作',
+      key: 'action',
+      width: 80,
+      fixed: 'right' as const,
+      render: (_: unknown, record: Course) => (
+        <Button
+          type="link"
+          size="small"
+          danger
+          loading={droppingCourse === record.task_id}
+          onClick={(e) => { e.stopPropagation(); handleDropCourse(record) }}
+        >
+          退课
+        </Button>
+      ),
+    }] : [{
+      title: '操作',
+      key: 'action',
+      width: 160,
+      fixed: 'right' as const,
+      render: (_: unknown, record: Course) => (
+        <Space>
+          <Button
+            type="link"
+            size="small"
+            loading={selectingCourse === record.task_id}
+            disabled={record.is_selected}
+            onClick={(e) => { e.stopPropagation(); handleSelectCourse(record) }}
+          >
+            {record.is_selected ? '已选' : '选课'}
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            icon={<ThunderboltOutlined />}
+            loading={checkingConflict === record.task_id}
+            onClick={(e) => { e.stopPropagation(); handleCheckConflict(record) }}
+          >
+            冲突检测
+          </Button>
+        </Space>
+      ),
+    }]),
   ]
 
   return (
     <AppLayout>
+      {announcements.length > 0 && (
+        <Alert
+          message={
+            <Space>
+              <NotificationOutlined />
+              <span>选课公告 ({announcements.length})</span>
+              <Button type="link" size="small" onClick={() => setShowAnnouncements(!showAnnouncements)}>
+                {showAnnouncements ? '收起' : '展开'}
+              </Button>
+            </Space>
+          }
+          description={showAnnouncements && (
+            <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
+              {announcements.map((item, idx) => (
+                <li key={idx} style={{ marginBottom: 4 }}>
+                  {item.ggmc || item.ggbt || item.title || item.mc || item.content || JSON.stringify(item)}
+                </li>
+              ))}
+            </ul>
+          )}
+          type="info"
+          showIcon={false}
+          style={{ marginBottom: 16 }}
+        />
+      )}
+
       <Tabs
         activeKey={viewMode}
         onChange={handleViewModeChange}

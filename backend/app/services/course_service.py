@@ -141,6 +141,7 @@ def _parse_course(course: Dict) -> Dict:
     """解析单个课程数据（已选课程列表）"""
     return {
         "task_id": course.get("rwh", ""),  # 任务号（唯一标识）
+        "internal_id": course.get("id", ""),  # BYYT 内部 ID（退课用）
         "course_code": course.get("kcdm", ""),  # 课程代码
         "course_name": course.get("kcmc", ""),  # 课程名称
         "course_name_en": course.get("kcmc_en", ""),  # 英文名称
@@ -366,7 +367,7 @@ async def drop_course(
     """
     params = _build_queryform(
         xn, xq, xnxq, dqxn, dqxq, dqxnxq,
-        xkfsdm=xkfsdm,
+        xkfsdm="yixuan",
         p_id=course_id,
     )
 
@@ -556,6 +557,83 @@ async def get_selection_log(
         return result
     if isinstance(result, dict):
         return result.get("list", [])
+    return []
+
+
+async def check_time_conflict(
+    session: Session,
+    course_id: str,
+    xn: str, xq: str, xnxq: str,
+    dqxn: str, dqxq: str, dqxnxq: str,
+    xkfsdm: str = "bx-b-b",
+) -> Dict:
+    """检测选课时间冲突
+
+    在选课或加入购物车前调用，检测目标课程与已选课程是否存在时间冲突。
+
+    Args:
+        course_id: 课程任务 ID
+        xkfsdm: 选课方式代码
+    Returns:
+        {"has_conflict": bool, "message": str}
+    """
+    params = _build_queryform(
+        xn, xq, xnxq, dqxn, dqxq, dqxnxq,
+        xkfsdm=xkfsdm,
+        p_id=course_id,
+    )
+
+    def _fetch():
+        resp = session.client.post(
+            "https://byyt.ustb.edu.cn/Xsxk/cxmtctPd",
+            data=params,
+        )
+        _check_byyt_response(resp)
+        resp.raise_for_status()
+        return resp.json()
+
+    result = await asyncio.to_thread(_fetch)
+
+    # BYYT 返回格式: {"jg": "1", "message": "..."} 或类似结构
+    # jg="1" 表示存在冲突，jg="0" 表示无冲突
+    has_conflict = result.get("jg") == "1" if isinstance(result, dict) else False
+    message = result.get("message", "") if isinstance(result, dict) else ""
+
+    return {
+        "has_conflict": has_conflict,
+        "message": message,
+    }
+
+
+async def get_announcements(
+    session: Session,
+    xn: str,
+    xq: str,
+) -> List[Dict]:
+    """查询选课公告
+
+    Args:
+        xn: 学年（如 2025-2026）
+        xq: 学期（如 2）
+    Returns:
+        选课公告列表
+    """
+
+    def _fetch():
+        resp = session.client.post(
+            "https://byyt.ustb.edu.cn/Xsxk/queryXkggZx",
+            data={"xn": xn, "xq": xq},
+        )
+        _check_byyt_response(resp)
+        resp.raise_for_status()
+        return resp.json()
+
+    result = await asyncio.to_thread(_fetch)
+
+    if isinstance(result, list):
+        return result
+    if isinstance(result, dict):
+        return result.get("list", result.get("content", []))
     return []
 
 

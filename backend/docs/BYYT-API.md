@@ -266,7 +266,7 @@
 ### 1.10 检测选课时间冲突
 - **URL**: `Xsxk/cxmtctPd`
 - **方法**: POST
-- **已实现**: ⬜
+- **已实现**: ✅ `course_service.check_time_conflict()`
 - **说明**: 在加入购物车前调用, 检测是否存在时间冲突
 - **参数**:
 
@@ -333,7 +333,7 @@
 ### 1.15 查询选课公告
 - **URL**: `Xsxk/queryXkggZx`
 - **方法**: POST
-- **已实现**: ⬜
+- **已实现**: ✅ `course_service.get_announcements()`
 - **说明**: 查询选课公告信息, 页面初始化时调用
 - **参数**:
 

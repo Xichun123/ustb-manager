@@ -1,4 +1,4 @@
-import { get } from '../../services/api'
+import { get, post } from '../../services/api'
 
 Page({
   data: {
@@ -19,6 +19,9 @@ Page({
     ],
     selectedMethodIdx: 0,
     searchText: '',
+    // Announcements
+    announcements: [] as any[],
+    showAnnouncements: false,
   },
 
   onLoad() {
@@ -33,7 +36,10 @@ Page({
         currentXn: termInfo.p_xn || termInfo.p_dqxn,
         currentXq: termInfo.p_xq || termInfo.p_dqxq,
       })
-      await this.loadCourses()
+      await Promise.all([
+        this.loadCourses(),
+        this.loadAnnouncements(),
+      ])
     } catch (_e) {
       wx.showToast({ title: '加载失败', icon: 'none' })
     } finally {
@@ -113,5 +119,57 @@ Page({
       content: lines.join('\n'),
       showCancel: false,
     })
+  },
+
+  // Load announcements
+  async loadAnnouncements() {
+    const { currentXn, currentXq } = this.data
+    try {
+      const res = await get('/api/courses/announcements', { xn: currentXn, xq: currentXq })
+      const announcements = Array.isArray(res) ? res : []
+      this.setData({
+        announcements,
+        showAnnouncements: announcements.length > 0,
+      })
+    } catch (_e) {
+      // Silently ignore announcement loading failure
+    }
+  },
+
+  // Toggle announcements visibility
+  toggleAnnouncements() {
+    this.setData({ showAnnouncements: !this.data.showAnnouncements })
+  },
+
+  // Check time conflict before selecting a course
+  async onCheckConflict(e: any) {
+    const idx = e.currentTarget.dataset.index
+    const course = this.data.courses[idx]
+    if (!course) return
+
+    const courseId = course.task_id
+    const method = this.data.methods[this.data.selectedMethodIdx].value
+
+    wx.showLoading({ title: '检测中...' })
+    try {
+      const res = await post('/api/courses/check-conflict', {
+        course_id: courseId,
+        method,
+      })
+      wx.hideLoading()
+
+      if (res.has_conflict) {
+        wx.showModal({
+          title: '存在时间冲突',
+          content: res.message || '该课程与已选课程存在时间冲突，请重新选择。',
+          showCancel: false,
+        })
+      } else {
+        wx.showToast({ title: '无时间冲突', icon: 'success' })
+      }
+    } catch (_e) {
+      wx.hideLoading()
+      wx.showToast({ title: '检测失败', icon: 'none' })
+    }
   },
 })

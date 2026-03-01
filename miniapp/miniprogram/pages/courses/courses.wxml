@@ -1,5 +1,19 @@
 <!--courses.wxml-->
 <view class="page-container">
+  <!-- Announcements -->
+  <view class="announcements card" wx:if="{{announcements.length > 0}}">
+    <view class="announcement-header" bindtap="toggleAnnouncements">
+      <text class="announcement-title">选课公告</text>
+      <text class="announcement-badge">{{announcements.length}}</text>
+      <text class="announcement-arrow">{{showAnnouncements ? '▲' : '▼'}}</text>
+    </view>
+    <view class="announcement-list" wx:if="{{showAnnouncements}}">
+      <view class="announcement-item" wx:for="{{announcements}}" wx:key="index">
+        <text class="announcement-text">{{item.ggmc || item.ggbt || item.title || item.mc || item.content || item}}</text>
+      </view>
+    </view>
+  </view>
+
   <!-- View Tabs -->
   <view class="view-tabs card">
     <view class="view-tab {{viewMode === 'selected' ? 'active' : ''}}" data-mode="selected" bindtap="switchView">已选课程</view>
@@ -48,7 +62,10 @@
         </view>
         <view class="course-bottom">
           <text class="course-info">{{item.teacher}} · {{item.credits}}学分</text>
-          <text class="course-capacity">{{item.selected_count || 0}}/{{item.capacity || 0}}</text>
+          <view class="course-actions">
+            <text class="conflict-btn" wx:if="{{viewMode === 'available'}}" catchtap="onCheckConflict" data-index="{{index}}">冲突检测</text>
+            <text class="course-capacity">{{item.selected_count || 0}}/{{item.capacity || 0}}</text>
+          </view>
         </view>
       </view>
     </view>

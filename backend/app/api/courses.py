@@ -64,6 +64,16 @@ class CampusItem(BaseModel):
     name: str = Field(..., description="校区名称")
 
 
+class ConflictCheckRequest(BaseModel):
+    course_id: str = Field(..., description="课程任务 ID")
+    method: str = Field("bx-b-b", description="选课方式代码")
+
+
+class ConflictCheckResponse(BaseModel):
+    has_conflict: bool = Field(..., description="是否存在时间冲突")
+    message: str = Field("", description="冲突详情说明")
+
+
 class CourseOperationRequest(BaseModel):
     course_id: str = Field(..., description="课程任务 ID")
     method: str = Field("bx-b-b", description="选课方式代码")
@@ -249,6 +259,53 @@ async def _get_term_params(session: Session, xn: Optional[str] = None, xq: Optio
         "dqxq": term_info.get("p_dqxq", ""),
         "dqxnxq": term_info.get("p_dqxnxq", ""),
     }
+
+
+# ==================== 时间冲突检测 & 选课公告 ====================
+
+
+@router.post("/check-conflict", response_model=ConflictCheckResponse, summary="检测选课时间冲突")
+async def check_time_conflict(
+    req: ConflictCheckRequest,
+    session: Session = Depends(get_authenticated_session),
+):
+    """
+    ## 业务说明
+    在选课或加入购物车前调用，检测目标课程与已选课程是否存在时间冲突。
+
+    ## 参数说明
+    - `course_id`: 课程任务 ID，可通过 `/courses/available` 获取
+    - `method`: 选课方式代码
+
+    ## 返回数据
+    - `has_conflict`: 是否存在时间冲突
+    - `message`: 冲突详情说明
+    """
+    tp = await _get_term_params(session)
+    return await course_service.check_time_conflict(
+        session, req.course_id, **tp, xkfsdm=req.method,
+    )
+
+
+@router.get("/announcements", response_model=list, summary="查询选课公告")
+async def get_announcements(
+    session: Session = Depends(get_authenticated_session),
+    xn: Optional[str] = Query(None, description="学年，如 2025-2026"),
+    xq: Optional[str] = Query(None, description="学期，如 2"),
+):
+    """
+    ## 业务说明
+    查询选课公告信息，包含选课时间安排、注意事项等。
+
+    ## 参数说明
+    - xn: 学年（可选，不传则使用当前选课学年）
+    - xq: 学期（可选，不传则使用当前选课学期）
+
+    ## 返回数据
+    选课公告列表
+    """
+    tp = await _get_term_params(session, xn, xq)
+    return await course_service.get_announcements(session, xn=tp["xn"], xq=tp["xq"])
 
 
 # ==================== 选课操作 ====================
