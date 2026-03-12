@@ -30,6 +30,8 @@ interface WifiFlow {
   account: string
   balance: number
   used_flow: number
+  used_flow_v4?: number
+  used_flow_v6?: number
   available_flow: number
   status: string
   package: string
@@ -607,6 +609,11 @@ export default function Wifi() {
             <div style={{ marginTop: 16, color: '#999', fontSize: 12 }}>
               <span>套餐：{flowData.package || '-'}</span>
               <span style={{ marginLeft: 24 }}>到期：{flowData.expire_date || '-'}</span>
+              {(flowData.used_flow_v4 !== undefined || flowData.used_flow_v6 !== undefined) && (
+                <span style={{ marginLeft: 24 }}>
+                  V4：{formatFlow(flowData.used_flow_v4 || 0)} / V6：{formatFlow(flowData.used_flow_v6 || 0)}
+                </span>
+              )}
               <span style={{ marginLeft: 24 }}>更新时间：{flowData.update_time}</span>
             </div>
           )}

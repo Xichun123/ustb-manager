@@ -59,6 +59,8 @@ interface WifiStatus {
 interface WifiFlow {
   balance: number
   used_flow: number
+  used_flow_v4?: number
+  used_flow_v6?: number
   update_time: string
 }
 
@@ -238,24 +240,32 @@ export function Dashboard() {
               <Spin spinning={wifiLoading}>
                 {wifiFlow ? (
                   // 已登录，显示流量信息
-                  <Row gutter={16}>
-                    <Col span={12}>
-                      <Statistic
-                        title="账户余额"
-                        value={wifiFlow.balance}
-                        precision={2}
-                        suffix="元"
-                        valueStyle={{ color: wifiFlow.balance < 5 ? '#cf1322' : '#3f8600' }}
-                      />
-                    </Col>
-                    <Col span={12}>
-                      <Statistic
-                        title="已用流量"
-                        value={wifiFlow.used_flow >= 1024 ? (wifiFlow.used_flow / 1024).toFixed(2) : wifiFlow.used_flow.toFixed(2)}
-                        suffix={wifiFlow.used_flow >= 1024 ? 'GB' : 'MB'}
-                      />
-                    </Col>
-                  </Row>
+                  <>
+                    <Row gutter={16}>
+                      <Col span={12}>
+                        <Statistic
+                          title="账户余额"
+                          value={wifiFlow.balance}
+                          precision={2}
+                          suffix="元"
+                          valueStyle={{ color: wifiFlow.balance < 5 ? '#cf1322' : '#3f8600' }}
+                        />
+                      </Col>
+                      <Col span={12}>
+                        <Statistic
+                          title="已用流量"
+                          value={wifiFlow.used_flow >= 1024 ? (wifiFlow.used_flow / 1024).toFixed(2) : wifiFlow.used_flow.toFixed(2)}
+                          suffix={wifiFlow.used_flow >= 1024 ? 'GB' : 'MB'}
+                        />
+                      </Col>
+                    </Row>
+                    {(wifiFlow.used_flow_v4 !== undefined || wifiFlow.used_flow_v6 !== undefined) && (
+                      <div style={{ marginTop: 12, color: '#999', fontSize: 12 }}>
+                        <span>V4：{wifiFlow.used_flow_v4?.toFixed(2) || '0.00'} MB</span>
+                        <span style={{ marginLeft: 16 }}>V6：{wifiFlow.used_flow_v6?.toFixed(2) || '0.00'} MB</span>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   // 未登录，显示登录提示
                   <div style={{ textAlign: 'center', padding: '20px 0' }}>

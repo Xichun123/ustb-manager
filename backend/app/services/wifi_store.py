@@ -66,8 +66,9 @@ class WifiCredential:
     """校园网凭据"""
     student_id: str
     password: str  # 存储时为加密文本
-    vpn_cookie: Optional[str] = None
+    vpn_cookie: Optional[str] = None  # 兼容旧字段名，也可存直连模式的 JSESSIONID
     cookie_created_at: Optional[float] = None
+    login_mode: str = "webvpn"
 
     def get_password(self) -> str:
         """返回解密后的密码。"""
@@ -97,6 +98,7 @@ class WifiCredentialStore:
                         password=cred_data.get("password", ""),
                         vpn_cookie=cred_data.get("vpn_cookie"),
                         cookie_created_at=cred_data.get("cookie_created_at"),
+                        login_mode=cred_data.get("login_mode", "webvpn"),
                     )
         except Exception:
             pass
@@ -118,22 +120,31 @@ class WifiCredentialStore:
         """获取凭据"""
         return self._credentials.get(student_id)
 
-    def save_credential(self, student_id: str, password: str, vpn_cookie: Optional[str] = None):
+    def save_credential(
+        self,
+        student_id: str,
+        password: str,
+        vpn_cookie: Optional[str] = None,
+        login_mode: str = "webvpn",
+    ):
         """保存凭据（密码会被加密存储）"""
         self._credentials[student_id] = WifiCredential(
             student_id=student_id,
             password=_encrypt(password),
             vpn_cookie=vpn_cookie,
             cookie_created_at=time.time() if vpn_cookie else None,
+            login_mode=login_mode,
         )
         self._save()
 
-    def update_cookie(self, student_id: str, vpn_cookie: str):
+    def update_cookie(self, student_id: str, vpn_cookie: str, login_mode: Optional[str] = None):
         """更新 VPN cookie"""
         cred = self._credentials.get(student_id)
         if cred:
             cred.vpn_cookie = vpn_cookie
             cred.cookie_created_at = time.time()
+            if login_mode:
+                cred.login_mode = login_mode
             self._save()
 
     def delete(self, student_id: str):

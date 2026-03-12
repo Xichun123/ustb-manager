@@ -17,48 +17,40 @@
 ### Docker 部署（推荐）
 
 ```bash
-mkdir -p ~/ustb-manager && cd ~/ustb-manager
+mkdir -p /opt/ustb-manager
+cd /opt/ustb-manager
 
-# 创建 docker-compose.yml
-cat > docker-compose.yml << 'EOF'
-services:
-  backend:
-    image: xichun/ustb-manager-backend:latest
-    container_name: ustb-backend
-    restart: unless-stopped
-    environment:
-      - COOKIE_SECURE=true
-      - SESSION_TTL=31536000
-    networks:
-      - ustb-network
+# 从仓库复制这两个文件
+cp /path/to/ustb-manager/docker-compose.yml .
+cp /path/to/ustb-manager/.env.example .env
 
-  frontend:
-    image: xichun/ustb-manager-frontend:latest
-    container_name: ustb-frontend
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:8032:80"
-    depends_on:
-      - backend
-    networks:
-      - ustb-network
-
-networks:
-  ustb-network:
-    driver: bridge
-EOF
-
-# 启动
+# 首次启动
+docker compose pull
 docker compose up -d
+
+# 查看状态
+docker compose ps
+docker compose logs -f
 ```
 
-### Caddy 反代（可选）
+当前 [docker-compose.yml](/Users/xichun/Downloads/code/ustb-manager/docker-compose.yml) 的行为：
+
+- `backend` 使用镜像 `xichun/ustb-manager-backend:${IMAGE_TAG:-latest}`
+- `frontend` 使用镜像 `xichun/ustb-manager-frontend:${IMAGE_TAG:-latest}`
+- 前端只监听 `127.0.0.1:${APP_PORT:-8032}`，默认不会直接暴露到公网
+- 后端不单独映射端口，只在 Docker 网络内提供给前端访问
+- 后端数据持久化到 Docker volume `backend-data`
+- `frontend` 依赖 `backend` 的健康检查结果再启动
+
+### 反代（推荐）
 
 ```
 ustb.example.com {
     reverse_proxy 127.0.0.1:8032
 }
 ```
+
+如果你还没配 HTTPS，请先把 `.env` 里的 `COOKIE_SECURE=false`，否则浏览器不会在纯 HTTP 下发送登录 Cookie。
 
 ## 本地开发
 
@@ -84,7 +76,9 @@ npm run dev
 
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
-| COOKIE_SECURE | Cookie 仅 HTTPS 传输 | false |
+| IMAGE_TAG | Docker 镜像标签 | latest |
+| APP_PORT | 前端绑定到本机的端口 | 8032 |
+| COOKIE_SECURE | Cookie 仅 HTTPS 传输 | true |
 | SESSION_TTL | 会话有效期（秒） | 31536000 |
 
 ## License

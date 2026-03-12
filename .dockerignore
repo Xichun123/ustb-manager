@@ -42,5 +42,8 @@ CLAUDE.md
 # Logs
 *.log
 
+# Local scratch
+.run/
+
 # Docker
 docker-compose.yml

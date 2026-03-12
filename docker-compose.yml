@@ -1,25 +1,39 @@
 services:
   backend:
-    build: ./backend
+    image: xichun/ustb-manager-backend:${IMAGE_TAG:-latest}
+    pull_policy: always
     container_name: ustb-backend
     restart: unless-stopped
     environment:
-      - COOKIE_SECURE=true
-      - SESSION_TTL=31536000
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      SESSION_TTL: ${SESSION_TTL:-31536000}
+    volumes:
+      - backend-data:/root/.ustb_manager
     networks:
       - ustb-network
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
   frontend:
-    build: ./frontend
+    image: xichun/ustb-manager-frontend:${IMAGE_TAG:-latest}
+    pull_policy: always
     container_name: ustb-frontend
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:8032:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${APP_PORT:-8032}:80"
     networks:
       - ustb-network
 
 networks:
   ustb-network:
     driver: bridge
+
+volumes:
+  backend-data:

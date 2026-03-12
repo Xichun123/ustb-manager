@@ -9,6 +9,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # 安装系统依赖
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    libgl1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    libxcb1 \
     && rm -rf /var/lib/apt/lists/*
 
 # 安装 uv
@@ -20,11 +26,9 @@ WORKDIR /app
 # 复制依赖文件
 COPY pyproject.toml ./
 
-# 安装 Python 依赖
-RUN uv pip install --system -e .
-
-# 安装 Playwright 浏览器（如果需要）
-RUN playwright install chromium --with-deps || true
+# 安装 Python 依赖，并清理缓存以控制镜像体积
+RUN uv pip install --system -e . \
+    && rm -rf /root/.cache /tmp/*
 
 # 复制应用代码
 COPY app ./app

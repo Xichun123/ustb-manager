@@ -40,3 +40,6 @@ CLAUDE.md
 
 # Logs
 *.log
+
+# Local scratch
+.run/

@@ -5,12 +5,15 @@
 import logging
 import re
 from datetime import datetime
+from typing import Optional
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field, field_validator
 import httpx
 
 from ..services.wifi_service import (
-    login_vpn_only,
+    create_authenticated_client,
+    create_login_challenge,
+    login_with_captcha,
     get_flow_info,
     get_bound_devices,
     unbind_mac,
@@ -28,11 +31,20 @@ logger = logging.getLogger(__name__)
 
 class WifiLoginRequest(BaseModel):
     password: str
+    challenge_token: Optional[str] = None
+    captcha_code: Optional[str] = None
 
 
 class WifiStandaloneLoginRequest(BaseModel):
-    student_id: str = Field(..., min_length=8, max_length=12, pattern=r"^\d{8,12}$")
+    student_id: str = Field(..., min_length=8, max_length=13, pattern=r"^[Uu]?\d{8,12}$")
     password: str
+    challenge_token: Optional[str] = None
+    captcha_code: Optional[str] = None
+
+
+class WifiLoginChallengeRequest(BaseModel):
+    student_id: Optional[str] = Field(default=None, min_length=8, max_length=13, pattern=r"^[Uu]?\d{8,12}$")
+    password: Optional[str] = None
 
 
 class UnbindMacRequest(BaseModel):
@@ -75,45 +87,29 @@ async def get_or_create_wifi_session(student_id: str) -> WifiSession:
 
     if cred.vpn_cookie:
         logger.debug("Trying saved cookie for %s", student_id)
-        client = httpx.AsyncClient(follow_redirects=True, timeout=60.0)
-        client.cookies.set("wengine_vpn_ticketelib_ustb_edu_cn", cred.vpn_cookie, domain="elib.ustb.edu.cn")
+        login_mode = getattr(cred, "login_mode", "webvpn") or "webvpn"
+        client = create_authenticated_client(cred.vpn_cookie, login_mode)
 
         try:
-            result = await get_flow_info(client, cred.vpn_cookie)
+            result = await get_flow_info(client, cred.vpn_cookie, login_mode)
             if result:
                 logger.debug("Saved cookie is valid!")
                 session = WifiSession(
                     client=client,
                     student_id=student_id,
                     cookie=cred.vpn_cookie,
+                    mode=login_mode,
                 )
                 wifi_store.set(student_id, session)
                 return session
             else:
-                logger.debug("Saved cookie returned no data, will re-login")
+                logger.debug("Saved cookie returned no data")
                 await client.aclose()
         except Exception as e:
-            logger.debug("Saved cookie failed: %s, will re-login", e)
+            logger.debug("Saved cookie failed: %s", e)
             await client.aclose()
 
-    logger.debug("Using Playwright to login for %s", student_id)
-    try:
-        vpn_cookie, client = await login_vpn_only(student_id, cred.get_password())
-        if not vpn_cookie or not client:
-            raise HTTPException(status_code=401, detail="校园网密码错误，请重新登录")
-
-        session = WifiSession(
-            client=client,
-            student_id=student_id,
-            cookie=vpn_cookie,
-        )
-        wifi_store.set(student_id, session)
-        wifi_credential_store.update_cookie(student_id, vpn_cookie)
-        return session
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"登录失败: {str(e)}")
+    raise HTTPException(status_code=401, detail="校园网会话已过期，请重新输入验证码登录")
 
 
 @router.get("/standalone-status")
@@ -161,6 +157,38 @@ async def get_wifi_status(request: Request):
     return {"logged_in": False, "has_credential": has_credential}
 
 
+@router.post("/login/challenge")
+async def wifi_login_challenge(request: Request, body: Optional[WifiLoginChallengeRequest] = None):
+    """获取校园网验证码挑战。"""
+    try:
+        student_id = None
+        if body and body.student_id:
+            student_id = body.student_id.upper()
+        else:
+            try:
+                student_id = get_student_id(request)
+            except HTTPException:
+                student_id = None
+
+        challenge = await create_login_challenge(
+            student_id,
+            body.password if body else None,
+        )
+        return {
+            "challenge_token": challenge.token,
+            "captcha_image": challenge.captcha_image,
+            "mode": challenge.mode,
+            "expires_in": 300,
+        }
+    except RuntimeError as e:
+        detail = str(e) or e.__class__.__name__
+        raise HTTPException(status_code=400, detail=f"获取验证码失败: {detail}")
+    except Exception as e:
+        logger.exception("WiFi challenge init failed")
+        detail = str(e) or e.__class__.__name__
+        raise HTTPException(status_code=500, detail=f"获取验证码失败: {detail}")
+
+
 @router.post("/login")
 async def wifi_login(request: Request, body: WifiLoginRequest):
     """
@@ -171,22 +199,39 @@ async def wifi_login(request: Request, body: WifiLoginRequest):
     student_id = get_student_id(request)
 
     try:
-        vpn_cookie, client = await login_vpn_only(student_id, body.password)
-        if not vpn_cookie or not client:
-            raise HTTPException(status_code=401, detail="校园网密码错误")
+        if not body.challenge_token or not body.captcha_code:
+            raise HTTPException(status_code=400, detail="请先获取并输入验证码")
 
-        wifi_credential_store.save_credential(student_id, body.password, vpn_cookie)
+        auth_cookie, client, login_mode = await login_with_captcha(
+            student_id,
+            body.password,
+            body.challenge_token,
+            body.captcha_code,
+        )
+
+        if not auth_cookie or not client:
+            raise HTTPException(status_code=401, detail="验证码错误或校园网密码错误")
+
+        wifi_credential_store.save_credential(
+            student_id,
+            body.password,
+            auth_cookie,
+            login_mode=login_mode,
+        )
 
         session = WifiSession(
             client=client,
             student_id=student_id,
-            cookie=vpn_cookie,
+            cookie=auth_cookie,
+            mode=login_mode,
         )
         wifi_store.set(student_id, session)
 
         return {"success": True, "message": "登录成功"}
     except HTTPException:
         raise
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="校园网服务响应超时，请稍后重试")
     except Exception as e:
@@ -201,35 +246,53 @@ async def wifi_standalone_login(response: Response, body: WifiStandaloneLoginReq
 
     需要提供学号和密码，登录成功后设置 wifi_student_id cookie
     """
+    student_id = body.student_id.upper()
     try:
-        vpn_cookie, client = await login_vpn_only(body.student_id, body.password)
-        if not vpn_cookie or not client:
-            raise HTTPException(status_code=401, detail="学号或密码错误")
+        if not body.challenge_token or not body.captcha_code:
+            raise HTTPException(status_code=400, detail="请先获取并输入验证码")
 
-        wifi_credential_store.save_credential(body.student_id, body.password, vpn_cookie)
+        auth_cookie, client, login_mode = await login_with_captcha(
+            student_id,
+            body.password,
+            body.challenge_token,
+            body.captcha_code,
+        )
+
+        if not auth_cookie or not client:
+            raise HTTPException(status_code=401, detail="验证码错误或学号密码错误")
+
+        wifi_credential_store.save_credential(
+            student_id,
+            body.password,
+            auth_cookie,
+            login_mode=login_mode,
+        )
 
         session = WifiSession(
             client=client,
-            student_id=body.student_id,
-            cookie=vpn_cookie,
+            student_id=student_id,
+            cookie=auth_cookie,
+            mode=login_mode,
         )
-        wifi_store.set(body.student_id, session)
+        wifi_store.set(student_id, session)
 
         response.set_cookie(
             key="wifi_student_id",
-            value=body.student_id,
+            value=student_id,
             httponly=True,
             max_age=30 * 24 * 60 * 60,
             samesite="lax",
         )
 
-        return {"success": True, "message": "登录成功", "student_id": body.student_id}
+        return {"success": True, "message": "登录成功", "student_id": student_id}
     except HTTPException:
         raise
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="校园网服务响应超时，请稍后重试")
     except Exception as e:
-        logger.exception("WiFi standalone login failed for %s", body.student_id)
+        logger.exception("WiFi standalone login failed for %s", student_id)
         raise HTTPException(status_code=500, detail=f"登录失败: {str(e)}")
 
 
@@ -274,7 +337,7 @@ async def get_flow(request: Request):
     session = await get_or_create_wifi_session(student_id)
 
     try:
-        result = await get_flow_info(session.client, session.cookie)
+        result = await get_flow_info(session.client, session.cookie, session.mode)
         if not result:
             raise HTTPException(status_code=500, detail="获取流量信息失败")
 
@@ -322,7 +385,7 @@ async def get_devices(request: Request):
     session = await get_or_create_wifi_session(student_id)
 
     try:
-        devices = await get_bound_devices(session.client, session.cookie)
+        devices = await get_bound_devices(session.client, session.cookie, session.mode)
         return {
             "total": len(devices),
             "devices": devices
@@ -379,7 +442,7 @@ async def unbind_mac_address(request: Request, body: UnbindMacRequest):
     session = await get_or_create_wifi_session(student_id)
 
     try:
-        success = await unbind_mac(session.client, session.cookie, body.mac_address)
+        success = await unbind_mac(session.client, session.cookie, body.mac_address, session.mode)
         if success:
             return {"success": True, "message": "解绑成功"}
         else:
@@ -429,7 +492,7 @@ async def get_bills(
         year = datetime.now().year
 
     try:
-        result = await get_month_pay(session.client, session.cookie, year)
+        result = await get_month_pay(session.client, session.cookie, year, session.mode)
         if not result:
             raise HTTPException(status_code=500, detail="获取账单失败")
 
@@ -473,7 +536,7 @@ async def get_payment_records(request: Request, start_date: str = None, end_date
         start_date = (today.replace(year=today.year - 1)).strftime("%Y-%m-%d")
 
     try:
-        result = await get_payments(session.client, session.cookie, start_date, end_date)
+        result = await get_payments(session.client, session.cookie, start_date, end_date, session.mode)
         if not result:
             raise HTTPException(status_code=500, detail="获取充值明细失败")
 
