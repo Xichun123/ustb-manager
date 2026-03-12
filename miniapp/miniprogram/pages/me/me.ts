@@ -1,21 +1,35 @@
 import { get } from '../../services/api'
 import { logout } from '../../services/auth'
-import { getUserInfo, hasSessionId, setUserInfo } from '../../utils/storage'
+import { getMePageState, getUserInfo, hasSessionId, setMePageState, setUserInfo } from '../../utils/storage'
 
 const app = getApp<IAppOption>()
+const ME_REFRESH_TTL = 5 * 60 * 1000
+
+function buildInitialData() {
+  const persisted = getMePageState()
+  const cachedStudentInfo = getUserInfo()
+  const studentInfo = persisted && persisted.studentInfo ? persisted.studentInfo : cachedStudentInfo
+
+  return {
+    loading: !(persisted || studentInfo),
+    refreshing: false,
+    userInfo: persisted ? persisted.userInfo : null,
+    studentInfo: studentInfo || null,
+  }
+}
 
 Component({
-  data: {
-    loading: true,
-    userInfo: null as any,
-    studentInfo: null as any,
-  },
+  data: buildInitialData(),
 
   lifetimes: {
     attached() {
       if (typeof this.getTabBar === 'function') {
         this.getTabBar().setData({ selected: 4 })
       }
+      const persisted = getMePageState()
+      ;(this as any)._meLoaded = false
+      ;(this as any)._meHasCache = !!(persisted || getUserInfo())
+      ;(this as any)._lastLoadedAt = persisted && persisted.updatedAt ? persisted.updatedAt : 0
     },
   },
 
@@ -24,23 +38,54 @@ Component({
       if (typeof this.getTabBar === 'function') {
         this.getTabBar().setData({ selected: 4 })
       }
-      this.loadData()
+      const self = this as any
+      const hasContent = !!this.data.studentInfo
+
+      if (!self._meLoaded) {
+        this.loadData({ showLoading: !self._meHasCache && !hasContent })
+        return
+      }
+
+      if (!hasContent) {
+        this.loadData({ showLoading: true })
+        return
+      }
+
+      if (Date.now() - (self._lastLoadedAt || 0) > ME_REFRESH_TTL) {
+        this.loadData({ showLoading: false })
+      }
     },
   },
 
   methods: {
-    async loadData() {
+    persistState() {
+      const updatedAt = Date.now()
+      setMePageState({
+        userInfo: this.data.userInfo,
+        studentInfo: this.data.studentInfo,
+        updatedAt,
+      })
+      ;(this as any)._lastLoadedAt = updatedAt
+    },
+
+    async loadData(options?: { showLoading?: boolean }) {
       if (!app.globalData.isAuthenticated && !hasSessionId()) {
         wx.redirectTo({ url: '/pages/login/login' })
         return
       }
 
-      this.setData({ loading: true })
+      const showLoading = !!(options && options.showLoading)
+      if (showLoading) {
+        this.setData({ loading: true })
+      } else {
+        this.setData({ refreshing: true })
+      }
 
       // Try cached first
       const cached = getUserInfo()
       if (cached) {
         this.setData({ studentInfo: cached })
+        app.globalData.userInfo = cached
       }
 
       try {
@@ -67,10 +112,16 @@ Component({
           setUserInfo(info)
           app.globalData.userInfo = info
         }
+        ;(this as any)._meLoaded = true
+        this.persistState()
       } catch (_e) {
         // Use cached data
       } finally {
-        this.setData({ loading: false })
+        if (showLoading) {
+          this.setData({ loading: false })
+        } else {
+          this.setData({ refreshing: false })
+        }
       }
     },
 

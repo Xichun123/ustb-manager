@@ -1,8 +1,7 @@
 import {
+  clearAll,
   getSessionId,
   getWifiStudentId,
-  removeSessionId,
-  removeUserInfo,
   setSessionId,
   setWifiStudentId,
 } from '../utils/storage'
@@ -82,8 +81,8 @@ export function request<T = any>(options: RequestOptions): Promise<ApiResponse<T
         // Handle 401
         if (res.statusCode === 401 && !isWifi) {
           app.globalData.isAuthenticated = false
-          removeSessionId()
-          removeUserInfo()
+          app.globalData.userInfo = null
+          clearAll()
           wx.redirectTo({ url: '/pages/login/login' })
           reject(new Error('未登录或登录已过期'))
           return

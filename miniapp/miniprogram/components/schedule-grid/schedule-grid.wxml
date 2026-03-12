@@ -1,16 +1,18 @@
-<view class="schedule-grid {{compact ? 'compact' : ''}}">
+<view class="schedule-grid {{compact ? 'compact' : ''}} {{hideWeekend ? 'weekend-hidden' : ''}}">
   <!-- Header row -->
   <view class="grid-header">
     <view class="grid-corner"></view>
-    <view class="grid-header-cell" wx:for="{{weekdays}}" wx:key="*this">
-      <text class="header-day">{{item}}</text>
-      <text class="header-date" wx:if="{{dates[index+1]}}">{{dates[index+1]}}</text>
+    <view class="grid-header-cell" wx:for="{{headerColumns}}" wx:key="dayIdx">
+      <text class="header-day">{{item.label}}</text>
+      <text class="header-date" wx:if="{{item.date}}">{{item.date}}</text>
     </view>
   </view>
   <!-- Body rows -->
   <view class="grid-row" wx:for="{{grid}}" wx:for-item="row" wx:for-index="periodIdx" wx:key="periodIdx">
     <view class="grid-period">
-      <text>{{periods[periodIdx]}}</text>
+      <view class="period-chip">
+        <text class="period-chip-text">{{periods[periodIdx]}}</text>
+      </view>
     </view>
     <view
       class="grid-cell"
@@ -18,14 +20,25 @@
       wx:for-item="cell"
       wx:for-index="dayIdx"
       wx:key="dayIdx"
-      data-period="{{periodIdx}}"
-      data-day="{{dayIdx}}"
-      bindtap="onCourseClick"
     >
-      <block wx:if="{{cell}}">
-        <view class="course-block" style="background:{{cell.color.bg}};color:{{cell.color.text}}">
-          <text class="course-name">{{cell.course_name}}</text>
-          <text class="course-location" wx:if="{{!compact}}">{{cell.location}}</text>
+      <block wx:if="{{cell.length > 0}}">
+        <view class="course-stack {{cell.length > 1 ? 'multi' : 'single'}}">
+          <view
+            wx:for="{{cell}}"
+            wx:for-item="course"
+            wx:for-index="courseIdx"
+            wx:key="courseIdx"
+            class="course-block {{cell.length > 1 ? 'multi' : 'single'}}"
+            style="background:{{course.color.bg}};color:{{course.color.text}}"
+            data-period="{{periodIdx}}"
+            data-day="{{dayIdx}}"
+            data-course="{{courseIdx}}"
+            bindtap="onCourseClick"
+          >
+            <text class="course-name">{{course.course_name}}</text>
+            <text class="course-weeks" wx:if="{{compact}}">{{course.weeks}}</text>
+            <text class="course-location" wx:if="{{!compact}}">{{course.location_short || course.location}}</text>
+          </view>
         </view>
       </block>
     </view>

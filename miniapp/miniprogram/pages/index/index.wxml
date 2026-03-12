@@ -6,6 +6,11 @@
   </view>
 
   <block wx:else>
+    <view class="refresh-indicator" wx:if="{{refreshing}}">
+      <view class="refresh-dot"></view>
+      <text class="refresh-text">正在更新最新数据</text>
+    </view>
+
     <!-- Student Info Card -->
     <view class="card" wx:if="{{studentInfo}}">
       <view class="student-header">
@@ -81,6 +86,7 @@
           schedule="{{schedule}}"
           dates="{{scheduleDates}}"
           compact="{{true}}"
+          hideWeekend="{{hideWeekend}}"
           bind:courseclick="onCourseClick"
         />
       </block>

@@ -195,6 +195,44 @@ page {
   font-size: var(--font-size-sm);
 }
 
+.refresh-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: var(--spacing-md);
+  padding: 12rpx 20rpx;
+  border-radius: 999rpx;
+  background: #f3f8ff;
+  border: 1rpx solid rgba(74, 140, 255, 0.18);
+}
+
+.refresh-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: #4a8cff;
+  animation: refreshPulse 1.2s ease-in-out infinite;
+}
+
+.refresh-text {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: #4a8cff;
+}
+
+@keyframes refreshPulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.82);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .divider {
   height: 1rpx;
   background: var(--border-color);

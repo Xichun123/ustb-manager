@@ -5,6 +5,11 @@
   </view>
 
   <block wx:else>
+    <view class="refresh-indicator" wx:if="{{refreshing}}">
+      <view class="refresh-dot"></view>
+      <text class="refresh-text">正在更新个人信息</text>
+    </view>
+
     <!-- User Header -->
     <view class="card user-card">
       <view class="user-header">

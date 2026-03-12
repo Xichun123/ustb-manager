@@ -5,6 +5,11 @@
   </view>
 
   <block wx:else>
+    <view class="refresh-indicator" wx:if="{{refreshing}}">
+      <view class="refresh-dot"></view>
+      <text class="refresh-text">正在更新成绩数据</text>
+    </view>
+
     <!-- GPA Stats Card -->
     <view class="card">
       <grade-card

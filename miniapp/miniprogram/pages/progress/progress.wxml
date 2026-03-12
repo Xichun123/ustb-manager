@@ -12,6 +12,11 @@
   </view>
 
   <block wx:else>
+    <view class="refresh-indicator" wx:if="{{refreshing}}">
+      <view class="refresh-dot"></view>
+      <text class="refresh-text">正在更新学业进度</text>
+    </view>
+
     <!-- Credit Completion -->
     <block wx:if="{{activeTab === 'credits'}}">
       <view class="card" wx:for="{{creditCategories}}" wx:key="name">

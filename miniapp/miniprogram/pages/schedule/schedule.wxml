@@ -25,6 +25,16 @@
         <text>选择周次</text>
       </view>
     </view>
+
+    <view class="toggle-row">
+      <text class="toggle-label">隐藏周六周日</text>
+      <switch checked="{{hideWeekend}}" color="#4a8cff" bindchange="onHideWeekendChange" />
+    </view>
+  </view>
+
+  <view class="refresh-indicator" wx:if="{{refreshing && !loading}}">
+    <view class="refresh-dot"></view>
+    <text class="refresh-text">正在同步课表</text>
   </view>
 
   <!-- Schedule Grid -->
@@ -34,6 +44,8 @@
         <schedule-grid
           schedule="{{schedule}}"
           dates="{{dates}}"
+          compact="{{viewMode === 'term'}}"
+          hideWeekend="{{hideWeekend}}"
           bind:courseclick="onCourseClick"
         />
       </scroll-view>

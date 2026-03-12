@@ -31,6 +31,19 @@
   gap: 16rpx;
 }
 
+.toggle-row {
+  margin-top: 18rpx;
+  padding: 8rpx 4rpx 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toggle-label {
+  font-size: 26rpx;
+  color: #4b5563;
+}
+
 .picker-btn {
   display: flex;
   align-items: center;

@@ -1,11 +1,10 @@
 <!--courses.wxml-->
 <view class="page-container">
-  <!-- Announcements -->
   <view class="announcements card" wx:if="{{announcements.length > 0}}">
     <view class="announcement-header" bindtap="toggleAnnouncements">
       <text class="announcement-title">选课公告</text>
       <text class="announcement-badge">{{announcements.length}}</text>
-      <text class="announcement-arrow">{{showAnnouncements ? '▲' : '▼'}}</text>
+      <text class="announcement-arrow">{{showAnnouncements ? '收起' : '展开'}}</text>
     </view>
     <view class="announcement-list" wx:if="{{showAnnouncements}}">
       <view class="announcement-item" wx:for="{{announcements}}" wx:key="index">
@@ -14,31 +13,70 @@
     </view>
   </view>
 
-  <!-- View Tabs -->
   <view class="view-tabs card">
     <view class="view-tab {{viewMode === 'selected' ? 'active' : ''}}" data-mode="selected" bindtap="switchView">已选课程</view>
     <view class="view-tab {{viewMode === 'available' ? 'active' : ''}}" data-mode="available" bindtap="switchView">可选课程</view>
   </view>
 
-  <!-- Filters (available mode) -->
-  <view class="filters card" wx:if="{{viewMode === 'available'}}">
-    <picker mode="selector" range="{{methods}}" range-key="label" value="{{selectedMethodIdx}}" bindchange="onMethodChange">
-      <view class="picker-btn">
-        <text>{{methods[selectedMethodIdx].label}}</text>
-        <text class="picker-arrow">▼</text>
-      </view>
-    </picker>
+  <view class="card filters-card">
+    <view class="filter-grid">
+      <picker class="picker-item picker-wide" mode="selector" range="{{termList}}" range-key="label" value="{{selectedTermIdx}}" bindchange="onTermChange">
+        <view class="picker-btn picker-wide">
+          <text class="picker-label">学期</text>
+          <text class="picker-value">{{termList[selectedTermIdx] ? termList[selectedTermIdx].label : '选择学期'}}</text>
+        </view>
+      </picker>
+
+      <picker wx:if="{{viewMode === 'available'}}" class="picker-item" mode="selector" range="{{methods}}" range-key="label" value="{{selectedMethodIdx}}" bindchange="onMethodChange">
+        <view class="picker-btn">
+          <text class="picker-label">方式</text>
+          <text class="picker-value">{{methods[selectedMethodIdx].label}}</text>
+        </view>
+      </picker>
+
+      <picker wx:if="{{viewMode === 'available'}}" class="picker-item" mode="selector" range="{{colleges}}" range-key="label" value="{{selectedCollegeIdx}}" bindchange="onCollegeChange">
+        <view class="picker-btn">
+          <text class="picker-label">学院</text>
+          <text class="picker-value">{{colleges[selectedCollegeIdx].label}}</text>
+        </view>
+      </picker>
+
+      <picker wx:if="{{viewMode === 'available'}}" class="picker-item" mode="selector" range="{{categoryOptions}}" range-key="label" value="{{selectedCategoryIdx}}" bindchange="onCategoryChange">
+        <view class="picker-btn">
+          <text class="picker-label">类别</text>
+          <text class="picker-value">{{categoryOptions[selectedCategoryIdx].label}}</text>
+        </view>
+      </picker>
+
+      <picker wx:if="{{viewMode === 'available'}}" class="picker-item" mode="selector" range="{{campuses}}" range-key="label" value="{{selectedCampusIdx}}" bindchange="onCampusChange">
+        <view class="picker-btn">
+          <text class="picker-label">校区</text>
+          <text class="picker-value">{{campuses[selectedCampusIdx].label}}</text>
+        </view>
+      </picker>
+    </view>
+
+    <view class="search-box">
+      <input class="search-input" type="text" placeholder="搜索课程名称 / 代码 / 教师 / 学院" value="{{searchText}}" bindinput="onSearchInput" />
+    </view>
   </view>
 
-  <!-- Stats -->
-  <view class="stats-row" wx:if="{{!loading}}">
-    <view class="stat-chip">
-      <text class="stat-chip-value">{{courseCount}}</text>
-      <text class="stat-chip-label">门课程</text>
+  <view class="stats-grid" wx:if="{{!loading}}">
+    <view class="stat-card">
+      <text class="stat-value">{{courseCount}}</text>
+      <text class="stat-label">{{viewMode === 'selected' ? '已选课程' : '可选课程'}}</text>
     </view>
-    <view class="stat-chip">
-      <text class="stat-chip-value">{{totalCredits}}</text>
-      <text class="stat-chip-label">总学分</text>
+    <view class="stat-card">
+      <text class="stat-value">{{totalCredits}}</text>
+      <text class="stat-label">总学分</text>
+    </view>
+    <view class="stat-card">
+      <text class="stat-value">{{totalHours}}</text>
+      <text class="stat-label">总学时</text>
+    </view>
+    <view class="stat-card">
+      <text class="stat-value">{{collegeCount}}</text>
+      <text class="stat-label">开课学院</text>
     </view>
   </view>
 
@@ -47,29 +85,65 @@
   </view>
 
   <block wx:else>
-    <!-- Course List -->
-    <view class="card" wx:if="{{courses.length > 0}}">
+    <view class="refresh-indicator" wx:if="{{refreshing}}">
+      <view class="refresh-dot"></view>
+      <text class="refresh-text">正在同步选课数据</text>
+    </view>
+
+    <view class="card" wx:if="{{displayCourses.length > 0}}">
       <view
         class="course-item"
-        wx:for="{{courses}}"
-        wx:key="index"
+        wx:for="{{displayCourses}}"
+        wx:key="task_id"
         data-index="{{index}}"
         bindtap="onCourseClick"
       >
         <view class="course-top">
-          <text class="course-name">{{item.course_name}}</text>
-          <text class="tag {{item.course_type === '必修' ? 'tag-red' : 'tag-blue'}}">{{item.course_type}}</text>
-        </view>
-        <view class="course-bottom">
-          <text class="course-info">{{item.teacher}} · {{item.credits}}学分</text>
-          <view class="course-actions">
-            <text class="conflict-btn" wx:if="{{viewMode === 'available'}}" catchtap="onCheckConflict" data-index="{{index}}">冲突检测</text>
-            <text class="course-capacity">{{item.selected_count || 0}}/{{item.capacity || 0}}</text>
+          <view class="course-title">
+            <text class="course-name">{{item.course_name}}</text>
+            <text class="course-code">{{item.course_code}}</text>
           </view>
+          <text class="tag {{item.course_type === '必修' ? 'tag-red' : 'tag-blue'}}">{{item.course_type || '课程'}}</text>
+        </view>
+
+        <view class="course-meta-row">
+          <text class="course-info">{{item.teacher || '未安排教师'}} · {{item.credits || '--'}}学分 · {{item.hours || '--'}}学时</text>
+          <text class="capacity-tag">{{item.selected_count || 0}}/{{item.capacity || 0}}</text>
+        </view>
+
+        <view class="course-meta-row secondary" wx:if="{{item.college || item.campus || item.selection_method}}">
+          <text class="course-subinfo">{{item.college || '--'}} · {{item.campus || '--'}} · {{item.selection_method || '--'}}</text>
+        </view>
+
+        <view class="course-meta-row secondary" wx:if="{{item.schedule_time || item.schedule_location}}">
+          <text class="course-subinfo">{{item.schedule_time || '--'}} {{item.schedule_location || ''}}</text>
+        </view>
+
+        <view class="course-actions">
+          <view class="action-btn action-btn-danger" wx:if="{{viewMode === 'selected'}}" catchtap="onDropCourse" data-index="{{index}}">
+            {{droppingCourseId === item.task_id ? '退课中...' : '退课'}}
+          </view>
+
+          <block wx:if="{{viewMode === 'available'}}">
+            <view class="action-btn action-btn-muted" catchtap="onCheckConflict" data-index="{{index}}">
+              {{checkingConflictId === item.task_id ? '检测中...' : '冲突检测'}}
+            </view>
+            <view
+              class="action-btn {{item.is_selected ? 'action-btn-disabled' : 'action-btn-primary'}}"
+              catchtap="onSelectCourse"
+              data-index="{{index}}"
+            >
+              {{item.is_selected ? '已选' : (selectingCourseId === item.task_id ? '选课中...' : '选课')}}
+            </view>
+          </block>
         </view>
       </view>
     </view>
 
-    <empty-state wx:if="{{courses.length === 0}}" message="暂无课程数据" icon="📚" />
+    <empty-state
+      wx:if="{{displayCourses.length === 0}}"
+      message="{{viewMode === 'selected' ? '暂无已选课程' : '暂无可选课程'}}"
+      iconSrc="/assets/feature/courses.png"
+    />
   </block>
 </view>

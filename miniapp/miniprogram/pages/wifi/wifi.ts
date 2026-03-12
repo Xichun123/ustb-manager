@@ -8,6 +8,7 @@ import {
   type WifiLoginMode,
   unbindWifiMac,
 } from '../../services/wifi'
+import { getWifiPageState, getWifiStudentId, hasSessionId, setWifiPageState } from '../../utils/storage'
 import { formatFlow, formatMoney } from '../../utils/util'
 
 function createIconDataUrl(pathMarkup: string): string {
@@ -23,13 +24,64 @@ const WIFI_ICON_ASSETS = {
 }
 
 const app = getApp<IAppOption>()
+const WIFI_REFRESH_TTL = 60 * 1000
 
-Component({
-  data: {
-    loading: true,
-    loggedIn: false,
-    loginMode: 'authenticated' as WifiLoginMode,
-    wifiStudentId: '',
+function parsePaymentNumber(value: any): number | null {
+  if (typeof value === 'number' && !Number.isNaN(value)) {
+    return value
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.replace(/^[+\s]*/, '').replace(/^¥/, '').trim()
+    if (!normalized) {
+      return null
+    }
+    const parsed = Number(normalized)
+    if (!Number.isNaN(parsed)) {
+      return parsed
+    }
+  }
+
+  return null
+}
+
+function getPaymentAmountDisplay(item: any): string {
+  const payTypeAmount = parsePaymentNumber(item.pay_type)
+  if (payTypeAmount !== null) {
+    return formatMoney(payTypeAmount)
+  }
+
+  const amountValue = parsePaymentNumber(item.amount)
+  if (amountValue !== null) {
+    return formatMoney(amountValue)
+  }
+
+  return String(item.amount || item.pay_type || '--')
+}
+
+function getPaymentDetailDisplay(item: any): string {
+  const payType = typeof item.amount === 'string'
+    ? String(item.amount)
+    : String(item.pay_type || '')
+  const extra = String(item.remark || item.terminal || '').trim()
+
+  if (payType && extra && payType !== extra) {
+    return `${payType} · ${extra}`
+  }
+
+  return payType || extra
+}
+
+function buildInitialData() {
+  const persisted = getWifiPageState()
+  const fallbackMode = hasSessionId() ? 'authenticated' : 'standalone'
+
+  return {
+    loading: !persisted,
+    refreshing: false,
+    loggedIn: persisted ? persisted.loggedIn : false,
+    loginMode: (persisted && persisted.loginMode ? persisted.loginMode : fallbackMode) as WifiLoginMode,
+    wifiStudentId: persisted && persisted.wifiStudentId ? persisted.wifiStudentId : getWifiStudentId(),
     wifiPassword: '',
     captchaCode: '',
     challengeToken: '',
@@ -37,8 +89,8 @@ Component({
     challengeMode: '' as '' | 'direct' | 'webvpn',
     challengeLoading: false,
     loginLoading: false,
-    flow: null as any,
-    flowDisplay: {
+    flow: persisted ? persisted.flow : null,
+    flowDisplay: persisted && persisted.flowDisplay ? persisted.flowDisplay : {
       balance: '--',
       usedFlow: '--',
       usedFlowV4: '--',
@@ -47,18 +99,26 @@ Component({
       status: '--',
       package: '--',
     },
-    onlineDevices: [] as any[],
-    devices: [] as any[],
-    payments: [] as any[],
-    activeSection: 'overview' as string,
+    onlineDevices: persisted && Array.isArray(persisted.onlineDevices) ? persisted.onlineDevices : ([] as any[]),
+    devices: persisted && Array.isArray(persisted.devices) ? persisted.devices : ([] as any[]),
+    payments: persisted && Array.isArray(persisted.payments) ? persisted.payments : ([] as any[]),
+    activeSection: persisted && persisted.activeSection ? persisted.activeSection : ('overview' as string),
     iconAssets: WIFI_ICON_ASSETS,
-  },
+  }
+}
+
+Component({
+  data: buildInitialData(),
 
   lifetimes: {
     attached() {
       if (typeof this.getTabBar === 'function') {
         this.getTabBar().setData({ selected: 3 })
       }
+      const persisted = getWifiPageState()
+      ;(this as any)._wifiLoaded = false
+      ;(this as any)._wifiHasCache = !!persisted
+      ;(this as any)._lastLoadedAt = persisted && persisted.updatedAt ? persisted.updatedAt : 0
     },
   },
 
@@ -67,11 +127,49 @@ Component({
       if (typeof this.getTabBar === 'function') {
         this.getTabBar().setData({ selected: 3 })
       }
-      this.checkWifiStatus()
+      const self = this as any
+      const hasContent = !!(
+        this.data.loggedIn
+        || this.data.wifiStudentId
+        || this.data.flow
+        || this.data.devices.length > 0
+        || this.data.payments.length > 0
+      )
+
+      if (!self._wifiLoaded) {
+        this.checkWifiStatus({ showLoading: !self._wifiHasCache && !hasContent })
+        return
+      }
+
+      if (!hasContent) {
+        this.checkWifiStatus({ showLoading: true })
+        return
+      }
+
+      if (Date.now() - (self._lastLoadedAt || 0) > WIFI_REFRESH_TTL) {
+        this.checkWifiStatus({ showLoading: false })
+      }
     },
   },
 
   methods: {
+    persistState() {
+      const updatedAt = Date.now()
+      setWifiPageState({
+        loggedIn: this.data.loggedIn,
+        loginMode: this.data.loginMode,
+        wifiStudentId: this.data.wifiStudentId,
+        flow: this.data.flow,
+        flowDisplay: this.data.flowDisplay,
+        onlineDevices: this.data.onlineDevices,
+        devices: this.data.devices,
+        payments: this.data.payments,
+        activeSection: this.data.activeSection,
+        updatedAt,
+      })
+      ;(this as any)._lastLoadedAt = updatedAt
+    },
+
     resetChallenge(resetCaptchaCode = true) {
       this.setData({
         challengeToken: '',
@@ -81,8 +179,13 @@ Component({
       })
     },
 
-    async checkWifiStatus() {
-      this.setData({ loading: true })
+    async checkWifiStatus(options?: { showLoading?: boolean }) {
+      const showLoading = !!(options && options.showLoading)
+      if (showLoading) {
+        this.setData({ loading: true })
+      } else {
+        this.setData({ refreshing: true })
+      }
       try {
         const status = await getWifiStatus()
         const authenticatedStudentId = app.globalData.userInfo
@@ -100,7 +203,12 @@ Component({
         })
 
         if (status.logged_in) {
-          await this.loadFlowInfo()
+          await this.loadFlowInfo({ notifyOnError: showLoading })
+          if (this.data.activeSection === 'devices') {
+            await this.loadDevices({ notifyOnError: false })
+          } else if (this.data.activeSection === 'payments') {
+            await this.loadPayments({ notifyOnError: false })
+          }
         } else {
           this.setData({
             flow: null,
@@ -108,18 +216,32 @@ Component({
             devices: [],
             payments: [],
           })
+          this.persistState()
         }
+        ;(this as any)._wifiLoaded = true
       } catch (_e) {
-        this.setData({
-          loggedIn: false,
-          loginMode: app.globalData.isAuthenticated ? 'authenticated' : 'standalone',
-        })
+        if (showLoading) {
+          this.setData({
+            loggedIn: false,
+            loginMode: app.globalData.isAuthenticated ? 'authenticated' : 'standalone',
+            flow: null,
+            onlineDevices: [],
+            devices: [],
+            payments: [],
+          })
+          this.persistState()
+        }
       } finally {
-        this.setData({ loading: false })
+        if (showLoading) {
+          this.setData({ loading: false })
+        } else {
+          this.setData({ refreshing: false })
+        }
       }
     },
 
-    async loadFlowInfo() {
+    async loadFlowInfo(options?: { notifyOnError?: boolean }) {
+      const notifyOnError = !options || options.notifyOnError !== false
       try {
         const flow = await getWifiFlow()
         this.setData({
@@ -135,38 +257,56 @@ Component({
           },
           onlineDevices: flow.online_devices || [],
         })
+        this.persistState()
       } catch (err: any) {
-        wx.showToast({ title: err.message || '加载流量信息失败', icon: 'none' })
+        if (notifyOnError) {
+          wx.showToast({ title: err.message || '加载流量信息失败', icon: 'none' })
+        }
       }
     },
 
-    async loadDevices() {
+    async loadDevices(options?: { notifyOnError?: boolean }) {
+      const notifyOnError = !options || options.notifyOnError !== false
       try {
         const res = await getWifiDevices()
         this.setData({ devices: res.devices || [] })
+        this.persistState()
       } catch (err: any) {
-        wx.showToast({ title: err.message || '加载设备列表失败', icon: 'none' })
+        if (notifyOnError) {
+          wx.showToast({ title: err.message || '加载设备列表失败', icon: 'none' })
+        }
       }
     },
 
-    async loadPayments() {
+    async loadPayments(options?: { notifyOnError?: boolean }) {
+      const notifyOnError = !options || options.notifyOnError !== false
       try {
         const res = await getWifiPayments()
-        this.setData({ payments: res.payments || [] })
+        const payments = (res.payments || []).map((item: any) => ({
+          ...item,
+          amountDisplay: getPaymentAmountDisplay(item),
+          detailDisplay: getPaymentDetailDisplay(item),
+        }))
+        this.setData({ payments })
+        this.persistState()
       } catch (err: any) {
-        wx.showToast({ title: err.message || '加载充值记录失败', icon: 'none' })
+        if (notifyOnError) {
+          wx.showToast({ title: err.message || '加载充值记录失败', icon: 'none' })
+        }
       }
     },
 
     switchSection(e: any) {
       const section = e.currentTarget.dataset.section
-      this.setData({ activeSection: section })
-      if (section === 'devices' && this.data.devices.length === 0) {
-        this.loadDevices()
-      }
-      if (section === 'payments' && this.data.payments.length === 0) {
-        this.loadPayments()
-      }
+      this.setData({ activeSection: section }, () => {
+        this.persistState()
+        if (section === 'devices' && this.data.devices.length === 0) {
+          this.loadDevices({ notifyOnError: true })
+        }
+        if (section === 'payments' && this.data.payments.length === 0) {
+          this.loadPayments({ notifyOnError: true })
+        }
+      })
     },
 
     showLogin() {
@@ -281,7 +421,7 @@ Component({
           captchaCode: '',
         })
         this.resetChallenge()
-        await this.loadFlowInfo()
+        await this.loadFlowInfo({ notifyOnError: true })
       } catch (err: any) {
         wx.showToast({ title: err.message || '登录失败', icon: 'none' })
         await this.loadChallenge(true)
@@ -305,14 +445,14 @@ Component({
       try {
         await unbindWifiMac(mac)
         wx.showToast({ title: '解绑成功', icon: 'success' })
-        this.loadDevices()
+        this.loadDevices({ notifyOnError: true })
       } catch (err: any) {
         wx.showToast({ title: err.message || '解绑失败', icon: 'none' })
       }
     },
 
     refreshFlow() {
-      this.loadFlowInfo()
+      this.loadFlowInfo({ notifyOnError: true })
     },
   },
 })

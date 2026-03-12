@@ -5,6 +5,11 @@
   </view>
 
   <block wx:else>
+    <view class="refresh-indicator" wx:if="{{refreshing}}">
+      <view class="refresh-dot"></view>
+      <text class="refresh-text">正在同步校园网数据</text>
+    </view>
+
     <!-- Not logged in -->
     <view class="card" wx:if="{{!loggedIn}}">
         <view class="login-card">
@@ -141,9 +146,9 @@
           <view class="payment-item" wx:for="{{payments}}" wx:key="index">
             <view class="payment-left">
               <text class="payment-time">{{item.pay_time}}</text>
-              <text class="payment-remark">{{item.remark || item.terminal || ''}}</text>
+              <text class="payment-remark">{{item.detailDisplay || item.remark || item.terminal || ''}}</text>
             </view>
-            <text class="payment-amount">+¥{{item.amount}}</text>
+            <text class="payment-amount">{{item.amountDisplay || item.amount}}</text>
           </view>
         </view>
         <empty-state wx:if="{{payments.length === 0}}" message="暂无充值记录" iconSrc="{{iconAssets.card}}" />

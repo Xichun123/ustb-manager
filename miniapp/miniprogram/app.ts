@@ -1,6 +1,6 @@
 // app.ts
 import { API_BASE_URL } from './config/api'
-import { getSessionId, hasSessionId, removeSessionId, removeUserInfo } from './utils/storage'
+import { clearAll, getSessionId, getUserInfo, hasSessionId } from './utils/storage'
 
 function checkAuth(app: WechatMiniprogram.App.Instance<IAppOption>) {
   const sessionId = getSessionId()
@@ -19,8 +19,8 @@ function checkAuth(app: WechatMiniprogram.App.Instance<IAppOption>) {
         app.globalData.isAuthenticated = true
       } else {
         app.globalData.isAuthenticated = false
-        removeSessionId()
-        removeUserInfo()
+        app.globalData.userInfo = null
+        clearAll()
       }
     },
     fail: () => {
@@ -33,7 +33,7 @@ function checkAuth(app: WechatMiniprogram.App.Instance<IAppOption>) {
 App<IAppOption>({
   globalData: {
     isAuthenticated: hasSessionId(),
-    userInfo: null,
+    userInfo: getUserInfo(),
     baseUrl: API_BASE_URL,
   },
 

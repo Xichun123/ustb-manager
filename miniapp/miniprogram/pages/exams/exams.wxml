@@ -5,6 +5,11 @@
   </view>
 
   <block wx:else>
+    <view class="refresh-indicator" wx:if="{{refreshing}}">
+      <view class="refresh-dot"></view>
+      <text class="refresh-text">正在同步考试安排</text>
+    </view>
+
     <view class="card" wx:if="{{exams.length > 0}}">
       <view
         class="exam-item {{item.isPast ? 'past' : ''}} {{item.isToday ? 'today' : ''}}"
