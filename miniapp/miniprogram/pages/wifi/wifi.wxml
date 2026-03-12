@@ -7,10 +7,44 @@
   <block wx:else>
     <!-- Not logged in -->
     <view class="card" wx:if="{{!loggedIn}}">
-      <view class="not-logged">
-        <text class="not-logged-icon">📶</text>
-        <text class="not-logged-text">校园网未登录</text>
-        <button class="btn-primary" bindtap="showLogin">登录校园网</button>
+        <view class="login-card">
+        <view class="not-logged">
+          <view class="not-logged-icon-wrap">
+            <image class="not-logged-icon" src="/assets/tabbar/wifi-active.png" mode="aspectFit" />
+          </view>
+          <text class="not-logged-text">校园网未登录</text>
+        </view>
+        <view class="modal-desc">
+          <text wx:if="{{loginMode === 'authenticated'}}">已检测到教务登录，只需输入校园网密码并获取验证码。</text>
+          <text wx:else>当前为独立模式，请输入学号、校园网密码并获取验证码。</text>
+        </view>
+        <view class="form-item" wx:if="{{loginMode === 'standalone'}}">
+          <text class="form-label">学号</text>
+          <input class="form-input" type="text" placeholder="请输入学号" value="{{wifiStudentId}}" bindinput="onStudentIdInput" />
+        </view>
+        <view class="form-item">
+          <text class="form-label">校园网密码</text>
+          <input class="form-input" type="text" password placeholder="请输入校园网密码" value="{{wifiPassword}}" bindinput="onPasswordInput" />
+        </view>
+        <view class="form-item">
+          <text class="form-label">验证码</text>
+          <view class="captcha-row">
+            <input class="form-input captcha-input" type="text" placeholder="请输入图中验证码" value="{{captchaCode}}" bindinput="onCaptchaInput" />
+            <button class="captcha-refresh-btn" bindtap="refreshChallenge" loading="{{challengeLoading}}" disabled="{{challengeLoading}}">
+              刷新
+            </button>
+          </view>
+        </view>
+        <view class="captcha-panel" bindtap="refreshChallenge">
+          <image wx:if="{{captchaImage}}" class="captcha-image" src="{{captchaImage}}" mode="aspectFit" />
+          <view class="captcha-placeholder" wx:else>
+            <text>{{challengeLoading ? '加载中...' : ((loginMode === 'standalone' ? (wifiStudentId && wifiPassword) : wifiPassword) ? '点击获取验证码' : (loginMode === 'standalone' ? '先输入学号和密码' : '先输入密码'))}}</text>
+          </view>
+        </view>
+        <text class="captcha-tip">点击验证码图片或刷新按钮可重新获取</text>
+        <button class="btn-primary" style="width: 100%; margin-top: 24rpx;" loading="{{loginLoading}}" disabled="{{loginLoading}}" bindtap="doWifiLogin">
+          登录
+        </button>
       </view>
     </view>
 
@@ -53,6 +87,10 @@
             <text class="list-item-label">套餐</text>
             <text class="list-item-value">{{flowDisplay.package}}</text>
           </view>
+          <view class="list-item" wx:if="{{flow && (flow.used_flow_v4 || flow.used_flow_v6)}}">
+            <text class="list-item-label">IPv4 / IPv6</text>
+            <text class="list-item-value">{{flowDisplay.usedFlowV4}} / {{flowDisplay.usedFlowV6}}</text>
+          </view>
         </view>
 
         <!-- Online Devices -->
@@ -60,7 +98,9 @@
           <view class="card-title">在线设备 ({{onlineDevices.length}})</view>
           <view class="device-item" wx:for="{{onlineDevices}}" wx:key="mac_address">
             <view class="device-info">
-              <text class="device-icon">{{item.device_type === 'mobile' ? '📱' : '💻'}}</text>
+              <view class="device-icon-wrap">
+                <image class="device-icon-image" src="{{item.device_type === 'mobile' ? iconAssets.mobile : iconAssets.desktop}}" mode="aspectFit" />
+              </view>
               <view class="device-detail">
                 <text class="device-name">{{item.terminal_info || item.mac_address}}</text>
                 <text class="device-meta">{{item.ip_address}} · {{item.login_time}}</text>
@@ -76,7 +116,9 @@
           <view class="card-title">绑定设备 ({{devices.length}})</view>
           <view class="device-item" wx:for="{{devices}}" wx:key="mac_address">
             <view class="device-info">
-              <text class="device-icon">{{item.is_dumb_terminal ? '🔌' : '💻'}}</text>
+              <view class="device-icon-wrap">
+                <image class="device-icon-image" src="{{item.is_dumb_terminal ? iconAssets.plug : iconAssets.desktop}}" mode="aspectFit" />
+              </view>
               <view class="device-detail">
                 <text class="device-name">
                   {{item.terminal_info || item.mac_address}}
@@ -89,7 +131,7 @@
             <view class="unbind-btn" data-mac="{{item.mac_address}}" bindtap="unbindDevice">解绑</view>
           </view>
         </view>
-        <empty-state wx:if="{{devices.length === 0}}" message="暂无绑定设备" icon="💻" />
+        <empty-state wx:if="{{devices.length === 0}}" message="暂无绑定设备" iconSrc="{{iconAssets.desktop}}" />
       </block>
 
       <!-- Payments Section -->
@@ -104,22 +146,9 @@
             <text class="payment-amount">+¥{{item.amount}}</text>
           </view>
         </view>
-        <empty-state wx:if="{{payments.length === 0}}" message="暂无充值记录" icon="💳" />
+        <empty-state wx:if="{{payments.length === 0}}" message="暂无充值记录" iconSrc="{{iconAssets.card}}" />
       </block>
     </block>
   </block>
 
-  <!-- Login Modal -->
-  <view class="modal-mask" wx:if="{{showLoginForm}}" bindtap="hideLogin">
-    <view class="modal-content" catchtap="noop">
-      <view class="modal-title">登录校园网</view>
-      <view class="form-item">
-        <text class="form-label">密码</text>
-        <input class="form-input" type="text" password placeholder="请输入校园网密码" bindinput="onPasswordInput" />
-      </view>
-      <button class="btn-primary" style="width: 100%; margin-top: 24rpx;" loading="{{loginLoading}}" disabled="{{loginLoading}}" bindtap="doWifiLogin">
-        登录
-      </button>
-    </view>
-  </view>
 </view>

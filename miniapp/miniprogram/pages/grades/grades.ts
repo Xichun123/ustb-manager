@@ -1,4 +1,5 @@
 import { get } from '../../services/api'
+import { hasSessionId } from '../../utils/storage'
 
 const app = getApp<IAppOption>()
 
@@ -35,7 +36,7 @@ Component({
 
   methods: {
     async loadGrades() {
-      if (!app.globalData.isAuthenticated) {
+      if (!app.globalData.isAuthenticated && !hasSessionId()) {
         wx.redirectTo({ url: '/pages/login/login' })
         return
       }

@@ -48,21 +48,27 @@
       <view class="card-title">功能</view>
       <view class="menu-item" bindtap="goToExams">
         <view class="menu-left">
-          <text class="menu-icon">📝</text>
+          <view class="menu-icon-wrap">
+            <image class="menu-icon" src="/assets/feature/exam.png" mode="aspectFit" />
+          </view>
           <text class="menu-text">考试安排</text>
         </view>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" bindtap="goToCourses">
         <view class="menu-left">
-          <text class="menu-icon">📚</text>
+          <view class="menu-icon-wrap">
+            <image class="menu-icon" src="/assets/feature/courses.png" mode="aspectFit" />
+          </view>
           <text class="menu-text">选课查询</text>
         </view>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" bindtap="goToProgress">
         <view class="menu-left">
-          <text class="menu-icon">📈</text>
+          <view class="menu-icon-wrap">
+            <image class="menu-icon" src="/assets/feature/progress.png" mode="aspectFit" />
+          </view>
           <text class="menu-text">学业进度</text>
         </view>
         <text class="menu-arrow">›</text>

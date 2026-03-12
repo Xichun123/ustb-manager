@@ -57,6 +57,7 @@ class StatusResponse(BaseModel):
 
 class SimpleResponse(BaseModel):
     status: str = Field(..., description="操作状态")
+    session_id: Optional[str] = Field(None, description="更新后的会话ID")
 
     class Config:
         json_schema_extra = {
@@ -70,6 +71,7 @@ class CookieLoginResponse(BaseModel):
     status: str = Field(..., description="登录状态")
     student_id: str = Field(..., description="学号")
     student_name: Optional[str] = Field(None, description="学生姓名")
+    session_id: Optional[str] = Field(None, description="会话ID")
 
     class Config:
         json_schema_extra = {
@@ -256,7 +258,7 @@ async def qr_complete(response: Response, ustb_sid: Optional[str] = Cookie(None)
     new_id = store.rotate(ustb_sid)
     if new_id:
         _set_session_cookie(response, new_id, SESSION_TTL)
-    return {"status": "ok"}
+    return {"status": "ok", "session_id": new_id or ustb_sid}
 
 
 @router.post("/sms/init", response_model=dict, summary="初始化短信登录")
@@ -353,7 +355,7 @@ async def sms_verify(req: SmsVerifyRequest, response: Response, ustb_sid: Option
     new_id = store.rotate(ustb_sid)
     if new_id:
         _set_session_cookie(response, new_id, SESSION_MAX_AGE)
-    return {"status": "ok"}
+    return {"status": "ok", "session_id": new_id or ustb_sid}
 
 
 @router.get("/status", response_model=StatusResponse, summary="检查认证状态")
@@ -483,7 +485,8 @@ async def cookie_login(req: CookieLoginRequest, response: Response):
             return {
                 "status": "success",
                 "student_id": student_id,
-                "student_name": student_info.get("XM")
+                "student_name": student_info.get("XM"),
+                "session_id": session_id,
             }
 
         except httpx.HTTPError as e:

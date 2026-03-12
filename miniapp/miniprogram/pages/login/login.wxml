@@ -26,8 +26,9 @@
       <text class="qr-loading">{{loading ? '加载中...' : '点击加载二维码'}}</text>
     </view>
     <text class="qr-status">{{qrStatus}}</text>
-    <button class="refresh-btn" bindtap="refreshQR" disabled="{{loading}}">
-      刷新二维码
+    <button class="action-btn secondary-action" bindtap="refreshQR" disabled="{{loading}}">
+      <image class="action-icon" src="/assets/action/refresh.png" mode="aspectFit" />
+      <text class="action-text">{{loading ? '正在加载' : '刷新二维码'}}</text>
     </button>
   </view>
 
@@ -57,15 +58,17 @@
         />
       </view>
       <button
-        class="send-btn {{countdown > 0 || smsSending ? 'disabled' : ''}}"
+        class="action-btn inline-secondary-action {{countdown > 0 || smsSending ? 'disabled' : ''}}"
         disabled="{{countdown > 0 || smsSending}}"
         bindtap="sendCode"
       >
-        {{countdown > 0 ? countdown + 's' : '发送验证码'}}
+        <image class="action-icon" src="/assets/action/sms-send.png" mode="aspectFit" />
+        <text class="action-text">{{countdown > 0 ? countdown + 's' : '发送验证码'}}</text>
       </button>
     </view>
-    <button class="submit-btn" loading="{{loading}}" disabled="{{loading}}" bindtap="smsLogin">
-      登录
+    <button class="action-btn stacked-secondary-action" loading="{{loading}}" disabled="{{loading}}" bindtap="smsLogin">
+      <image class="action-icon" src="/assets/action/login-submit.png" mode="aspectFit" />
+      <text class="action-text">登录</text>
     </button>
   </view>
 
@@ -84,8 +87,19 @@
     <view class="cookie-tip">
       <text class="tip-text">从浏览器登录 byyt.ustb.edu.cn 后，复制 Cookie 粘贴到此处</text>
     </view>
-    <button class="submit-btn" loading="{{loading}}" disabled="{{loading}}" bindtap="doCookieLogin">
-      登录
+    <button class="action-btn stacked-secondary-action" loading="{{loading}}" disabled="{{loading}}" bindtap="doCookieLogin">
+      <image class="action-icon" src="/assets/action/cookie-login.png" mode="aspectFit" />
+      <text class="action-text">Cookie 登录</text>
+    </button>
+  </view>
+
+  <view class="wifi-entry">
+    <view class="wifi-divider">
+      <text>或者</text>
+    </view>
+    <button class="action-btn secondary-action wifi-action" bindtap="goWifiOnly">
+      <image class="action-icon" src="/assets/action/wifi-only.png" mode="aspectFit" />
+      <text class="action-text">只使用校园网</text>
     </button>
   </view>
 </view>

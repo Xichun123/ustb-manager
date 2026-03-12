@@ -346,6 +346,8 @@ async def get_flow(request: Request):
             "account": result.get("account", student_id),
             "balance": result.get("balance", 0.0),
             "used_flow": result.get("used_flow", 0.0),
+            "used_flow_v4": result.get("used_flow_v4", 0.0),
+            "used_flow_v6": result.get("used_flow_v6", 0.0),
             "available_flow": result.get("available_flow", 0.0),
             "status": result.get("status", "未知"),
             "package": result.get("package", ""),

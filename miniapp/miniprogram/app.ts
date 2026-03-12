@@ -1,39 +1,43 @@
 // app.ts
-import { getSessionId } from './utils/storage'
+import { API_BASE_URL } from './config/api'
+import { getSessionId, hasSessionId, removeSessionId, removeUserInfo } from './utils/storage'
+
+function checkAuth(app: WechatMiniprogram.App.Instance<IAppOption>) {
+  const sessionId = getSessionId()
+  if (!sessionId) {
+    app.globalData.isAuthenticated = false
+    return
+  }
+
+  wx.request({
+    url: `${app.globalData.baseUrl}/api/auth/status`,
+    header: {
+      Cookie: `ustb_sid=${sessionId}`,
+    },
+    success: (res: any) => {
+      if (res.statusCode === 200 && res.data && res.data.authenticated) {
+        app.globalData.isAuthenticated = true
+      } else {
+        app.globalData.isAuthenticated = false
+        removeSessionId()
+        removeUserInfo()
+      }
+    },
+    fail: () => {
+      // Keep the locally cached session optimistic; a later 401 will clear it.
+      app.globalData.isAuthenticated = hasSessionId()
+    },
+  })
+}
 
 App<IAppOption>({
   globalData: {
-    isAuthenticated: false,
+    isAuthenticated: hasSessionId(),
     userInfo: null,
-    baseUrl: 'https://nike.050919.xyz',
+    baseUrl: API_BASE_URL,
   },
 
   onLaunch() {
-    this.checkAuth()
-  },
-
-  checkAuth() {
-    const sessionId = getSessionId()
-    if (!sessionId) {
-      this.globalData.isAuthenticated = false
-      return
-    }
-
-    wx.request({
-      url: `${this.globalData.baseUrl}/api/auth/status`,
-      header: {
-        Cookie: `ustb_sid=${sessionId}`,
-      },
-      success: (res: any) => {
-        if (res.statusCode === 200 && res.data && res.data.authenticated) {
-          this.globalData.isAuthenticated = true
-        } else {
-          this.globalData.isAuthenticated = false
-        }
-      },
-      fail: () => {
-        this.globalData.isAuthenticated = false
-      },
-    })
+    checkAuth(this)
   },
 })

@@ -1,4 +1,6 @@
 import { get } from '../../services/api'
+import { hasSessionId } from '../../utils/storage'
+import { calculateCurrentWeekFromDates, extractWeekNumbers } from '../../utils/util'
 
 const app = getApp<IAppOption>()
 
@@ -10,10 +12,12 @@ Component({
     selectedTermIdx: 0,
     weekList: [] as number[],
     selectedWeekIdx: 0,
+    currentWeek: 0,
     schedule: [] as any[],
     dates: {} as Record<string, string>,
     currentXn: '',
     currentXq: '',
+    currentTermCode: '',
     courseDetail: null as any,
     showDetail: false,
   },
@@ -39,7 +43,7 @@ Component({
 
   methods: {
     async init() {
-      if (!app.globalData.isAuthenticated) {
+      if (!app.globalData.isAuthenticated && !hasSessionId()) {
         wx.redirectTo({ url: '/pages/login/login' })
         return
       }
@@ -53,7 +57,8 @@ Component({
 
         const xn = currentTerm.XN
         const xq = currentTerm.XQ
-        this.setData({ currentXn: xn, currentXq: xq })
+        const currentTermCode = `${xn}${xq}`
+        this.setData({ currentXn: xn, currentXq: xq, currentTermCode })
 
         // Format term list for picker
         const terms = Array.isArray(termList)
@@ -62,8 +67,7 @@ Component({
         this.setData({ termList: terms })
 
         // Find current term index
-        const currentCode = `${xn}${xq}`
-        const idx = terms.findIndex((t: any) => t.code === currentCode)
+        const idx = terms.findIndex((t: any) => t.code === currentTermCode)
         if (idx >= 0) this.setData({ selectedTermIdx: idx })
 
         // Load weeks
@@ -78,17 +82,28 @@ Component({
     async loadWeeks(xn: string, xq: string) {
       try {
         const weekList = await get('/api/schedule/week-list', { xn, xq })
-        const weeks = Array.isArray(weekList) ? weekList.map((_: any, i: number) => i + 1) : []
-        const currentWeekIdx = weeks.length > 0 ? weeks.length - 1 : 0
-        this.setData({ weekList: weeks, selectedWeekIdx: currentWeekIdx })
+        const weeks = extractWeekNumbers(weekList)
+        let selectedWeekIdx = 0
+        let currentWeek = 0
+
+        if (`${xn}${xq}` === this.data.currentTermCode && weeks.length > 0) {
+          const firstWeekRes = await get('/api/schedule/week', { xn, xq, week: weeks[0] })
+          const calculatedWeek = calculateCurrentWeekFromDates(firstWeekRes.dates, weeks)
+          if (calculatedWeek) {
+            currentWeek = calculatedWeek
+            selectedWeekIdx = Math.max(0, weeks.findIndex((week: number) => week === calculatedWeek))
+          }
+        }
+
+        this.setData({ weekList: weeks, selectedWeekIdx, currentWeek })
 
         if (this.data.viewMode === 'week' && weeks.length > 0) {
-          await this.loadWeekSchedule(xn, xq, weeks[currentWeekIdx])
+          await this.loadWeekSchedule(xn, xq, weeks[selectedWeekIdx])
         } else {
           await this.loadFullSchedule(xn, xq)
         }
       } catch (_e) {
-        this.setData({ weekList: [], schedule: [] })
+        this.setData({ weekList: [], schedule: [], currentWeek: 0 })
       }
     },
 
@@ -127,7 +142,7 @@ Component({
       const mode = e.currentTarget.dataset.mode
       this.setData({ viewMode: mode })
       const { currentXn, currentXq, weekList, selectedWeekIdx } = this.data
-      if (mode === 'week' && weekList.length > 0) {
+      if (mode === 'week' && weekList.length > 0 && weekList[selectedWeekIdx]) {
         this.loadWeekSchedule(currentXn, currentXq, weekList[selectedWeekIdx])
       } else {
         this.loadFullSchedule(currentXn, currentXq)
@@ -152,7 +167,10 @@ Component({
     onWeekChange(e: any) {
       const idx = parseInt(e.detail.value)
       this.setData({ selectedWeekIdx: idx })
-      this.loadWeekSchedule(this.data.currentXn, this.data.currentXq, this.data.weekList[idx])
+      const week = this.data.weekList[idx]
+      if (week) {
+        this.loadWeekSchedule(this.data.currentXn, this.data.currentXq, week)
+      }
     },
 
     // Prevent event propagation (used by modal)

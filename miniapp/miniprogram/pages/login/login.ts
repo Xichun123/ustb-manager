@@ -190,4 +190,8 @@ Page({
     await fetchAndCacheUserInfo()
     wx.switchTab({ url: '/pages/index/index' })
   },
+
+  goWifiOnly() {
+    wx.switchTab({ url: '/pages/wifi/wifi' })
+  },
 })

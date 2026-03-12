@@ -1,6 +1,6 @@
 import { get } from '../../services/api'
-import { getUserInfo, setUserInfo } from '../../utils/storage'
-import { formatFlow, formatMoney } from '../../utils/util'
+import { hasSessionId, getUserInfo, setUserInfo } from '../../utils/storage'
+import { calculateCurrentWeekFromDates, extractWeekNumbers, formatFlow, formatMoney } from '../../utils/util'
 
 const app = getApp<IAppOption>()
 
@@ -37,7 +37,7 @@ Component({
 
   methods: {
     async loadData() {
-      if (!app.globalData.isAuthenticated) {
+      if (!app.globalData.isAuthenticated && !hasSessionId()) {
         wx.redirectTo({ url: '/pages/login/login' })
         return
       }
@@ -74,7 +74,15 @@ Component({
           const xq = termRes.XQ
           try {
             const weekList = await get('/api/schedule/week-list', { xn, xq })
-            const currentWeek = Array.isArray(weekList) ? weekList.length : 1
+            const weeks = extractWeekNumbers(weekList)
+            let currentWeek = weeks[0] || 1
+
+            if (weeks.length > 0) {
+              const firstWeekRes = await get('/api/schedule/week', { xn, xq, week: weeks[0] })
+              const calculatedWeek = calculateCurrentWeekFromDates(firstWeekRes.dates, weeks)
+              currentWeek = calculatedWeek || weeks[0]
+            }
+
             this.setData({ currentWeek })
 
             const scheduleRes = await get('/api/schedule/week', { xn, xq, week: currentWeek })

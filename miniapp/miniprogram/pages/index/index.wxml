@@ -53,15 +53,21 @@
       <view class="card-title">快捷入口</view>
       <view class="quick-grid">
         <view class="quick-item" bindtap="goToExams">
-          <text class="quick-icon">📝</text>
+          <view class="quick-icon-wrap">
+            <image class="quick-icon" src="/assets/feature/exam.png" mode="aspectFit" />
+          </view>
           <text class="quick-label">考试安排</text>
         </view>
         <view class="quick-item" bindtap="goToCourses">
-          <text class="quick-icon">📚</text>
+          <view class="quick-icon-wrap">
+            <image class="quick-icon" src="/assets/feature/courses.png" mode="aspectFit" />
+          </view>
           <text class="quick-label">选课查询</text>
         </view>
         <view class="quick-item" bindtap="goToProgress">
-          <text class="quick-icon">📈</text>
+          <view class="quick-icon-wrap">
+            <image class="quick-icon" src="/assets/feature/progress.png" mode="aspectFit" />
+          </view>
           <text class="quick-label">学业进度</text>
         </view>
       </view>
@@ -69,7 +75,7 @@
 
     <!-- Weekly Schedule -->
     <view class="card">
-      <view class="card-title">第{{currentWeek}}周课表</view>
+      <view class="card-title">{{currentWeek ? ('第' + currentWeek + '周课表') : '本周课表'}}</view>
       <block wx:if="{{schedule.length > 0}}">
         <schedule-grid
           schedule="{{schedule}}"

@@ -1,4 +1,11 @@
-import { getSessionId, setSessionId } from '../utils/storage'
+import {
+  getSessionId,
+  getWifiStudentId,
+  removeSessionId,
+  removeUserInfo,
+  setSessionId,
+  setWifiStudentId,
+} from '../utils/storage'
 
 const app = getApp<IAppOption>()
 
@@ -17,12 +24,11 @@ interface ApiResponse<T = any> {
   header: Record<string, string>
 }
 
-/** Extract session_id from Set-Cookie header */
-function extractSessionId(header: Record<string, string>): string | null {
+function extractCookieValue(header: Record<string, string>, name: string): string | null {
   const setCookie = header['Set-Cookie'] || header['set-cookie'] || ''
   const cookies = Array.isArray(setCookie) ? setCookie : [setCookie]
   for (const cookie of cookies) {
-    const match = cookie.match(/ustb_sid=([^;]+)/)
+    const match = cookie.match(new RegExp(`${name}=([^;]+)`))
     if (match) return match[1]
   }
   return null
@@ -33,8 +39,21 @@ export function request<T = any>(options: RequestOptions): Promise<ApiResponse<T
   const { url, method = 'GET', data, header = {}, skipAuth = false, isWifi = false } = options
 
   const sessionId = getSessionId()
+  const wifiStudentId = getWifiStudentId()
+  const cookieParts: string[] = []
+  const existingCookie = header['Cookie'] || header['cookie']
+
+  if (existingCookie) {
+    cookieParts.push(existingCookie)
+  }
   if (sessionId && !skipAuth) {
-    header['Cookie'] = `ustb_sid=${sessionId}`
+    cookieParts.push(`ustb_sid=${sessionId}`)
+  }
+  if (wifiStudentId) {
+    cookieParts.push(`wifi_student_id=${wifiStudentId}`)
+  }
+  if (cookieParts.length > 0) {
+    header['Cookie'] = cookieParts.join('; ')
   }
 
   if (method === 'POST' && !header['Content-Type']) {
@@ -51,17 +70,27 @@ export function request<T = any>(options: RequestOptions): Promise<ApiResponse<T
       header,
       success: (res: any) => {
         // Save session from Set-Cookie
-        const newSid = extractSessionId(res.header || {})
+        const newSid = extractCookieValue(res.header || {}, 'ustb_sid')
         if (newSid) {
           setSessionId(newSid)
+        }
+        const newWifiStudentId = extractCookieValue(res.header || {}, 'wifi_student_id')
+        if (newWifiStudentId) {
+          setWifiStudentId(newWifiStudentId)
         }
 
         // Handle 401
         if (res.statusCode === 401 && !isWifi) {
           app.globalData.isAuthenticated = false
+          removeSessionId()
+          removeUserInfo()
           wx.redirectTo({ url: '/pages/login/login' })
           reject(new Error('未登录或登录已过期'))
           return
+        }
+
+        if (!skipAuth && !isWifi && res.statusCode >= 200 && res.statusCode < 400) {
+          app.globalData.isAuthenticated = true
         }
 
         resolve({

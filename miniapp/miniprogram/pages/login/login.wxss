@@ -106,48 +106,6 @@
   flex: 1;
 }
 
-.send-btn {
-  height: 80rpx;
-  line-height: 80rpx;
-  padding: 0 24rpx;
-  font-size: 24rpx;
-  background: #1890ff;
-  color: #fff;
-  border-radius: 12rpx;
-  white-space: nowrap;
-  border: none;
-}
-
-.send-btn::after {
-  border: none;
-}
-
-.send-btn.disabled {
-  background: #d9d9d9;
-  color: #999;
-}
-
-.submit-btn {
-  width: 100%;
-  height: 88rpx;
-  line-height: 88rpx;
-  background: #1890ff;
-  color: #fff;
-  font-size: 32rpx;
-  font-weight: 600;
-  border-radius: 12rpx;
-  margin-top: 32rpx;
-  border: none;
-}
-
-.submit-btn::after {
-  border: none;
-}
-
-.submit-btn[disabled] {
-  background: #d9d9d9;
-}
-
 .cookie-tip {
   padding: 16rpx;
   background: #e6f7ff;
@@ -196,15 +154,95 @@
   margin-bottom: 24rpx;
 }
 
-.refresh-btn {
-  padding: 16rpx 48rpx;
-  font-size: 28rpx;
-  background: #fff;
-  color: #1890ff;
-  border: 1rpx solid #1890ff;
-  border-radius: 12rpx;
+.wifi-entry {
+  margin-top: 40rpx;
 }
 
-.refresh-btn::after {
+.wifi-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 24rpx;
+  margin-bottom: 24rpx;
+}
+
+.wifi-divider::before,
+.wifi-divider::after {
+  content: '';
+  width: 96rpx;
+  height: 1rpx;
+  background: #e8e8e8;
+  margin: 0 16rpx;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14rpx;
+  border-radius: 18rpx;
   border: none;
+  box-sizing: border-box;
+}
+
+.action-btn::after {
+  border: none;
+}
+
+.action-icon {
+  width: 32rpx;
+  height: 32rpx;
+  flex-shrink: 0;
+}
+
+.action-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.secondary-action {
+  min-width: 252rpx;
+  height: 80rpx;
+  padding: 0 30rpx;
+  background: #f7fbff;
+  color: #1890ff;
+  box-shadow: inset 0 0 0 1.5rpx rgba(24, 144, 255, 0.28);
+}
+
+.secondary-action[disabled] {
+  opacity: 0.65;
+}
+
+.inline-secondary-action {
+  min-width: 196rpx;
+  height: 80rpx;
+  padding: 0 24rpx;
+  background: #f7fbff;
+  color: #1890ff;
+  box-shadow: inset 0 0 0 1.5rpx rgba(24, 144, 255, 0.28);
+}
+
+.inline-secondary-action.disabled {
+  opacity: 0.65;
+}
+
+.stacked-secondary-action {
+  min-width: 256rpx;
+  height: 80rpx;
+  margin: 28rpx auto 0;
+  padding: 0 30rpx;
+  background: #f7fbff;
+  color: #1890ff;
+  box-shadow: inset 0 0 0 1.5rpx rgba(24, 144, 255, 0.28);
+}
+
+.stacked-secondary-action[disabled] {
+  opacity: 0.65;
+}
+
+.wifi-action {
+  min-width: 252rpx;
+  margin: 0 auto;
 }

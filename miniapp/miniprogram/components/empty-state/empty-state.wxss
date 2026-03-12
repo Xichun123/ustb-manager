@@ -11,6 +11,23 @@
   margin-bottom: 24rpx;
 }
 
+.empty-icon-wrap {
+  width: 112rpx;
+  height: 112rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24rpx;
+  border-radius: 28rpx;
+  background: linear-gradient(180deg, #f4f8ff 0%, #edf4ff 100%);
+}
+
+.empty-icon-image {
+  width: 72rpx;
+  height: 72rpx;
+  display: block;
+}
+
 .empty-text {
   font-size: 28rpx;
   color: #999;

@@ -8,6 +8,10 @@ export function getSessionId(): string {
   return wx.getStorageSync(STORAGE_KEYS.SESSION_ID) || ''
 }
 
+export function hasSessionId(): boolean {
+  return !!getSessionId()
+}
+
 export function setSessionId(sid: string): void {
   wx.setStorageSync(STORAGE_KEYS.SESSION_ID, sid)
 }
@@ -43,6 +47,10 @@ export function getWifiStudentId(): string {
 
 export function setWifiStudentId(id: string): void {
   wx.setStorageSync(STORAGE_KEYS.WIFI_STUDENT_ID, id)
+}
+
+export function removeWifiStudentId(): void {
+  wx.removeStorageSync(STORAGE_KEYS.WIFI_STUDENT_ID)
 }
 
 export function clearAll(): void {

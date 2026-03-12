@@ -73,3 +73,44 @@ export const COURSE_TEXT_COLORS = [
   '#1890ff', '#52c41a', '#fa8c16', '#ff4d4f', '#722ed1',
   '#13c2c2', '#a0d911', '#eb2f96', '#fadb14', '#389e0d',
 ]
+
+export const extractWeekNumbers = (weekList: any[]): number[] => {
+  if (!Array.isArray(weekList)) return []
+
+  return weekList
+    .map((item) => {
+      if (typeof item === 'number') return item
+      if (item && typeof item === 'object') {
+        const value = item.ZC !== undefined && item.ZC !== null ? item.ZC : item.zc
+        const parsed = Number(value)
+        return Number.isFinite(parsed) ? parsed : null
+      }
+      return null
+    })
+    .filter((week): week is number => week !== null && week > 0 && week !== 99)
+}
+
+export const calculateCurrentWeekFromDates = (
+  firstWeekDates: Record<string, string> | null | undefined,
+  availableWeeks: number[],
+): number | null => {
+  if (!firstWeekDates || availableWeeks.length === 0) return null
+
+  const firstMonday = firstWeekDates['1'] || firstWeekDates[1 as unknown as keyof typeof firstWeekDates]
+  if (!firstMonday) return null
+
+  const firstDate = new Date(String(firstMonday))
+  if (Number.isNaN(firstDate.getTime())) return null
+
+  const today = new Date()
+  firstDate.setHours(0, 0, 0, 0)
+  today.setHours(0, 0, 0, 0)
+
+  const diffDays = Math.floor((today.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24))
+  const calculatedWeek = Math.floor(diffDays / 7) + 1
+  const minWeek = availableWeeks[0]
+  const maxWeek = availableWeeks[availableWeeks.length - 1]
+
+  if (Number.isNaN(calculatedWeek)) return null
+  return Math.max(minWeek, Math.min(calculatedWeek, maxWeek))
+}

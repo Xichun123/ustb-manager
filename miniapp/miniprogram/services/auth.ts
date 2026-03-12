@@ -1,5 +1,5 @@
 import { request, get, post } from './api'
-import { setSessionId, setUserInfo, removeSessionId, removeUserInfo, clearAll } from '../utils/storage'
+import { setSessionId, setUserInfo, clearAll } from '../utils/storage'
 
 const app = getApp<IAppOption>()
 
@@ -31,8 +31,12 @@ export async function pollQRStatus(): Promise<{ status: string }> {
 }
 
 /** Complete QR login */
-export async function completeQRLogin(): Promise<{ status: string }> {
-  return post('/api/auth/qr/complete')
+export async function completeQRLogin(): Promise<{ status: string; session_id?: string }> {
+  const res = await post<{ status: string; session_id?: string }>('/api/auth/qr/complete')
+  if (res.session_id) {
+    setSessionId(res.session_id)
+  }
+  return res
 }
 
 /** Initialize SMS login */
@@ -66,7 +70,7 @@ export async function sendSMS(phone: string): Promise<void> {
 
 /** Verify SMS code */
 export async function verifySMS(phone: string, code: string): Promise<void> {
-  const res = await request({
+  const res = await request<{ status: string; session_id?: string }>({
     url: '/api/auth/sms/verify',
     method: 'POST',
     data: { phone, code },
@@ -74,18 +78,24 @@ export async function verifySMS(phone: string, code: string): Promise<void> {
   if (res.statusCode !== 200) {
     throw new Error('验证码错误或已过期')
   }
+  if (res.data.session_id) {
+    setSessionId(res.data.session_id)
+  }
   app.globalData.isAuthenticated = true
 }
 
 /** Cookie login */
-export async function cookieLogin(cookies: string): Promise<{ student_id: string; student_name: string }> {
-  const res = await request<{ status: string; student_id: string; student_name: string }>({
+export async function cookieLogin(cookies: string): Promise<{ student_id: string; student_name: string; session_id?: string }> {
+  const res = await request<{ status: string; student_id: string; student_name: string; session_id?: string }>({
     url: '/api/auth/cookie/login',
     method: 'POST',
     data: { cookies },
     skipAuth: true,
   })
   if (res.statusCode === 200) {
+    if (res.data.session_id) {
+      setSessionId(res.data.session_id)
+    }
     app.globalData.isAuthenticated = true
     return res.data
   }

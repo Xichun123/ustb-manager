@@ -15,12 +15,15 @@
           <text class="picker-arrow">▼</text>
         </view>
       </picker>
-      <picker wx:if="{{viewMode === 'week'}}" mode="selector" range="{{weekList}}" value="{{selectedWeekIdx}}" bindchange="onWeekChange">
+      <picker wx:if="{{viewMode === 'week' && weekList.length > 0}}" mode="selector" range="{{weekList}}" value="{{selectedWeekIdx}}" bindchange="onWeekChange">
         <view class="picker-btn">
-          <text>第{{weekList[selectedWeekIdx]}}周</text>
+          <text>第{{weekList[selectedWeekIdx]}}周{{currentWeek && weekList[selectedWeekIdx] === currentWeek ? ' (当前)' : ''}}</text>
           <text class="picker-arrow">▼</text>
         </view>
       </picker>
+      <view wx:elif="{{viewMode === 'week'}}" class="picker-btn">
+        <text>选择周次</text>
+      </view>
     </view>
   </view>
 
