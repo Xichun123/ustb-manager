@@ -1,4 +1,14 @@
-import { initQRLogin, pollQRStatus, completeQRLogin, initSMSLogin, sendSMS, verifySMS, cookieLogin, fetchAndCacheUserInfo } from '../../services/auth'
+import {
+  checkAuthStatus,
+  initQRLogin,
+  pollQRStatus,
+  completeQRLogin,
+  initSMSLogin,
+  sendSMS,
+  verifySMS,
+  cookieLogin,
+  fetchAndCacheUserInfo,
+} from '../../services/auth'
 
 const app = getApp<IAppOption>()
 
@@ -22,10 +32,12 @@ Page({
 
   _countdownTimer: null as any,
   _pollTimer: null as any,
+  _pollingInFlight: false,
+  _completingQR: false,
 
   onUnload() {
     if (this._countdownTimer) clearInterval(this._countdownTimer)
-    if (this._pollTimer) clearInterval(this._pollTimer)
+    this.stopPolling()
   },
 
   onLoad() {
@@ -37,8 +49,16 @@ Page({
   switchTab(e: any) {
     const tab = e.currentTarget.dataset.tab
     this.setData({ activeTab: tab })
-    if (tab === 'qr' && !this.data.qrImage) {
+    if (tab !== 'qr') {
+      this.stopPolling()
+      return
+    }
+    if (!this.data.qrImage) {
       this.initQR()
+      return
+    }
+    if (!this.data.qrPolling && this.data.qrStatus !== '二维码已过期，请刷新' && this.data.qrStatus !== '登录成功！') {
+      this.startPolling()
     }
   },
 
@@ -61,12 +81,26 @@ Page({
     try {
       this.setData({ smsSending: true })
 
-      if (!this.data.smsInited) {
+      const ensureSmsSession = async (force = false) => {
+        if (!force && this.data.smsInited) {
+          return
+        }
         await initSMSLogin()
         this.setData({ smsInited: true })
       }
 
-      await sendSMS(phone)
+      await ensureSmsSession()
+
+      try {
+        await sendSMS(phone)
+      } catch (err: any) {
+        if (!err || err.message !== '未登录或登录已过期') {
+          throw err
+        }
+        await ensureSmsSession(true)
+        await sendSMS(phone)
+      }
+
       wx.showToast({ title: '验证码已发送', icon: 'success' })
 
       // Start countdown
@@ -131,9 +165,15 @@ Page({
   // ===== QR Login =====
   async initQR() {
     try {
+      this.stopPolling()
+      this._completingQR = false
       this.setData({ loading: true, qrStatus: '加载中...' })
       const data = await initQRLogin()
-      this.setData({ qrImage: data.qr_image, qrStatus: '请使用微信扫描二维码' })
+      this.setData({
+        qrImage: data.qr_image,
+        qrStatus: '请使用微信扫描二维码',
+        qrPolling: false,
+      })
       this.startPolling()
     } catch (err: any) {
       if (err.message === 'already_authenticated') {
@@ -148,10 +188,18 @@ Page({
   },
 
   startPolling() {
-    if (this._pollTimer) clearInterval(this._pollTimer)
-
+    this.stopPolling()
     this.setData({ qrPolling: true })
-    this._pollTimer = setInterval(async () => {
+    const pollOnce = async () => {
+      if (!this.data.qrPolling || this.data.activeTab !== 'qr') {
+        return
+      }
+      if (this._pollingInFlight) {
+        this._pollTimer = setTimeout(pollOnce, 1200)
+        return
+      }
+
+      this._pollingInFlight = true
       try {
         const res = await pollQRStatus()
         switch (res.status) {
@@ -162,33 +210,104 @@ Page({
             this.setData({ qrStatus: '已扫描，请在手机上确认' })
             break
           case 'success':
-            clearInterval(this._pollTimer)
             this.setData({ qrPolling: false, qrStatus: '登录成功！' })
-            await completeQRLogin()
-            await this.onLoginSuccess()
-            break
+            await this.handleQRSuccess()
+            return
           case 'expired':
-            clearInterval(this._pollTimer)
             this.setData({ qrPolling: false, qrStatus: '二维码已过期，请刷新' })
+            return
+          case 'error':
+            this.setData({
+              qrPolling: false,
+              qrStatus: res.message || '扫码登录失败，请刷新二维码重试',
+            })
+            wx.showToast({ title: '扫码登录失败', icon: 'none' })
+            return
+          default:
+            this.setData({ qrStatus: '等待扫描...' })
             break
         }
-      } catch (_e) {
-        // Polling error, continue
+      } catch (err: any) {
+        const message = err && err.message ? err.message : '扫码状态获取失败'
+        console.error('QR poll failed:', err)
+        if (message.indexOf('二维码会话已失效') !== -1) {
+          this.setData({ qrPolling: false, qrStatus: message })
+          wx.showToast({ title: '二维码已失效', icon: 'none' })
+          return
+        }
+        this.setData({ qrStatus: message })
+      } finally {
+        this._pollingInFlight = false
       }
-    }, 2000)
+
+      if (this.data.qrPolling && this.data.activeTab === 'qr') {
+        this._pollTimer = setTimeout(pollOnce, 2000)
+      }
+    }
+
+    pollOnce()
+  },
+
+  stopPolling() {
+    if (this._pollTimer) {
+      clearTimeout(this._pollTimer)
+      this._pollTimer = null
+    }
+    this._pollingInFlight = false
+    if (this.data.qrPolling) {
+      this.setData({ qrPolling: false })
+    }
+  },
+
+  async handleQRSuccess() {
+    if (this._completingQR) {
+      return
+    }
+
+    this._completingQR = true
+    try {
+      await completeQRLogin()
+    } catch (err: any) {
+      console.error('Complete QR login failed:', err)
+      const authStatus = await checkAuthStatus().catch(() => null)
+      if (!authStatus || !authStatus.authenticated) {
+        this.setData({
+          qrPolling: false,
+          qrStatus: err && err.message ? err.message : '登录完成失败，请刷新二维码重试',
+        })
+        wx.showToast({ title: '扫码完成失败', icon: 'none' })
+        return
+      }
+    }
+
+    await this.onLoginSuccess()
   },
 
   refreshQR() {
-    if (this._pollTimer) clearInterval(this._pollTimer)
-    this.setData({ qrImage: '', qrStatus: '' })
+    this.stopPolling()
+    this._completingQR = false
+    this.setData({ qrImage: '', qrStatus: '', qrPolling: false })
     this.initQR()
   },
 
   // ===== Common =====
   async onLoginSuccess() {
     app.globalData.isAuthenticated = true
+    app.globalData.authBootstrapInProgress = false
     await fetchAndCacheUserInfo()
-    wx.switchTab({ url: '/pages/index/index' })
+    await new Promise<void>((resolve) => {
+      wx.switchTab({
+        url: '/pages/index/index',
+        success: () => resolve(),
+        fail: (err) => {
+          console.error('switchTab after login failed:', err)
+          wx.reLaunch({
+            url: '/pages/index/index',
+            complete: () => resolve(),
+          })
+        },
+      })
+    })
   },
 
   goWifiOnly() {

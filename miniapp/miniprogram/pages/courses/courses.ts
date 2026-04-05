@@ -1,5 +1,7 @@
 import { get, post } from '../../services/api'
-import { getCoursesPageState, hasSessionId, setCoursesPageState } from '../../utils/storage'
+import { getCoursesPageState, setCoursesPageState } from '../../utils/storage'
+
+const app = getApp<IAppOption>()
 
 function buildDefaultCategoryOptions() {
   return [{ value: '', label: '全部类别' }]
@@ -115,8 +117,10 @@ Page({
   },
 
   async init(options?: { showLoading?: boolean }) {
-    if (!hasSessionId()) {
-      wx.redirectTo({ url: '/pages/login/login' })
+    if (!app.globalData.isAuthenticated) {
+      if (!app.globalData.authBootstrapInProgress) {
+        wx.redirectTo({ url: '/pages/login/login' })
+      }
       return
     }
 

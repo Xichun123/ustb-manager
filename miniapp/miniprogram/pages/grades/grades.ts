@@ -1,5 +1,5 @@
 import { get } from '../../services/api'
-import { getGradesPageState, hasSessionId, setGradesPageState } from '../../utils/storage'
+import { getGradesPageState, setGradesPageState } from '../../utils/storage'
 
 const app = getApp<IAppOption>()
 const GRADES_REFRESH_TTL = 5 * 60 * 1000
@@ -71,8 +71,10 @@ Component({
     },
 
     async loadGrades(options?: { showLoading?: boolean }) {
-      if (!app.globalData.isAuthenticated && !hasSessionId()) {
-        wx.redirectTo({ url: '/pages/login/login' })
+      if (!app.globalData.isAuthenticated) {
+        if (!app.globalData.authBootstrapInProgress) {
+          wx.redirectTo({ url: '/pages/login/login' })
+        }
         return
       }
 

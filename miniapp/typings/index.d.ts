@@ -3,6 +3,7 @@
 interface IAppOption {
   globalData: {
     isAuthenticated: boolean
+    authBootstrapInProgress: boolean
     userInfo: {
       name: string
       student_id: string

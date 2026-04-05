@@ -1,6 +1,7 @@
 import base64
 import json
 import re
+import logging
 from fastapi import APIRouter, Response, HTTPException, Cookie
 from fastapi.responses import StreamingResponse
 from sse_starlette.sse import EventSourceResponse
@@ -15,6 +16,7 @@ from ..rate_limit import sms_rate_limiter
 from ustb_sso._exceptions import APIError
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
 
 
 # --------------- helpers ---------------
@@ -180,6 +182,9 @@ async def qr_poll(ustb_sid: Optional[str] = Cookie(None)):
     if not session:
         raise HTTPException(401, "Session expired")
 
+    if session.last_error:
+        return {"status": "error", "message": session.last_error}
+
     if session.state == AuthState.QR_READY:
         await auth_service.start_qr_background_monitor(session)
 
@@ -252,6 +257,8 @@ async def qr_complete(response: Response, ustb_sid: Optional[str] = Cookie(None)
     if not ustb_sid:
         raise HTTPException(401, "No session")
     session = store.get(ustb_sid)
+    if session:
+        logger.info("qr_complete called: sid=%s state=%s authenticated=%s student_id=%s", ustb_sid, session.state, session.authenticated, session.student_id)
     if not session or session.state != AuthState.ACTIVE:
         raise HTTPException(401, "Not authenticated")
 
@@ -349,8 +356,13 @@ async def sms_verify(req: SmsVerifyRequest, response: Response, ustb_sid: Option
 
     try:
         await auth_service.verify_sms(session, req.phone, req.code)
-    except Exception as e:
+    except APIError as e:
         raise HTTPException(401, str(e))
+    except ValueError as e:
+        raise HTTPException(401, str(e))
+    except Exception as e:
+        logger.exception("SMS verify failed")
+        raise HTTPException(502, str(e) or "SMS login completion failed")
 
     new_id = store.rotate(ustb_sid)
     if new_id:

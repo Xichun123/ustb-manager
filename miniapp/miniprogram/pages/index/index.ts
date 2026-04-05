@@ -3,7 +3,6 @@ import {
   getDashboardPageState,
   getScheduleHideWeekend,
   getUserInfo,
-  hasSessionId,
   setDashboardPageState,
   setUserInfo,
 } from '../../utils/storage'
@@ -172,8 +171,10 @@ Component({
     },
 
     async loadData(options?: { showLoading?: boolean }) {
-      if (!app.globalData.isAuthenticated && !hasSessionId()) {
-        wx.redirectTo({ url: '/pages/login/login' })
+      if (!app.globalData.isAuthenticated) {
+        if (!app.globalData.authBootstrapInProgress) {
+          wx.redirectTo({ url: '/pages/login/login' })
+        }
         return
       }
 

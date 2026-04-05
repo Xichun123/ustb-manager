@@ -2,7 +2,6 @@ import { get } from '../../services/api'
 import {
   getScheduleHideWeekend,
   getSchedulePageState,
-  hasSessionId,
   setScheduleHideWeekend,
   setSchedulePageState,
 } from '../../utils/storage'
@@ -184,8 +183,10 @@ Component({
     },
 
     async init(options?: { showLoading?: boolean }) {
-      if (!app.globalData.isAuthenticated && !hasSessionId()) {
-        wx.redirectTo({ url: '/pages/login/login' })
+      if (!app.globalData.isAuthenticated) {
+        if (!app.globalData.authBootstrapInProgress) {
+          wx.redirectTo({ url: '/pages/login/login' })
+        }
         return
       }
 

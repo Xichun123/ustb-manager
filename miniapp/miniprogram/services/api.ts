@@ -15,6 +15,7 @@ interface RequestOptions {
   header?: Record<string, string>
   skipAuth?: boolean
   isWifi?: boolean
+  captureSessionCookie?: boolean
 }
 
 interface ApiResponse<T = any> {
@@ -35,7 +36,15 @@ function extractCookieValue(header: Record<string, string>, name: string): strin
 
 /** Core request function wrapping wx.request as Promise */
 export function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>> {
-  const { url, method = 'GET', data, header = {}, skipAuth = false, isWifi = false } = options
+  const {
+    url,
+    method = 'GET',
+    data,
+    header = {},
+    skipAuth = false,
+    isWifi = false,
+    captureSessionCookie = true,
+  } = options
 
   const sessionId = getSessionId()
   const wifiStudentId = getWifiStudentId()
@@ -45,7 +54,8 @@ export function request<T = any>(options: RequestOptions): Promise<ApiResponse<T
   if (existingCookie) {
     cookieParts.push(existingCookie)
   }
-  if (sessionId && !skipAuth) {
+  // Login bootstrap endpoints still rely on the temporary auth session cookie.
+  if (sessionId) {
     cookieParts.push(`ustb_sid=${sessionId}`)
   }
   if (wifiStudentId) {
@@ -60,6 +70,11 @@ export function request<T = any>(options: RequestOptions): Promise<ApiResponse<T
   }
 
   const fullUrl = url.startsWith('http') ? url : `${app.globalData.baseUrl}${url}`
+  const isAuthStatusRequest = url.indexOf('/api/auth/status') !== -1 || url.indexOf('/auth/status') !== -1
+
+  if (!skipAuth && !isWifi && app.globalData.authBootstrapInProgress && !isAuthStatusRequest) {
+    return Promise.reject(new Error('认证准备中'))
+  }
 
   return new Promise((resolve, reject) => {
     wx.request({
@@ -70,7 +85,7 @@ export function request<T = any>(options: RequestOptions): Promise<ApiResponse<T
       success: (res: any) => {
         // Save session from Set-Cookie
         const newSid = extractCookieValue(res.header || {}, 'ustb_sid')
-        if (newSid) {
+        if (newSid && captureSessionCookie) {
           setSessionId(newSid)
         }
         const newWifiStudentId = extractCookieValue(res.header || {}, 'wifi_student_id')
@@ -78,18 +93,23 @@ export function request<T = any>(options: RequestOptions): Promise<ApiResponse<T
           setWifiStudentId(newWifiStudentId)
         }
 
+        // Ignore late responses from an old session so they don't wipe a newer login flow.
+        const effectiveSessionId = captureSessionCookie ? (newSid || sessionId) : sessionId
+        const sessionStillCurrent = effectiveSessionId
+          ? getSessionId() === effectiveSessionId
+          : !getSessionId()
+
         // Handle 401
-        if (res.statusCode === 401 && !isWifi) {
-          app.globalData.isAuthenticated = false
-          app.globalData.userInfo = null
-          clearAll()
-          wx.redirectTo({ url: '/pages/login/login' })
+        if (res.statusCode === 401 && !isWifi && !skipAuth) {
+          if (sessionStillCurrent && !app.globalData.authBootstrapInProgress) {
+            app.globalData.isAuthenticated = false
+            app.globalData.authBootstrapInProgress = false
+            app.globalData.userInfo = null
+            clearAll()
+            wx.redirectTo({ url: '/pages/login/login' })
+          }
           reject(new Error('未登录或登录已过期'))
           return
-        }
-
-        if (!skipAuth && !isWifi && res.statusCode >= 200 && res.statusCode < 400) {
-          app.globalData.isAuthenticated = true
         }
 
         resolve({

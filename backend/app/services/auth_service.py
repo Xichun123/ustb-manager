@@ -21,6 +21,8 @@ async def init_qr_auth(session: Session) -> bytes:
         session.procedure = proc
         session.state = AuthState.QR_READY
         session.qr_image = qr_bytes
+        session.last_error = None
+        session.qr_monitor_started = False
     return qr_bytes
 
 
@@ -31,9 +33,10 @@ async def start_qr_background_monitor(session: Session):
         return
 
     # Prevent duplicate monitors
-    if getattr(session, '_qr_monitor_started', False):
+    if session.qr_monitor_started:
         return
-    session._qr_monitor_started = True
+    session.qr_monitor_started = True
+    session.last_error = None
 
     async def _monitor():
         try:
@@ -48,10 +51,12 @@ async def start_qr_background_monitor(session: Session):
             if pass_code is None:
                 async with session.lock:
                     session.state = AuthState.EXPIRED
+                    session.last_error = None
                 return
 
             async with session.lock:
                 session.state = AuthState.CONFIRMED
+                session.last_error = None
 
             def _complete():
                 return proc.complete_auth(pass_code)
@@ -99,6 +104,10 @@ async def start_qr_background_monitor(session: Session):
             logger.info(f"QR background monitor completed, student_id={student_id}")
         except Exception as e:
             logger.error(f"QR background monitor error: {e}")
+            async with session.lock:
+                session.last_error = str(e) or "QR background monitor error"
+        finally:
+            session.qr_monitor_started = False
 
     asyncio.create_task(_monitor())
 
@@ -233,24 +242,45 @@ async def verify_sms(session: Session, phone: str, code: str) -> None:
 
     def _sync():
         token = proc.submit_sms_code(phone, code)
-        proc.complete_sms_auth(token)
+        try:
+            proc.complete_sms_auth(token)
+        except exceptions.BadResponseError as e:
+            logger.warning("SMS complete_auth response parse failed, falling back to cookie verification: %s", e)
 
     await asyncio.to_thread(_sync)
 
-    # 获取学生ID和Cookie
+    # SMS auth can complete before the BYYT session is fully ready.
+    # Retry the student-info request to avoid false negatives immediately after auth.
     def _get_student_id():
-        resp = session.client.post("https://byyt.ustb.edu.cn/UserManager/queryxsxx", data="")
-        resp.raise_for_status()
-        data = resp.json()
-        student_id = data.get("content", {}).get("XH") or data.get("XH") or data.get("ID")
-        
-        # 获取cookies
-        cookies = {}
-        for cookie in session.client.cookies.jar:
-            if 'ustb.edu.cn' in cookie.domain:
-                cookies[cookie.name] = cookie.value
-        
-        return student_id, cookies
+        import time as time_module
+
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                resp = session.client.post("https://byyt.ustb.edu.cn/UserManager/queryxsxx", data="")
+                if resp.status_code == 302 or "session/invalid" in str(resp.url):
+                    if attempt < max_retries - 1:
+                        time_module.sleep(1)
+                        continue
+                    raise Exception("Session invalid after SMS auth completion")
+
+                resp.raise_for_status()
+                data = resp.json()
+                student_id = data.get("content", {}).get("XH") or data.get("XH") or data.get("ID")
+                if not student_id:
+                    raise Exception("Student ID not found after SMS auth completion")
+
+                cookies = {}
+                for cookie in session.client.cookies.jar:
+                    if 'ustb.edu.cn' in cookie.domain:
+                        cookies[cookie.name] = cookie.value
+
+                return student_id, cookies
+            except Exception:
+                if attempt < max_retries - 1:
+                    time_module.sleep(1)
+                    continue
+                raise
 
     student_id, cookies = await asyncio.to_thread(_get_student_id)
 

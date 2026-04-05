@@ -1,5 +1,7 @@
 import { get } from '../../services/api'
-import { getExamsPageState, hasSessionId, setExamsPageState } from '../../utils/storage'
+import { getExamsPageState, setExamsPageState } from '../../utils/storage'
+
+const app = getApp<IAppOption>()
 
 const EXAMS_REFRESH_TTL = 10 * 60 * 1000
 
@@ -52,8 +54,10 @@ Page({
   },
 
   async loadExams(options?: { showLoading?: boolean }) {
-    if (!hasSessionId()) {
-      wx.redirectTo({ url: '/pages/login/login' })
+    if (!app.globalData.isAuthenticated) {
+      if (!app.globalData.authBootstrapInProgress) {
+        wx.redirectTo({ url: '/pages/login/login' })
+      }
       return
     }
 

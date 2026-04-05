@@ -1,5 +1,7 @@
 import { get } from '../../services/api'
-import { getProgressPageState, hasSessionId, setProgressPageState } from '../../utils/storage'
+import { getProgressPageState, setProgressPageState } from '../../utils/storage'
+
+const app = getApp<IAppOption>()
 
 const PROGRESS_REFRESH_TTL = 10 * 60 * 1000
 
@@ -117,8 +119,10 @@ Page({
   },
 
   async loadCredits(options?: { showLoading?: boolean }) {
-    if (!hasSessionId()) {
-      wx.redirectTo({ url: '/pages/login/login' })
+    if (!app.globalData.isAuthenticated) {
+      if (!app.globalData.authBootstrapInProgress) {
+        wx.redirectTo({ url: '/pages/login/login' })
+      }
       return
     }
 
@@ -181,8 +185,10 @@ Page({
   },
 
   async loadRequired(options?: { showLoading?: boolean }) {
-    if (!hasSessionId()) {
-      wx.redirectTo({ url: '/pages/login/login' })
+    if (!app.globalData.isAuthenticated) {
+      if (!app.globalData.authBootstrapInProgress) {
+        wx.redirectTo({ url: '/pages/login/login' })
+      }
       return
     }
 
@@ -212,8 +218,10 @@ Page({
   },
 
   async loadPlan(options?: { showLoading?: boolean }) {
-    if (!hasSessionId()) {
-      wx.redirectTo({ url: '/pages/login/login' })
+    if (!app.globalData.isAuthenticated) {
+      if (!app.globalData.authBootstrapInProgress) {
+        wx.redirectTo({ url: '/pages/login/login' })
+      }
       return
     }
 

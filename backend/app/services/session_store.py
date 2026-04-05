@@ -40,6 +40,8 @@ class Session:
     authenticated: bool = False
     student_id: Optional[str] = None
     session_id: Optional[str] = None  # 存储 session_id 以便持久化
+    qr_monitor_started: bool = False
+    last_error: Optional[str] = None
 
 
 class SessionStore:

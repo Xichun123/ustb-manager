@@ -1,6 +1,6 @@
 import { get } from '../../services/api'
 import { logout } from '../../services/auth'
-import { getMePageState, getUserInfo, hasSessionId, setMePageState, setUserInfo } from '../../utils/storage'
+import { getMePageState, getUserInfo, setMePageState, setUserInfo } from '../../utils/storage'
 
 const app = getApp<IAppOption>()
 const ME_REFRESH_TTL = 5 * 60 * 1000
@@ -69,8 +69,10 @@ Component({
     },
 
     async loadData(options?: { showLoading?: boolean }) {
-      if (!app.globalData.isAuthenticated && !hasSessionId()) {
-        wx.redirectTo({ url: '/pages/login/login' })
+      if (!app.globalData.isAuthenticated) {
+        if (!app.globalData.authBootstrapInProgress) {
+          wx.redirectTo({ url: '/pages/login/login' })
+        }
         return
       }
 
