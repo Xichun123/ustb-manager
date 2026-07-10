@@ -77,6 +77,20 @@ def _course(item: dict[str, Any]) -> Optional[dict[str, Any]]:
     }
 
 
+async def query_week_options(
+    session: Session,
+    *,
+    year: str | None = None,
+    semester: str | None = None,
+) -> list[dict[str, Any]]:
+    result = await BYYTClient(session).request_json(
+        "POST",
+        "/component/queryzclist",
+        data={"xn": year or "", "xq": semester or ""},
+    )
+    return [item for item in result if isinstance(item, dict)] if isinstance(result, list) else []
+
+
 async def query_schedule(
     session: Session,
     *,

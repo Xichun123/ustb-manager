@@ -40,6 +40,41 @@ def _exam(item: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _legacy_exam(item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "course_code": str(item.get("KCDM") or ""),
+        "course_name": str(item.get("KCMC") or ""),
+        "course_name_en": str(item.get("KCMC_EN") or ""),
+        "exam_type": str(item.get("KSSJDMC") or ""),
+        "exam_date": str(item.get("KSRQ") or ""),
+        "exam_date_display": str(item.get("KSRQ2") or ""),
+        "exam_time": str(item.get("KSJTSJ") or ""),
+        "weekday": str(item.get("XQJMC") or ""),
+        "week_number": _int_or_none(item.get("DJZ")) or 0,
+        "start_period": _int_or_none(item.get("KSJC")) or 0,
+        "end_period": _int_or_none(item.get("JSJC")) or 0,
+        "building": str(item.get("JXLMC") or ""),
+        "room": str(item.get("JXCDMC") or ""),
+        "campus": str(item.get("XIAOQUBMC") or ""),
+        "term": str(item.get("XNXQMC") or ""),
+        "remark": str(item.get("JKJSBZ") or ""),
+        "raw": item,
+    }
+
+
+async def query_exam_summaries(session: Session) -> list[dict[str, Any]]:
+    result = await BYYTClient(session).request_json(
+        "POST",
+        "/component/queryKsxxByXs",
+        content=b"",
+    )
+    return (
+        [_legacy_exam(item) for item in result if isinstance(item, dict)]
+        if isinstance(result, list)
+        else []
+    )
+
+
 async def query_exams(
     session: Session,
     *,
