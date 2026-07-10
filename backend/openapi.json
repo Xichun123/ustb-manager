@@ -2798,7 +2798,7 @@
     },
     "/api/auth/cookie/login": {
       "post": {
-        "description": "## 业务说明\n使用从浏览器复制的USTB教务系统Cookie直接登录，适合高级用户快速登录。\n\n## 使用流程\n1. 用户在浏览器中登录USTB教务系统\n2. 从浏览器开发者工具复制Cookie字符串\n3. 粘贴到登录表单并提交\n4. 系统验证Cookie有效性\n5. 验证成功后创建session\n\n## Cookie格式\n```\nINCO=abc123; SESSION=xyz789\n```\n\n## 验证机制\n- 系统会使用提供的Cookie访问教务系统API\n- 尝试获取学生信息以验证Cookie有效性\n- 如果能成功获取学号和姓名，则认为Cookie有效\n\n## 注意事项\n- Cookie必须包含USTB教务系统的认证信息\n- Cookie过期会返回401错误\n- 验证成功后会保存Cookie到本地，支持后端重启后恢复\n- 会自动设置session cookie\n\n## 安全提示\n- Cookie包含敏感信息，请勿分享给他人\n- 建议定期更换Cookie",
+        "description": "## 业务说明\n使用从浏览器复制的USTB教务系统Cookie直接登录，适合高级用户快速登录。\n\n## 使用流程\n1. 用户在浏览器中登录USTB教务系统\n2. 从浏览器开发者工具复制Cookie字符串\n3. 粘贴到登录表单并提交\n4. 系统验证Cookie有效性\n5. 验证成功后创建session\n\n## Cookie格式\n```\nINCO=abc123; SESSION=xyz789\n```\n\n## 验证机制\n- 系统会使用提供的Cookie访问教务系统API\n- 尝试获取学生信息以验证Cookie有效性\n- 如果能成功获取学号和姓名，则认为Cookie有效\n\n## 注意事项\n- Cookie必须包含USTB教务系统的认证信息\n- Cookie过期会返回401错误\n- 验证成功后会加密保存Cookie，支持后端重启后恢复\n- 会自动设置session cookie\n\n## 安全提示\n- Cookie包含敏感信息，请勿分享给他人\n- 建议定期更换Cookie",
         "operationId": "cookie_login_api_auth_cookie_login_post",
         "requestBody": {
           "content": {

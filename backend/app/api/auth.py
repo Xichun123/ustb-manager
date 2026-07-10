@@ -449,14 +449,13 @@ async def cookie_login(req: CookieLoginRequest, response: Response):
     ## 注意事项
     - Cookie必须包含USTB教务系统的认证信息
     - Cookie过期会返回401错误
-    - 验证成功后会保存Cookie到本地，支持后端重启后恢复
+    - 验证成功后会加密保存Cookie，支持后端重启后恢复
     - 会自动设置session cookie
 
     ## 安全提示
     - Cookie包含敏感信息，请勿分享给他人
     - 建议定期更换Cookie
     """
-    from ..services import cookie_store
     import httpx
 
     try:
@@ -492,8 +491,7 @@ async def cookie_login(req: CookieLoginRequest, response: Response):
             session.authenticated = True
             session.student_id = student_id
 
-            cookie_store.save_cookies(student_id, cookie_dict)
-            store.persist(session_id, student_id)
+            store.persist(session_id, student_id, cookie_dict)
 
             _set_session_cookie(response, session_id, SESSION_MAX_AGE)
 

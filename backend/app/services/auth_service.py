@@ -95,11 +95,8 @@ async def start_qr_background_monitor(session: Session):
                 session.authenticated = True
                 session.student_id = student_id
 
-            if student_id and cookies:
-                from . import cookie_store
-                cookie_store.save_cookies(student_id, cookies)
-                if session.session_id:
-                    store.persist(session.session_id, student_id)
+            if student_id and cookies and session.session_id:
+                store.persist(session.session_id, student_id, cookies)
 
             logger.info(f"QR background monitor completed, student_id={student_id}")
         except Exception as e:
@@ -192,13 +189,8 @@ async def poll_qr_status(session: Session) -> AsyncGenerator[dict, None]:
             session.authenticated = True
             session.student_id = student_id
 
-        # 保存Cookie到本地并持久化session
-        if student_id and cookies:
-            from . import cookie_store
-            cookie_store.save_cookies(student_id, cookies)
-            # 持久化 session 映射，支持后端重启后恢复
-            if session.session_id:
-                store.persist(session.session_id, student_id)
+        if student_id and cookies and session.session_id:
+            store.persist(session.session_id, student_id, cookies)
 
         logger.info(f"Yielding success status, student_id={student_id}")
         yield {"status": "success"}
@@ -289,10 +281,5 @@ async def verify_sms(session: Session, phone: str, code: str) -> None:
         session.authenticated = True
         session.student_id = student_id
 
-    # 保存Cookie到本地并持久化session
-    if student_id and cookies:
-        from . import cookie_store
-        cookie_store.save_cookies(student_id, cookies)
-        # 持久化 session 映射，支持后端重启后恢复
-        if session.session_id:
-            store.persist(session.session_id, student_id)
+    if student_id and cookies and session.session_id:
+        store.persist(session.session_id, student_id, cookies)
