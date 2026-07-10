@@ -5,6 +5,7 @@ from pathlib import Path
 import httpx
 from fastapi.testclient import TestClient
 
+from app.cache import reference_data_cache
 from app.dependencies import get_authenticated_session
 from app.main import app
 from app.services.session_store import AuthState, Session
@@ -281,3 +282,158 @@ def test_required_course_status_uses_profile_ids_and_profile_year():
 
     assert response.status_code == 200
     assert response.json() == status_fixture["content"]
+
+
+def _get_legacy_grades_route(path, handler):
+    upstream = httpx.Client(transport=httpx.MockTransport(handler))
+    session = Session(
+        client=upstream,
+        state=AuthState.ACTIVE,
+        authenticated=True,
+        student_id="test-student",
+        lock=asyncio.Lock(),
+    )
+    app.dependency_overrides[get_authenticated_session] = lambda: session
+    reference_data_cache.clear()
+    try:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            return client.get(path)
+    finally:
+        app.dependency_overrides.clear()
+        reference_data_cache.clear()
+        upstream.close()
+
+
+def test_legacy_student_and_user_info_use_byyt_adapters():
+    requests = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request.url.path)
+        if request.url.path == "/UserManager/queryxsxx":
+            return httpx.Response(200, json={"XH": "test-student", "XM": "Test"})
+        assert request.url.path == "/user/me"
+        return httpx.Response(200, json={"userId": "test-student", "role": []})
+
+    student_response = _get_legacy_grades_route("/api/grades/student-info", handler)
+    user_response = _get_legacy_grades_route("/api/grades/user-info", handler)
+
+    assert student_response.status_code == 200
+    assert student_response.json() == {"XH": "test-student", "XM": "Test"}
+    assert user_response.status_code == 200
+    assert user_response.json() == {"userId": "test-student", "role": []}
+    assert requests == ["/UserManager/queryxsxx", "/user/me"]
+
+
+def test_legacy_available_grade_terms_use_the_byyt_boundary():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/cjgl/cjzhtjcx/cjcx/queryqxnxq"
+        return httpx.Response(200, json={"xnlist": ["2025-2026"], "xqlist": ["2"]})
+
+    response = _get_legacy_grades_route("/api/grades/available-terms", handler)
+
+    assert response.status_code == 200
+    assert response.json() == {"xnlist": ["2025-2026"], "xqlist": ["2"]}
+
+
+def test_legacy_student_plan_uses_byyt_progress_adapters():
+    requests = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request.url.path)
+        if request.url.path.endswith("/getXss"):
+            return httpx.Response(200, json={"code": 200, "content": [{"fah": "plan-1"}]})
+        if request.url.path.endswith("/queryGrjhKcList1"):
+            return httpx.Response(
+                200,
+                json={
+                    "code": 200,
+                    "content": [
+                        {
+                            "kclbmc": "专业课",
+                            "kcxzmc": "必修",
+                            "xf": "3",
+                            "kcdm": "CS1",
+                        }
+                    ],
+                },
+            )
+        assert request.url.path.endswith("/queryXflbyq1")
+        return httpx.Response(
+            200,
+            json={"xflbyqkc": [{"kcdm": "CS1", "xscj": "90", "xf": "3"}]},
+        )
+
+    response = _get_legacy_grades_route("/api/grades/student-plan", handler)
+
+    assert response.status_code == 200
+    assert response.json()[0]["kclb_list"] == [
+        {
+            "kclbmc": "专业课",
+            "kcxzmc": "必修",
+            "yqxdxf": 3.0,
+            "wcxf": 3.0,
+            "wwcxf": 0.0,
+        }
+    ]
+    assert requests == [
+        "/cjgl/cjzhtjcx/cjcx/getXss",
+        "/xspyyjsfasq/queryGrjhKcList1",
+        "/cjgl/cjzhtjcx/cjcx/queryXflbyq1",
+    ]
+
+
+def test_legacy_credit_completion_uses_byyt_progress_adapters():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/getXs"):
+            return httpx.Response(
+                200,
+                json={
+                    "code": 200,
+                    "content": [
+                        {
+                            "fah": "plan-1",
+                            "kclb_list": [{"dm": "A", "mc": "专业课"}],
+                        }
+                    ],
+                },
+            )
+        assert request.url.path.endswith("/queryXflbyq1")
+        return httpx.Response(
+            200,
+            json={
+                "xflbyqkc": [
+                    {
+                        "kclbdm": "A",
+                        "xf": "3",
+                        "xs": "48",
+                        "xscj": "90",
+                        "kcdm": "CS1",
+                        "kcmc": "程序设计",
+                    }
+                ]
+            },
+        )
+
+    response = _get_legacy_grades_route("/api/grades/credit-completion-status", handler)
+
+    assert response.status_code == 200
+    category = response.json()["categories"][0]
+    assert category["category_code"] == "A"
+    assert category["category_name"] == "专业课"
+    assert category["required_credits"] == 3.0
+    assert category["completed_credits"] == 3.0
+    assert category["remaining_credits"] == 0.0
+
+
+def test_legacy_available_grade_terms_classify_malformed_json():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-type": "application/json"},
+            content=b"not-json",
+        )
+
+    response = _get_legacy_grades_route("/api/grades/available-terms", handler)
+
+    assert response.status_code == 502
+    assert response.json()["error"]["code"] == "UPSTREAM_BAD_RESPONSE"

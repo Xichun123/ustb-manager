@@ -4,6 +4,66 @@ from app.byyt.client import BYYTClient
 from app.services.session_store import Session
 
 
+async def query_student_plans(session: Session) -> list[dict[str, Any]]:
+    content = await BYYTClient(session).request_json(
+        "POST",
+        "/cjgl/cjzhtjcx/cjcx/getXss",
+        json={"xjidorxh": session.student_id},
+        unwrap_content=True,
+    )
+    return [item for item in content if isinstance(item, dict)] if isinstance(content, list) else []
+
+
+async def query_plan_courses(session: Session, plan_id: str) -> list[dict[str, Any]]:
+    content = await BYYTClient(session).request_json(
+        "POST",
+        "/xspyyjsfasq/queryGrjhKcList1",
+        data={
+            "multiple": "false",
+            "pylx": "1",
+            "pylb": "1",
+            "bgid": "",
+            "xsid": "",
+            "xh": "",
+            "fah": plan_id,
+            "kcmcdm": "",
+            "yxdm": "",
+            "xqdm": "",
+            "kclbdm": "",
+            "kcxzdm": "",
+            "sffaw": "",
+            "iskcztpx": "",
+            "order1": "",
+            "order2": "",
+        },
+        unwrap_content=True,
+    )
+    return [item for item in content if isinstance(item, dict)] if isinstance(content, list) else []
+
+
+async def query_credit_requirement_courses(
+    session: Session,
+    plan_id: str,
+    *,
+    page_size: int = 500,
+) -> list[dict[str, Any]]:
+    result = await BYYTClient(session).request_json(
+        "POST",
+        "/cjgl/cjzhtjcx/cjcx/queryXflbyq1",
+        json={
+            "current": 1,
+            "pageSize": page_size,
+            "xjid": session.student_id,
+            "zyfxdm": None,
+            "pylx": "1",
+            "fah": plan_id,
+        },
+    )
+    if not isinstance(result, dict) or not isinstance(result.get("xflbyqkc"), list):
+        return []
+    return [item for item in result["xflbyqkc"] if isinstance(item, dict)]
+
+
 async def get_student_academic_profile(session: Session) -> dict[str, Any]:
     content = await BYYTClient(session).request_json(
         "POST",

@@ -2,8 +2,16 @@ import asyncio
 import logging
 from typing import Dict, List, Optional
 from app.byyt.academic import get_academic_terms
+from app.byyt.grades import query_available_grade_terms
 from app.byyt.grades import query_grades as query_current_grades
-from app.byyt.progress import query_required_course_status
+from app.byyt.profile import query_student_record, query_user_record
+from app.byyt.progress import (
+    get_student_academic_profile,
+    query_credit_requirement_courses,
+    query_plan_courses,
+    query_required_course_status,
+    query_student_plans,
+)
 from app.services.session_store import Session
 from app.exceptions import BYYTSessionExpired
 from app.cache import reference_data_cache
@@ -77,96 +85,23 @@ async def get_grades(
 
 
 async def get_student_info(session: Session) -> Dict:
-    """获取学生基本信息"""
-
-    def _fetch():
-        resp = session.client.post(
-            "https://byyt.ustb.edu.cn/UserManager/queryxsxx",
-            data="",
-        )
-        _check_byyt_response(resp)
-        resp.raise_for_status()
-        return resp.json()
-
-    result = await asyncio.to_thread(_fetch)
-    return result
+    """获取学生基本信息。"""
+    return await query_student_record(session)
 
 
 async def get_user_info(session: Session) -> Dict:
-    """获取当前用户完整信息（包含角色、权限）"""
-
-    def _fetch():
-        resp = session.client.post(
-            "https://byyt.ustb.edu.cn/user/me",
-            data="",
-        )
-        _check_byyt_response(resp)
-        resp.raise_for_status()
-        return resp.json()
-
-    result = await asyncio.to_thread(_fetch)
-    return result
+    """获取当前用户完整信息（包含角色、权限）。"""
+    return await query_user_record(session)
 
 
 async def get_plan_course_list(session: Session, fah: str) -> List[Dict]:
-    """获取培养方案课程列表"""
-
-    def _fetch():
-        params = {
-            "multiple": "false",
-            "pylx": "1",
-            "pylb": "1",
-            "bgid": "",
-            "xsid": "",
-            "xh": "",
-            "fah": fah,
-            "kcmcdm": "",
-            "yxdm": "",
-            "xqdm": "",
-            "kclbdm": "",
-            "kcxzdm": "",
-            "sffaw": "",
-            "iskcztpx": "",
-            "order1": "",
-            "order2": "",
-        }
-        resp = session.client.post(
-            "https://byyt.ustb.edu.cn/xspyyjsfasq/queryGrjhKcList1",
-            data=params,
-        )
-        _check_byyt_response(resp)
-        resp.raise_for_status()
-        return resp.json()
-
-    result = await asyncio.to_thread(_fetch)
-
-    if result.get("code") != 200:
-        raise Exception(f"Failed to fetch plan course list: {result.get('msg')}")
-
-    return result.get("content", [])
+    """获取培养方案课程列表。"""
+    return await query_plan_courses(session, fah)
 
 
 async def get_student_plan(session: Session) -> List[Dict]:
-    """获取学生方案信息"""
-
-    def _fetch():
-        params = {"xjidorxh": session.student_id}
-        resp = session.client.post(
-            "https://byyt.ustb.edu.cn/cjgl/cjzhtjcx/cjcx/getXss",
-            json=params,
-        )
-        _check_byyt_response(resp)
-        resp.raise_for_status()
-        return resp.json()
-
-    result = await asyncio.to_thread(_fetch)
-
-    if result.get("code") != 200:
-        raise Exception(f"Failed to fetch student plan: {result.get('msg')}")
-
-    plans = result.get("content", [])
-    if not isinstance(plans, list):
-        return []
+    """获取学生方案信息。"""
+    plans = await query_student_plans(session)
 
     async def _enrich_plan(plan: Dict) -> Dict:
         if not isinstance(plan, dict):
@@ -229,8 +164,8 @@ async def get_student_plan(session: Session) -> List[Dict]:
 
             plan["kclb_list"] = list(kclb_dict.values())
 
-        except Exception as e:
-            logger.warning(f"Failed to enrich plan {fah}: {e}")
+        except Exception as exc:
+            logger.warning("Failed to enrich plan %s: %s", fah, type(exc).__name__)
             plan["kclb_list"] = []
 
         return plan
@@ -242,21 +177,12 @@ async def get_student_plan(session: Session) -> List[Dict]:
 
 
 async def get_available_terms(session: Session) -> Dict:
-    """查询可选学年学期（带缓存）"""
+    """查询可选学年学期（带缓存）。"""
     cached = reference_data_cache.get("grades_available_terms")
     if cached is not None:
         return cached
 
-    def _fetch():
-        resp = session.client.post(
-            "https://byyt.ustb.edu.cn/cjgl/cjzhtjcx/cjcx/queryqxnxq",
-            data="",
-        )
-        _check_byyt_response(resp)
-        resp.raise_for_status()
-        return resp.json()
-
-    result = await asyncio.to_thread(_fetch)
+    result = await query_available_grade_terms(session)
     reference_data_cache.set("grades_available_terms", result)
     return result
 
@@ -361,27 +287,8 @@ def calculate_gpa(grades: List[Dict]) -> Dict:
 
 
 async def get_student_xs_info(session: Session) -> Dict:
-    """获取学生信息（包含培养方案号fah）"""
-
-    def _fetch():
-        params = {"xjidorxh": session.student_id}
-        resp = session.client.post(
-            "https://byyt.ustb.edu.cn/cjgl/cjzhtjcx/cjcx/getXs",
-            json=params,
-        )
-        _check_byyt_response(resp)
-        resp.raise_for_status()
-        return resp.json()
-
-    result = await asyncio.to_thread(_fetch)
-
-    if result.get("code") != 200:
-        raise Exception(f"Failed to fetch student xs info: {result.get('msg')}")
-
-    content = result.get("content", [])
-    if isinstance(content, list) and len(content) > 0:
-        return content[0]
-    return {}
+    """获取学生信息（包含培养方案号 fah）。"""
+    return await get_student_academic_profile(session)
 
 
 async def query_xflbyq(
@@ -389,27 +296,12 @@ async def query_xflbyq(
     fah: str,
     page_size: int = 500,
 ) -> List[Dict]:
-    """查询学分类别要求课程列表"""
-
-    def _fetch():
-        params = {
-            "current": 1,
-            "pageSize": page_size,
-            "xjid": session.student_id,
-            "zyfxdm": None,
-            "pylx": "1",
-            "fah": fah,
-        }
-        resp = session.client.post(
-            "https://byyt.ustb.edu.cn/cjgl/cjzhtjcx/cjcx/queryXflbyq1",
-            json=params,
-        )
-        _check_byyt_response(resp)
-        resp.raise_for_status()
-        return resp.json()
-
-    result = await asyncio.to_thread(_fetch)
-    return result.get("xflbyqkc", []) if isinstance(result, dict) else []
+    """查询学分类别要求课程列表。"""
+    return await query_credit_requirement_courses(
+        session,
+        fah,
+        page_size=page_size,
+    )
 
 
 async def get_credit_completion_status(session: Session) -> Dict:
@@ -457,22 +349,22 @@ async def get_credit_completion_status(session: Session) -> Dict:
                 if score is not None and score >= 60:
                     kclb_dict[kclbdm]["completed_credits"] += xf
                     kclb_dict[kclbdm]["completed_hours"] += xs
-                    kclb_dict[kclbdm]["courses"].append({
-                        "course_code": course.get("kcdm", ""),
-                        "course_name": course.get("kcmc", ""),
-                        "credits": xf,
-                        "hours": xs,
-                        "score": xscj,
-                        "term": course.get("xnxqmc", ""),
-                    })
+                    kclb_dict[kclbdm]["courses"].append(
+                        {
+                            "course_code": course.get("kcdm", ""),
+                            "course_name": course.get("kcmc", ""),
+                            "credits": xf,
+                            "hours": xs,
+                            "score": xscj,
+                            "term": course.get("xnxqmc", ""),
+                        }
+                    )
             except (ValueError, TypeError):
                 pass
 
     categories = []
     for cat in kclb_dict.values():
-        cat["remaining_credits"] = round(
-            cat["required_credits"] - cat["completed_credits"], 1
-        )
+        cat["remaining_credits"] = round(cat["required_credits"] - cat["completed_credits"], 1)
         cat["remaining_hours"] = cat["required_hours"] - cat["completed_hours"]
         cat["required_credits"] = round(cat["required_credits"], 1)
         cat["completed_credits"] = round(cat["completed_credits"], 1)

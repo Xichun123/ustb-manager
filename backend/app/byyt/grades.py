@@ -114,6 +114,15 @@ async def query_grades(
     }
 
 
+async def query_available_grade_terms(session: Session) -> dict[str, Any]:
+    result = await BYYTClient(session).request_json(
+        "POST",
+        "/cjgl/cjzhtjcx/cjcx/queryqxnxq",
+        content=b"",
+    )
+    return result if isinstance(result, dict) else {}
+
+
 async def query_grade_summary(session: Session) -> dict[str, Any]:
     official = await BYYTClient(session).request_json(
         "POST",

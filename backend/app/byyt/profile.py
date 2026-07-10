@@ -27,14 +27,28 @@ def _optional_text(value: Any) -> str | None:
     return str(value) if value not in (None, "") else None
 
 
-async def get_student_identity(session: Session) -> StudentIdentity:
+async def query_student_record(session: Session) -> dict[str, Any]:
     result = await BYYTClient(session).request_json(
         "POST",
         "/UserManager/queryxsxx",
         content=b"",
         follow_redirects=False,
     )
-    student = _student_content(result)
+    return _student_content(result)
+
+
+async def query_user_record(session: Session) -> dict[str, Any]:
+    result = await BYYTClient(session).request_json(
+        "POST",
+        "/user/me",
+        content=b"",
+        follow_redirects=False,
+    )
+    return result if isinstance(result, dict) else {}
+
+
+async def get_student_identity(session: Session) -> StudentIdentity:
+    student = await query_student_record(session)
     student_id = _optional_text(student.get("XH") or student.get("ID"))
     if not student_id:
         raise BYYTUpstreamError("BYYT returned invalid student information")
@@ -45,19 +59,8 @@ async def get_student_identity(session: Session) -> StudentIdentity:
 
 
 async def get_user_profile(session: Session) -> dict[str, Any]:
-    client = BYYTClient(session)
-    student_result = await client.request_json(
-        "POST",
-        "/UserManager/queryxsxx",
-        content=b"",
-    )
-    user_result = await client.request_json(
-        "POST",
-        "/user/me",
-        content=b"",
-    )
-    student = _student_content(student_result)
-    user = user_result if isinstance(user_result, dict) else {}
+    student = await query_student_record(session)
+    user = await query_user_record(session)
 
     raw_roles = user.get("role", [])
     raw_roles = raw_roles if isinstance(raw_roles, list) else []
