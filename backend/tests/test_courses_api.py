@@ -202,13 +202,45 @@ def test_upstream_frequency_limits_are_exposed_as_a_retryable_429():
         upstream.close()
 
     assert response.status_code == 429
-    assert response.json() == {
-        "error": {
-            "code": "UPSTREAM_RATE_LIMITED",
-            "message": "教务系统请求过于频繁，请稍后重试",
-            "retryable": True,
-        }
+    error = response.json()["error"]
+    request_id = error.pop("request_id")
+    assert request_id
+    assert response.headers["x-request-id"] == request_id
+    assert error == {
+        "code": "UPSTREAM_RATE_LIMITED",
+        "message": "教务系统请求过于频繁，请稍后重试",
+        "retryable": True,
     }
+
+
+def test_unavailable_upstream_is_exposed_as_retryable_503_with_request_id():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503, text="maintenance")
+
+    upstream = httpx.Client(transport=httpx.MockTransport(handler))
+    session = Session(
+        client=upstream,
+        state=AuthState.ACTIVE,
+        authenticated=True,
+        lock=asyncio.Lock(),
+    )
+    reference_data_cache.clear()
+    app.dependency_overrides[get_authenticated_session] = lambda: session
+
+    try:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get("/api/courses/categories")
+    finally:
+        app.dependency_overrides.clear()
+        reference_data_cache.clear()
+        upstream.close()
+
+    assert response.status_code == 503
+    error = response.json()["error"]
+    assert error["code"] == "UPSTREAM_UNAVAILABLE"
+    assert error["retryable"] is True
+    assert error["request_id"]
+    assert response.headers["x-request-id"] == error["request_id"]
 
 
 def test_expired_upstream_sessions_are_exposed_as_401():
@@ -264,7 +296,11 @@ def test_upstream_failure_envelopes_are_exposed_as_502():
         upstream.close()
 
     assert response.status_code == 502
-    assert response.json()["error"] == {
+    error = response.json()["error"]
+    request_id = error.pop("request_id")
+    assert request_id
+    assert response.headers["x-request-id"] == request_id
+    assert error == {
         "code": "UPSTREAM_BAD_RESPONSE",
         "message": "教务系统返回了无法处理的响应",
         "retryable": True,

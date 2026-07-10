@@ -3,6 +3,7 @@ import asyncio
 import httpx
 import pytest
 
+from app.byyt.errors import BYYTUnavailable
 from app.services import auth_service
 from app.services.session_store import AuthState, Session
 
@@ -200,7 +201,7 @@ async def test_auth_completion_stops_after_three_identity_failures(monkeypatch, 
 
     try:
         if flow == "sms":
-            with pytest.raises(httpx.HTTPStatusError):
+            with pytest.raises(BYYTUnavailable):
                 await _run_flow(flow, session, monkeypatch)
             events = []
         else:

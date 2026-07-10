@@ -5,7 +5,7 @@ import httpx
 import pytest
 
 from app.byyt.client import BYYTClient
-from app.byyt.errors import BYYTRateLimited, BYYTUpstreamError
+from app.byyt.errors import BYYTRateLimited, BYYTUnavailable, BYYTUpstreamError
 from app.exceptions import BYYTSessionExpired
 
 
@@ -91,8 +91,34 @@ def test_validate_session_sync_treats_html_5xx_as_temporary_upstream_failure():
 
     session, http_client = _session_with_transport(handler)
     try:
-        with pytest.raises(httpx.HTTPStatusError):
+        with pytest.raises(BYYTUnavailable):
             BYYTClient(session).validate_session_sync()
+    finally:
+        http_client.close()
+
+
+@pytest.mark.asyncio
+async def test_request_json_classifies_network_timeouts_as_unavailable():
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("timed out", request=request)
+
+    session, http_client = _session_with_transport(handler)
+    try:
+        with pytest.raises(BYYTUnavailable):
+            await BYYTClient(session).request_json("POST", "/component/queryXnxq")
+    finally:
+        http_client.close()
+
+
+@pytest.mark.asyncio
+async def test_request_json_classifies_5xx_as_unavailable():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503, text="maintenance")
+
+    session, http_client = _session_with_transport(handler)
+    try:
+        with pytest.raises(BYYTUnavailable):
+            await BYYTClient(session).request_json("POST", "/component/queryXnxq")
     finally:
         http_client.close()
 

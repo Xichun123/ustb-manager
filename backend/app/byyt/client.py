@@ -1,7 +1,9 @@
 import asyncio
 from typing import Any, Protocol
 
-from app.byyt.errors import BYYTRateLimited, BYYTUpstreamError
+import httpx
+
+from app.byyt.errors import BYYTRateLimited, BYYTUnavailable, BYYTUpstreamError
 from app.exceptions import BYYTSessionExpired
 
 
@@ -43,7 +45,10 @@ class BYYTClient:
         **kwargs: Any,
     ) -> Any:
         url = f"{self._base_url}/{path.lstrip('/')}"
-        response = self._session.client.request(method, url, **kwargs)
+        try:
+            response = self._session.client.request(method, url, **kwargs)
+        except httpx.RequestError as exc:
+            raise BYYTUnavailable("BYYT request failed") from exc
         return self._classify_json_response(
             response,
             allow_empty=allow_empty,
@@ -87,7 +92,12 @@ class BYYTClient:
         ):
             raise BYYTSessionExpired("BYYT session expired")
 
-        response.raise_for_status()
+        if response.status_code >= 500:
+            raise BYYTUnavailable("BYYT returned a server error")
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise BYYTUpstreamError("BYYT returned an HTTP error") from exc
 
         if "text/html" in response.headers.get("content-type", "").lower():
             html = response.text.lower()

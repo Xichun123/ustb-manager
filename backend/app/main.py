@@ -1,9 +1,11 @@
 import logging
+import uuid
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from .byyt.errors import BYYTRateLimited, BYYTUpstreamError
+from .byyt.errors import BYYTRateLimited, BYYTUnavailable, BYYTUpstreamError
 from .config import CORS_ORIGINS
 from .services.session_store import store
 from .api import academic, auth, courses, exams, grades, me, notices, schedule, wifi
@@ -11,6 +13,7 @@ from .exceptions import (
     BYYTSessionExpired,
     byyt_rate_limited_handler,
     byyt_session_expired_handler,
+    byyt_unavailable_handler,
     byyt_upstream_error_handler,
     generic_exception_handler,
 )
@@ -111,6 +114,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next):
+    request_id = uuid.uuid4().hex
+    request.state.request_id = request_id
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
@@ -122,6 +135,7 @@ app.add_middleware(
 # 全局异常处理器
 app.add_exception_handler(BYYTSessionExpired, byyt_session_expired_handler)
 app.add_exception_handler(BYYTRateLimited, byyt_rate_limited_handler)
+app.add_exception_handler(BYYTUnavailable, byyt_unavailable_handler)
 app.add_exception_handler(BYYTUpstreamError, byyt_upstream_error_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
 
