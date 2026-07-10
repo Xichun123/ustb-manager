@@ -2,6 +2,7 @@ import logging
 
 import httpx
 import pytest
+from cryptography.fernet import Fernet
 from fastapi.testclient import TestClient
 from ustb_sso._exceptions import APIError
 
@@ -9,6 +10,7 @@ from app.api import auth
 from app.main import app
 from app.services import auth_service
 from app.services import session_store as session_store_module
+from app.services.cookie_store import SessionDatabase
 from app.services.session_store import AuthState, SessionStore
 
 
@@ -16,8 +18,8 @@ SECRET_UPSTREAM_DETAIL = "SECRET_UPSTREAM_DETAIL"
 
 
 class CapturingSessionStore(SessionStore):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.created_session_id = None
         self.created_session = None
 
@@ -159,58 +161,159 @@ def test_sms_verify_hides_unexpected_failure_and_logs_only_the_exception_type(mo
     assert "RuntimeError" in caplog.text
 
 
-def test_cookie_login_preserves_invalid_cookie_401(monkeypatch):
-    session_store = CapturingSessionStore()
-    monkeypatch.setattr(auth, "store", session_store)
-
-    def handler(request):
-        assert request.url.path == "/UserManager/queryxsxx"
-        return httpx.Response(200, json={})
-
+def _install_cookie_login_transport(monkeypatch, session_store, handler):
     original_create = session_store.create
 
     def create_with_mock_upstream():
         session_id, session = original_create()
         session.client.close()
-        session.client = httpx.Client(transport=httpx.MockTransport(handler))
+        session.client = httpx.Client(
+            transport=httpx.MockTransport(handler),
+            follow_redirects=True,
+        )
         return session_id, session
 
     monkeypatch.setattr(session_store, "create", create_with_mock_upstream)
+
+
+def test_cookie_login_persists_a_valid_session(monkeypatch, tmp_path):
+    database = SessionDatabase(tmp_path / "sessions.db", encryption_key=Fernet.generate_key())
+    session_store = CapturingSessionStore(persistence=database)
+    monkeypatch.setattr(auth, "store", session_store)
+
+    def handler(request):
+        assert request.url.path == "/UserManager/queryxsxx"
+        return httpx.Response(200, json={"XH": "test-student", "XM": "Test Student"})
+
+    _install_cookie_login_transport(monkeypatch, session_store, handler)
+
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.post("/api/auth/cookie/login", json={"cookies": "SESSION=value"})
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "success",
+        "student_id": "test-student",
+        "student_name": "Test Student",
+        "session_id": session_store.created_session_id,
+    }
+    assert session_store.created_session.authenticated is True
+    assert session_store.created_session.student_id == "test-student"
+    stored = database.load(session_store.created_session_id)
+    assert stored is not None
+    assert stored.student_id == "test-student"
+    assert stored.cookies == {"SESSION": "value"}
+
+
+@pytest.mark.parametrize(
+    "upstream_response",
+    [
+        lambda: httpx.Response(401, json={"detail": "unauthorized"}),
+        lambda: httpx.Response(
+            200,
+            headers={"content-type": "text/html; charset=utf-8"},
+            text="<html>login</html>",
+        ),
+        lambda: httpx.Response(
+            302,
+            headers={"location": "/authentication/login"},
+        ),
+    ],
+    ids=["unauthorized", "login-html", "auth-redirect"],
+)
+def test_cookie_login_rejects_explicitly_invalid_upstream_sessions(monkeypatch, upstream_response):
+    session_store = CapturingSessionStore()
+    monkeypatch.setattr(auth, "store", session_store)
+
+    def handler(request):
+        return upstream_response()
+
+    _install_cookie_login_transport(monkeypatch, session_store, handler)
 
     with TestClient(app, raise_server_exceptions=False) as client:
         response = client.post("/api/auth/cookie/login", json={"cookies": "SESSION=value"})
 
     assert response.status_code == 401
     assert response.json() == {"detail": "Cookie无效或已过期"}
+    assert session_store.get(session_store.created_session_id) is None
+    assert session_store.created_session.client.is_closed
 
 
-def test_cookie_login_hides_upstream_http_failure_detail(monkeypatch):
+def test_cookie_login_treats_html_5xx_as_a_temporary_failure(monkeypatch):
     session_store = CapturingSessionStore()
     monkeypatch.setattr(auth, "store", session_store)
 
     def handler(request):
-        raise httpx.ConnectError(
-            f"{SECRET_UPSTREAM_DETAIL} https://private.example/?cookie=TOP_SECRET_COOKIE",
-            request=request,
+        return httpx.Response(
+            503,
+            headers={"content-type": "text/html; charset=utf-8"},
+            text="<html>maintenance</html>",
         )
 
-    original_create = session_store.create
-
-    def create_with_mock_upstream():
-        session_id, session = original_create()
-        session.client.close()
-        session.client = httpx.Client(transport=httpx.MockTransport(handler))
-        return session_id, session
-
-    monkeypatch.setattr(session_store, "create", create_with_mock_upstream)
+    _install_cookie_login_transport(monkeypatch, session_store, handler)
 
     with TestClient(app, raise_server_exceptions=False) as client:
         response = client.post("/api/auth/cookie/login", json={"cookies": "SESSION=value"})
 
-    assert response.status_code == 401
-    assert response.json() == {"detail": "Cookie验证失败，请重新登录"}
+    assert response.status_code == 502
+    assert response.json() == {"detail": "Cookie登录失败，请稍后重试"}
+    assert session_store.get(session_store.created_session_id) is None
+    assert session_store.created_session.client.is_closed
+
+
+def test_cookie_login_hides_temporary_timeout_detail(monkeypatch):
+    session_store = CapturingSessionStore()
+    monkeypatch.setattr(auth, "store", session_store)
+
+    def handler(request):
+        raise httpx.ReadTimeout(
+            f"{SECRET_UPSTREAM_DETAIL} https://private.example/?cookie=TOP_SECRET_COOKIE",
+            request=request,
+        )
+
+    _install_cookie_login_transport(monkeypatch, session_store, handler)
+
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.post("/api/auth/cookie/login", json={"cookies": "SESSION=value"})
+
+    assert response.status_code == 502
+    assert response.json() == {"detail": "Cookie登录失败，请稍后重试"}
     assert SECRET_UPSTREAM_DETAIL not in response.text
     assert "TOP_SECRET_COOKIE" not in response.text
+    assert session_store.get(session_store.created_session_id) is None
+    assert session_store.created_session.client.is_closed
+
+
+@pytest.mark.parametrize(
+    "upstream_response",
+    [
+        lambda: httpx.Response(
+            200,
+            headers={"content-type": "application/json"},
+            content=b"not-json",
+        ),
+        lambda: httpx.Response(200, json={}),
+    ],
+    ids=["invalid-json", "missing-identity"],
+)
+def test_cookie_login_treats_malformed_upstream_data_as_a_temporary_failure(
+    monkeypatch, upstream_response
+):
+    session_store = CapturingSessionStore()
+    monkeypatch.setattr(auth, "store", session_store)
+
+    def handler(request):
+        return upstream_response()
+
+    _install_cookie_login_transport(monkeypatch, session_store, handler)
+
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.post("/api/auth/cookie/login", json={"cookies": "SESSION=value"})
+
+    assert response.status_code == 502
+    assert response.json() == {"detail": "Cookie登录失败，请稍后重试"}
+    assert session_store.get(session_store.created_session_id) is None
+    assert session_store.created_session.client.is_closed
 
 
 def test_cookie_login_rejects_malformed_input_without_upstream_detail(monkeypatch):

@@ -1,7 +1,15 @@
+from dataclasses import dataclass
 from typing import Any
 
 from app.byyt.client import BYYTClient
+from app.byyt.errors import BYYTUpstreamError
 from app.services.session_store import Session
+
+
+@dataclass(frozen=True)
+class StudentIdentity:
+    student_id: str
+    name: str | None
 
 
 def _student_content(result: Any) -> dict[str, Any]:
@@ -17,6 +25,23 @@ def _student_content(result: Any) -> dict[str, Any]:
 
 def _optional_text(value: Any) -> str | None:
     return str(value) if value not in (None, "") else None
+
+
+async def get_student_identity(session: Session) -> StudentIdentity:
+    result = await BYYTClient(session).request_json(
+        "POST",
+        "/UserManager/queryxsxx",
+        content=b"",
+        follow_redirects=False,
+    )
+    student = _student_content(result)
+    student_id = _optional_text(student.get("XH") or student.get("ID"))
+    if not student_id:
+        raise BYYTUpstreamError("BYYT returned invalid student information")
+    return StudentIdentity(
+        student_id=student_id,
+        name=_optional_text(student.get("XM")),
+    )
 
 
 async def get_user_profile(session: Session) -> dict[str, Any]:

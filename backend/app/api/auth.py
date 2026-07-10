@@ -9,7 +9,9 @@ from typing import Optional
 from pydantic import BaseModel, Field, field_validator
 import asyncio
 
+from ..byyt.profile import get_student_identity
 from ..config import COOKIE_NAME, COOKIE_SECURE, SESSION_TTL, SESSION_MAX_AGE
+from ..exceptions import BYYTSessionExpired
 from ..services.session_store import store, AuthState
 from ..services import auth_service
 from ..rate_limit import sms_rate_limiter
@@ -24,7 +26,7 @@ _SMS_SEND_RATE_LIMITED_MESSAGE = "短信发送过于频繁，请稍后重试"
 _SMS_SEND_FAILED_MESSAGE = "短信服务暂时不可用，请稍后重试"
 _SMS_VERIFY_INVALID_MESSAGE = "验证码无效或登录状态已失效"
 _SMS_VERIFY_FAILED_MESSAGE = "短信登录完成失败，请稍后重试"
-_COOKIE_VALIDATION_FAILED_MESSAGE = "Cookie验证失败，请重新登录"
+_COOKIE_INVALID_MESSAGE = "Cookie无效或已过期"
 _COOKIE_FORMAT_INVALID_MESSAGE = "Cookie格式不正确"
 _COOKIE_LOGIN_FAILED_MESSAGE = "Cookie登录失败，请稍后重试"
 _QR_LOGIN_FAILED_MESSAGE = "二维码登录失败，请稍后重试"
@@ -463,8 +465,6 @@ async def cookie_login(req: CookieLoginRequest, response: Response):
     - Cookie包含敏感信息，请勿分享给他人
     - 建议定期更换Cookie
     """
-    import httpx
-
     session_id: Optional[str] = None
     try:
         cookie_dict = {}
@@ -484,46 +484,29 @@ async def cookie_login(req: CookieLoginRequest, response: Response):
             raise HTTPException(400, _COOKIE_FORMAT_INVALID_MESSAGE)
 
         session_id, session = store.create()
-
         for key, value in cookie_dict.items():
             session.client.cookies.set(key, value, domain=".ustb.edu.cn")
 
-        try:
-            resp = session.client.post("https://byyt.ustb.edu.cn/UserManager/queryxsxx")
-            resp.raise_for_status()
-            data = resp.json()
+        identity = await get_student_identity(session)
+        session.state = AuthState.ACTIVE
+        session.authenticated = True
+        session.student_id = identity.student_id
+        store.persist(session_id, identity.student_id, cookie_dict)
 
-            if not data or "XH" not in data:
-                store.delete(session_id)
-                raise HTTPException(401, "Cookie无效或已过期")
-
-            student_info = data
-            student_id = student_info.get("XH")
-
-            if not student_id:
-                store.delete(session_id)
-                raise HTTPException(401, "无法获取学生信息")
-
-            session.state = AuthState.ACTIVE
-            session.authenticated = True
-            session.student_id = student_id
-
-            store.persist(session_id, student_id, cookie_dict)
-
-            _set_session_cookie(response, session_id, SESSION_MAX_AGE)
-
-            return {
-                "status": "success",
-                "student_id": student_id,
-                "student_name": student_info.get("XM"),
-                "session_id": session_id,
-            }
-
-        except httpx.HTTPError:
+        _set_session_cookie(response, session_id, SESSION_MAX_AGE)
+        return {
+            "status": "success",
+            "student_id": identity.student_id,
+            "student_name": identity.name,
+            "session_id": session_id,
+        }
+    except BYYTSessionExpired:
+        if session_id:
             store.delete(session_id)
-            raise HTTPException(401, _COOKIE_VALIDATION_FAILED_MESSAGE)
-
+        raise HTTPException(401, _COOKIE_INVALID_MESSAGE)
     except HTTPException:
+        if session_id:
+            store.delete(session_id)
         raise
     except Exception as exc:
         if session_id:
