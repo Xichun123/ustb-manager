@@ -8,7 +8,9 @@ from typing import Callable, Optional
 
 import httpx
 
+from ..byyt.client import BYYTClient
 from ..config import SESSION_MAX_AGE, SESSION_TTL
+from ..exceptions import BYYTSessionExpired
 from .cookie_store import SessionDatabase, create_session_database
 
 
@@ -112,18 +114,15 @@ class SessionStore:
             session.client.cookies.set(key, value, domain=".ustb.edu.cn")
 
         try:
-            response = session.client.post(
-                "https://byyt.ustb.edu.cn/UserManager/queryxsxx",
-                timeout=5.0,
-            )
-            response.raise_for_status()
-            data = response.json()
-            if not data or "XH" not in data:
+            BYYTClient(session).validate_session_sync()
+        except BYYTSessionExpired:
+            try:
                 self._persistence.delete(session_id)
+            finally:
                 self._close_session(session)
-                return None
+            return None
         except Exception:
-            self._persistence.delete(session_id)
+            # Temporary network/upstream faults must not permanently destroy login.
             self._close_session(session)
             return None
 

@@ -1,3 +1,4 @@
+import httpx
 import pytest
 from cryptography.fernet import Fernet
 
@@ -26,23 +27,27 @@ class FakeCookies:
         self.values[key] = value
 
 
-class FakeResponse:
-    def raise_for_status(self):
-        pass
+class RecordingClient:
+    """httpx.Client stand-in that records requests and closes."""
 
-    def json(self):
-        return {"XH": "test-student"}
-
-
-class FakeClient:
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, transport=None, **kwargs):
         self.close_calls = 0
         self.cookies = FakeCookies()
-        self.post_calls = 0
+        self.request_calls = 0
+        self._transport = transport
 
-    def post(self, *args, **kwargs):
-        self.post_calls += 1
-        return FakeResponse()
+    def request(self, method, url, **kwargs):
+        self.request_calls += 1
+        if self._transport is None:
+            return httpx.Response(
+                200,
+                json={"XH": "test-student"},
+                request=httpx.Request(method, url),
+            )
+        request = httpx.Request(method, url)
+        response = self._transport.handle_request(request)
+        response.request = request
+        return response
 
     def close(self) -> None:
         self.close_calls += 1
@@ -50,9 +55,18 @@ class FakeClient:
 
 @pytest.fixture
 def session_store(monkeypatch):
-    monkeypatch.setattr(session_store_module.httpx, "Client", FakeClient)
+    monkeypatch.setattr(session_store_module.httpx, "Client", RecordingClient)
     clock = ManualClock()
     return SessionStore(ttl=10, max_age=100, clock=clock), clock
+
+
+def _persist_and_restart(tmp_path, clock):
+    database = SessionDatabase(tmp_path / "sessions.db", encryption_key=Fernet.generate_key())
+    first_store = SessionStore(ttl=10, max_age=100, clock=clock, persistence=database)
+    session_id, _ = first_store.create()
+    first_store.persist(session_id, "test-student", {"SESSION": "cookie-secret"})
+    restarted_store = SessionStore(ttl=10, max_age=100, clock=clock, persistence=database)
+    return restarted_store, database, session_id
 
 
 def test_persisted_session_is_restored_from_encrypted_sqlite(session_store, tmp_path):
@@ -61,6 +75,7 @@ def test_persisted_session_is_restored_from_encrypted_sqlite(session_store, tmp_
     first_store = SessionStore(ttl=10, max_age=100, clock=clock, persistence=database)
     session_id, session = first_store.create()
     first_store.persist(session_id, "test-student", {"SESSION": "cookie-secret"})
+    clock.advance(5)
 
     restarted_store = SessionStore(ttl=10, max_age=100, clock=clock, persistence=database)
     restored = restarted_store.get(session_id)
@@ -70,9 +85,13 @@ def test_persisted_session_is_restored_from_encrypted_sqlite(session_store, tmp_
     assert restored.authenticated is True
     assert restored.student_id == "test-student"
     assert restored.created_at == 1_000.0
-    assert restored.last_seen == 1_000.0
+    assert restored.last_seen == 1_005.0
     assert restored.client.cookies.values == {"SESSION": "cookie-secret"}
-    assert restored.client.post_calls == 1
+    assert restored.client.request_calls == 1
+    stored = database.load(session_id)
+    assert stored is not None
+    assert stored.created_at == 1_000.0
+    assert stored.last_seen == 1_005.0
 
 
 def test_get_refreshes_idle_deadline_for_an_active_session(session_store):
@@ -235,3 +254,150 @@ def test_get_rejects_a_persisted_session_that_expires_after_store_start(session_
 
     assert restarted_store.get(session_id) is None
     assert database.load(session_id) is None
+
+
+def test_restore_deletes_persisted_session_on_explicit_auth_failure(
+    session_store, tmp_path, monkeypatch
+):
+    _, clock = session_store
+    created_clients: list[RecordingClient] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(401, json={"detail": "unauthorized"})
+
+    def factory(*args, **kwargs):
+        client = RecordingClient(*args, transport=httpx.MockTransport(handler), **kwargs)
+        created_clients.append(client)
+        return client
+
+    monkeypatch.setattr(session_store_module.httpx, "Client", factory)
+    store, database, session_id = _persist_and_restart(tmp_path, clock)
+
+    assert store.get(session_id) is None
+    assert database.load(session_id) is None
+    assert created_clients[-1].close_calls == 1
+
+    # A second get must not reopen or re-close the expired candidate.
+    assert store.get(session_id) is None
+    assert created_clients[-1].close_calls == 1
+
+
+def test_restore_deletes_persisted_session_on_auth_redirect(session_store, tmp_path, monkeypatch):
+    _, clock = session_store
+    created_clients: list[RecordingClient] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            302,
+            headers={"location": "/authentication/login"},
+        )
+
+    def factory(*args, **kwargs):
+        client = RecordingClient(*args, transport=httpx.MockTransport(handler), **kwargs)
+        created_clients.append(client)
+        return client
+
+    monkeypatch.setattr(session_store_module.httpx, "Client", factory)
+    store, database, session_id = _persist_and_restart(tmp_path, clock)
+
+    assert store.get(session_id) is None
+    assert database.load(session_id) is None
+    assert created_clients[-1].close_calls == 1
+
+
+def test_restore_keeps_persisted_session_on_temporary_upstream_error(
+    session_store, tmp_path, monkeypatch
+):
+    _, clock = session_store
+    created_clients: list[RecordingClient] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            503,
+            headers={"content-type": "text/html; charset=utf-8"},
+            text="<html>maintenance</html>",
+        )
+
+    def factory(*args, **kwargs):
+        client = RecordingClient(*args, transport=httpx.MockTransport(handler), **kwargs)
+        created_clients.append(client)
+        return client
+
+    monkeypatch.setattr(session_store_module.httpx, "Client", factory)
+    store, database, session_id = _persist_and_restart(tmp_path, clock)
+
+    assert store.get(session_id) is None
+    stored = database.load(session_id)
+    assert stored is not None
+    assert stored.last_seen == 1_000.0
+    assert created_clients[-1].close_calls == 1
+
+
+def test_restore_keeps_persisted_session_on_network_timeout(session_store, tmp_path, monkeypatch):
+    _, clock = session_store
+    created_clients: list[RecordingClient] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.TimeoutException("timed out")
+
+    def factory(*args, **kwargs):
+        client = RecordingClient(*args, transport=httpx.MockTransport(handler), **kwargs)
+        created_clients.append(client)
+        return client
+
+    monkeypatch.setattr(session_store_module.httpx, "Client", factory)
+    store, database, session_id = _persist_and_restart(tmp_path, clock)
+
+    assert store.get(session_id) is None
+    assert database.load(session_id) is not None
+    assert created_clients[-1].close_calls == 1
+
+
+def test_restore_keeps_persisted_session_on_malformed_response(
+    session_store, tmp_path, monkeypatch
+):
+    _, clock = session_store
+    created_clients: list[RecordingClient] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-type": "application/json"},
+            content=b"not-json",
+        )
+
+    def factory(*args, **kwargs):
+        client = RecordingClient(*args, transport=httpx.MockTransport(handler), **kwargs)
+        created_clients.append(client)
+        return client
+
+    monkeypatch.setattr(session_store_module.httpx, "Client", factory)
+    store, database, session_id = _persist_and_restart(tmp_path, clock)
+
+    assert store.get(session_id) is None
+    assert database.load(session_id) is not None
+    assert created_clients[-1].close_calls == 1
+
+
+def test_restore_deletes_persisted_session_on_html_login_page(session_store, tmp_path, monkeypatch):
+    _, clock = session_store
+    created_clients: list[RecordingClient] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/html; charset=utf-8"},
+            text="<html>login</html>",
+        )
+
+    def factory(*args, **kwargs):
+        client = RecordingClient(*args, transport=httpx.MockTransport(handler), **kwargs)
+        created_clients.append(client)
+        return client
+
+    monkeypatch.setattr(session_store_module.httpx, "Client", factory)
+    store, database, session_id = _persist_and_restart(tmp_path, clock)
+
+    assert store.get(session_id) is None
+    assert database.load(session_id) is None
+    assert created_clients[-1].close_calls == 1

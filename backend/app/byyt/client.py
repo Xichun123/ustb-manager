@@ -1,20 +1,54 @@
 import asyncio
-from typing import Any
+from typing import Any, Protocol
 
 from app.byyt.errors import BYYTRateLimited, BYYTUpstreamError
 from app.exceptions import BYYTSessionExpired
-from app.services.session_store import Session
 
 
 BYYT_BASE_URL = "https://byyt.ustb.edu.cn"
 
 
+class SupportsBYYTSession(Protocol):
+    """Minimal session surface needed by BYYTClient (avoids importing SessionStore)."""
+
+    client: Any
+    lock: Any
+
+
 class BYYTClient:
     """Single request boundary for the BYYT upstream system."""
 
-    def __init__(self, session: Session, base_url: str = BYYT_BASE_URL):
+    def __init__(self, session: SupportsBYYTSession, base_url: str = BYYT_BASE_URL):
         self._session = session
         self._base_url = base_url.rstrip("/")
+
+    def validate_session_sync(self) -> None:
+        """Validate an unpublished restore candidate without using an event loop."""
+        data = self._request_json_sync(
+            "POST",
+            "/UserManager/queryxsxx",
+            timeout=5.0,
+            follow_redirects=False,
+        )
+        if not isinstance(data, dict) or "XH" not in data:
+            raise BYYTUpstreamError("BYYT returned invalid student information")
+
+    def _request_json_sync(
+        self,
+        method: str,
+        path: str,
+        *,
+        allow_empty: bool = False,
+        unwrap_content: bool = False,
+        **kwargs: Any,
+    ) -> Any:
+        url = f"{self._base_url}/{path.lstrip('/')}"
+        response = self._session.client.request(method, url, **kwargs)
+        return self._classify_json_response(
+            response,
+            allow_empty=allow_empty,
+            unwrap_content=unwrap_content,
+        )
 
     async def request_json(
         self,
@@ -25,23 +59,41 @@ class BYYTClient:
         unwrap_content: bool = False,
         **kwargs: Any,
     ) -> Any:
-        url = f"{self._base_url}/{path.lstrip('/')}"
-
         async with self._session.lock:
-            response = await asyncio.to_thread(
-                self._session.client.request,
+            return await asyncio.to_thread(
+                self._request_json_sync,
                 method,
-                url,
+                path,
+                allow_empty=allow_empty,
+                unwrap_content=unwrap_content,
                 **kwargs,
             )
 
-        if response.status_code == 401 or "authentication" in str(response.url).lower():
-            raise BYYTSessionExpired("BYYT session expired")
-
-        if "text/html" in response.headers.get("content-type", "").lower():
+    @staticmethod
+    def _classify_json_response(
+        response: Any,
+        *,
+        allow_empty: bool = False,
+        unwrap_content: bool = False,
+    ) -> Any:
+        location = response.headers.get("location", "")
+        is_auth_redirect = (
+            300 <= response.status_code < 400 and "authentication" in location.lower()
+        )
+        if (
+            response.status_code == 401
+            or "authentication" in str(response.url).lower()
+            or is_auth_redirect
+        ):
             raise BYYTSessionExpired("BYYT session expired")
 
         response.raise_for_status()
+
+        if "text/html" in response.headers.get("content-type", "").lower():
+            html = response.text.lower()
+            if "login" in html or "authentication" in html or "统一身份认证" in html:
+                raise BYYTSessionExpired("BYYT session expired")
+            raise BYYTUpstreamError("BYYT returned unexpected HTML")
 
         if not response.content:
             if allow_empty:
