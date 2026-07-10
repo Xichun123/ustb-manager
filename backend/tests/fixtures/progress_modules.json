@@ -1,0 +1,41 @@
+{
+  "code": 200,
+  "content": [
+    {
+      "kzid": "TREE_0",
+      "fkzid": "",
+      "title": "信息管理与信息系统",
+      "kzmc_en": "Information Management",
+      "kzlx": "2",
+      "zyfxdm": "0",
+      "zyfxmc": "无方向",
+      "yqxdxf": "120.0",
+      "wc_xf": "90.0",
+      "sftg": "0",
+      "children": [
+        {
+          "kzid": "module-1",
+          "fkzid": "TREE_0",
+          "title": "专业核心",
+          "kzmc_en": "Major Core",
+          "kzlx": "0",
+          "kclbdm": "MAJOR_CORE",
+          "kcxzdm": "REQUIRED",
+          "yqxdkzs": "1",
+          "wc_kzsl": "1",
+          "yqxdms": "8",
+          "wc_ms": "5",
+          "yqxdxf": "25.0",
+          "wc_xf": "15.0",
+          "yqxdxs": "400",
+          "wc_xs": "240",
+          "sftg": "0",
+          "sfbx": "1",
+          "bz": "完成培养方案规定课程"
+        }
+      ]
+    }
+  ],
+  "msg": null,
+  "msg_en": null
+}

@@ -1,0 +1,41 @@
+{
+  "xflbyq": [
+    {
+      "kclbdm": "GENERAL",
+      "kclbmc": "通识课程",
+      "kcxzdm": "",
+      "kcxzmc": "",
+      "yqwcxf": "69.0",
+      "ywcxf": "65.0",
+      "wwcxf": "4.0",
+      "kzhxf": "0.0",
+      "yzhxf": "0",
+      "bz": "通识课程"
+    }
+  ],
+  "xflbyqkc": [
+    {
+      "id": "course-1",
+      "kcdm": "CS101",
+      "kcmc": "程序设计",
+      "kcmc_en": "Programming",
+      "xnxqmc": "2024-2025-1",
+      "xf": "3.0",
+      "xs": "48",
+      "xscj": "88",
+      "sftg": "1",
+      "sfyxkc": "1",
+      "sfbx": "1",
+      "kcxzdm": "01",
+      "kcxzmc": "必修",
+      "kclbdm": "GENERAL",
+      "kclbmc": "通识课程",
+      "kkyxmc": "计算机与通信工程学院",
+      "kzid": "module-1",
+      "kzmc": "专业核心",
+      "zyfxdm": "0",
+      "zyfxmc": "无方向"
+    }
+  ],
+  "xflbzh": []
+}

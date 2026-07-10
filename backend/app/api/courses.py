@@ -1,4 +1,5 @@
 """选课管理 API 路由"""
+
 from fastapi import APIRouter, Depends, Query
 from typing import Literal, Optional, List
 from pydantic import BaseModel, Field
@@ -184,7 +185,10 @@ async def get_available_courses(
     session: Session = Depends(get_authenticated_session),
     xn: Optional[str] = Query(None, description="选课学年，如 2025-2026"),
     xq: Optional[str] = Query(None, description="选课学期，如 2"),
-    method: str = Query("bx-b-b", description="选课方式: bx-b-b(必修), mooc-b-b(MOOC), sztzk(素质拓展), zytzk(专业拓展), ggkrw(公共课)"),
+    method: str = Query(
+        "bx-b-b",
+        description="选课方式: bx-b-b(必修), mooc-b-b(MOOC), sztzk(素质拓展), zytzk(专业拓展), ggkrw(公共课)",
+    ),
     college: Optional[str] = Query(None, description="开课学院代码"),
     category: Optional[str] = Query(None, description="课程类别代码"),
     campus: Optional[str] = Query(None, description="校区代码"),
@@ -273,6 +277,7 @@ async def get_campuses(session: Session = Depends(get_authenticated_session)):
 
 # ==================== 辅助函数 ====================
 
+
 async def _get_term_params(session: Session, xn: Optional[str] = None, xq: Optional[str] = None):
     """获取学期参数，未指定时自动使用当前学期"""
     term_info = await course_service.get_course_term_info(session)
@@ -311,7 +316,10 @@ async def check_time_conflict(
     """
     tp = await _get_term_params(session)
     return await course_service.check_time_conflict(
-        session, req.course_id, **tp, xkfsdm=req.method,
+        session,
+        req.course_id,
+        **tp,
+        xkfsdm=req.method,
     )
 
 
@@ -365,7 +373,10 @@ async def select_course(
     """
     tp = await _get_term_params(session)
     return await course_service.select_course(
-        session, req.course_id, **tp, xkfsdm=req.method,
+        session,
+        req.course_id,
+        **tp,
+        xkfsdm=req.method,
     )
 
 
@@ -388,7 +399,10 @@ async def drop_course(
     """
     tp = await _get_term_params(session)
     return await course_service.drop_course(
-        session, req.course_id, **tp, xkfsdm=req.method,
+        session,
+        req.course_id,
+        **tp,
+        xkfsdm=req.method,
     )
 
 
@@ -428,7 +442,10 @@ async def add_to_cart(
     """
     tp = await _get_term_params(session)
     return await course_service.add_to_cart(
-        session, req.course_id, **tp, xkfsdm=req.method,
+        session,
+        req.course_id,
+        **tp,
+        xkfsdm=req.method,
     )
 
 
@@ -446,7 +463,10 @@ async def remove_from_cart(
     """
     tp = await _get_term_params(session)
     return await course_service.remove_from_cart(
-        session, req.course_ids, **tp, xkfsdm=req.method,
+        session,
+        req.course_ids,
+        **tp,
+        xkfsdm=req.method,
     )
 
 

@@ -21,25 +21,33 @@ logger = logging.getLogger(__name__)
 
 # --------------- helpers ---------------
 
+
 def _set_session_cookie(response: Response, session_id: str, max_age: int) -> None:
     """统一设置 session cookie。"""
     response.set_cookie(
-        COOKIE_NAME, session_id,
-        httponly=True, secure=COOKIE_SECURE, samesite="lax", max_age=max_age,
+        COOKIE_NAME,
+        session_id,
+        httponly=True,
+        secure=COOKIE_SECURE,
+        samesite="lax",
+        max_age=max_age,
     )
 
 
 # --------------- models ---------------
 
+
 class QRInitResponse(BaseModel):
     session_id: str = Field(..., description="会话ID，用于后续轮询")
-    qr_image: str = Field(..., description="Base64编码的二维码图片，格式为data:image/png;base64,...")
+    qr_image: str = Field(
+        ..., description="Base64编码的二维码图片，格式为data:image/png;base64,..."
+    )
 
     class Config:
         json_schema_extra = {
             "example": {
                 "session_id": "abc123xyz",
-                "qr_image": "data:image/png;base64,iVBORw0KGgo..."
+                "qr_image": "data:image/png;base64,iVBORw0KGgo...",
             }
         }
 
@@ -49,12 +57,7 @@ class StatusResponse(BaseModel):
     state: Optional[str] = Field(None, description="认证状态：init/qr_ready/active等")
 
     class Config:
-        json_schema_extra = {
-            "example": {
-                "authenticated": True,
-                "state": "active"
-            }
-        }
+        json_schema_extra = {"example": {"authenticated": True, "state": "active"}}
 
 
 class SimpleResponse(BaseModel):
@@ -62,11 +65,7 @@ class SimpleResponse(BaseModel):
     session_id: Optional[str] = Field(None, description="更新后的会话ID")
 
     class Config:
-        json_schema_extra = {
-            "example": {
-                "status": "ok"
-            }
-        }
+        json_schema_extra = {"example": {"status": "ok"}}
 
 
 class CookieLoginResponse(BaseModel):
@@ -77,11 +76,7 @@ class CookieLoginResponse(BaseModel):
 
     class Config:
         json_schema_extra = {
-            "example": {
-                "status": "success",
-                "student_id": "41234567",
-                "student_name": "张三"
-            }
+            "example": {"status": "success", "student_id": "41234567", "student_name": "张三"}
         }
 
 
@@ -119,7 +114,7 @@ class CookieLoginRequest(BaseModel):
     cookies: str = Field(
         ...,
         description="Cookie字符串，格式: 'INCO=xxx; SESSION=yyy'",
-        example="INCO=abc123; SESSION=xyz789"
+        example="INCO=abc123; SESSION=xyz789",
     )
 
 
@@ -155,7 +150,7 @@ async def qr_init(response: Response, ustb_sid: Optional[str] = Cookie(None)):
     _set_session_cookie(response, session_id, SESSION_MAX_AGE)
     return {
         "session_id": session_id,
-        "qr_image": f"data:image/png;base64,{base64.b64encode(qr_bytes).decode()}"
+        "qr_image": f"data:image/png;base64,{base64.b64encode(qr_bytes).decode()}",
     }
 
 
@@ -258,7 +253,13 @@ async def qr_complete(response: Response, ustb_sid: Optional[str] = Cookie(None)
         raise HTTPException(401, "No session")
     session = store.get(ustb_sid)
     if session:
-        logger.info("qr_complete called: sid=%s state=%s authenticated=%s student_id=%s", ustb_sid, session.state, session.authenticated, session.student_id)
+        logger.info(
+            "qr_complete called: sid=%s state=%s authenticated=%s student_id=%s",
+            ustb_sid,
+            session.state,
+            session.authenticated,
+            session.student_id,
+        )
     if not session or session.state != AuthState.ACTIVE:
         raise HTTPException(401, "Not authenticated")
 
@@ -333,7 +334,9 @@ async def sms_send(req: SmsRequest, ustb_sid: Optional[str] = Cookie(None)):
 
 
 @router.post("/sms/verify", response_model=SimpleResponse, summary="验证短信验证码")
-async def sms_verify(req: SmsVerifyRequest, response: Response, ustb_sid: Optional[str] = Cookie(None)):
+async def sms_verify(
+    req: SmsVerifyRequest, response: Response, ustb_sid: Optional[str] = Cookie(None)
+):
     """
     ## 业务说明
     验证短信验证码并完成登录。
@@ -458,10 +461,10 @@ async def cookie_login(req: CookieLoginRequest, response: Response):
 
     try:
         cookie_dict = {}
-        for item in req.cookies.split(';'):
+        for item in req.cookies.split(";"):
             item = item.strip()
-            if '=' in item:
-                key, value = item.split('=', 1)
+            if "=" in item:
+                key, value = item.split("=", 1)
                 cookie_dict[key.strip()] = value.strip()
 
         session_id, session = store.create()

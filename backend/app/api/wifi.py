@@ -2,6 +2,7 @@
 校园网管理 API 路由
 使用API接口获取数据，避免HTML解析
 """
+
 import logging
 import re
 from datetime import datetime
@@ -43,7 +44,9 @@ class WifiStandaloneLoginRequest(BaseModel):
 
 
 class WifiLoginChallengeRequest(BaseModel):
-    student_id: Optional[str] = Field(default=None, min_length=8, max_length=13, pattern=r"^[Uu]?\d{8,12}$")
+    student_id: Optional[str] = Field(
+        default=None, min_length=8, max_length=13, pattern=r"^[Uu]?\d{8,12}$"
+    )
     password: Optional[str] = None
 
 
@@ -342,6 +345,7 @@ async def get_flow(request: Request):
             raise HTTPException(status_code=500, detail="获取流量信息失败")
 
         import time
+
         return {
             "account": result.get("account", student_id),
             "balance": result.get("balance", 0.0),
@@ -388,10 +392,7 @@ async def get_devices(request: Request):
 
     try:
         devices = await get_bound_devices(session.client, session.cookie, session.mode)
-        return {
-            "total": len(devices),
-            "devices": devices
-        }
+        return {"total": len(devices), "devices": devices}
     except HTTPException:
         raise
     except Exception as e:
@@ -423,6 +424,7 @@ async def get_mac_vendor(
         raise HTTPException(status_code=422, detail="MAC地址格式不正确")
 
     from ..services.mac_vendor import get_vendor
+
     return get_vendor(mac)
 
 
@@ -538,7 +540,9 @@ async def get_payment_records(request: Request, start_date: str = None, end_date
         start_date = (today.replace(year=today.year - 1)).strftime("%Y-%m-%d")
 
     try:
-        result = await get_payments(session.client, session.cookie, start_date, end_date, session.mode)
+        result = await get_payments(
+            session.client, session.cookie, start_date, end_date, session.mode
+        )
         if not result:
             raise HTTPException(status_code=500, detail="获取充值明细失败")
 

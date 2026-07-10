@@ -21,6 +21,89 @@ class AcademicCalendar(BaseModel):
     dates: list[CalendarDate] = Field(default_factory=list)
 
 
+class AcademicProgress(BaseModel):
+    cutoff_term: Optional[str] = None
+    required_courses: Optional[int] = None
+    completed_courses: Optional[int] = None
+    remaining_courses: Optional[int] = None
+    required_credits: Optional[float] = None
+    completed_credits: Optional[float] = None
+    remaining_credits: Optional[float] = None
+    credit_score: Optional[float] = None
+    major_rank: Optional[int] = None
+    major_student_count: Optional[int] = None
+
+
+class AcademicProgressModule(BaseModel):
+    id: str
+    parent_id: str = ""
+    name: str
+    name_en: str = ""
+    module_type: str = ""
+    course_category_code: str = ""
+    course_nature_code: str = ""
+    required_groups: Optional[int] = None
+    completed_groups: Optional[int] = None
+    required_courses: Optional[int] = None
+    completed_courses: Optional[int] = None
+    required_hours: Optional[float] = None
+    completed_hours: Optional[float] = None
+    required_credits: Optional[float] = None
+    completed_credits: Optional[float] = None
+    passed: Optional[bool] = None
+    is_required: Optional[bool] = None
+    remark: str = ""
+    children: list["AcademicProgressModule"] = Field(default_factory=list)
+
+
+class AcademicProgressModules(BaseModel):
+    is_available: bool
+    items: list[AcademicProgressModule] = Field(default_factory=list)
+
+
+class AcademicProgressCategory(BaseModel):
+    code: str
+    name: str
+    name_en: str = ""
+    course_nature_code: str = ""
+    course_nature: str = ""
+    required_credits: Optional[float] = None
+    completed_credits: Optional[float] = None
+    remaining_credits: Optional[float] = None
+    convertible_credits: Optional[float] = None
+    converted_credits: Optional[float] = None
+    remark: str = ""
+
+
+class AcademicProgressCourse(BaseModel):
+    id: str
+    course_code: str
+    course_name: str
+    course_name_en: str = ""
+    term: str = ""
+    credits: Optional[float] = None
+    hours: Optional[float] = None
+    score: str = ""
+    passed: Optional[bool] = None
+    counts_toward_requirement: Optional[bool] = None
+    is_required: Optional[bool] = None
+    course_nature_code: str = ""
+    course_nature: str = ""
+    course_category_code: str = ""
+    course_category: str = ""
+    college: str = ""
+    module_id: str = ""
+    module_name: str = ""
+    major_direction_code: str = ""
+    major_direction: str = ""
+
+
+class AcademicProgressCourses(BaseModel):
+    is_available: bool
+    categories: list[AcademicProgressCategory] = Field(default_factory=list)
+    courses: list[AcademicProgressCourse] = Field(default_factory=list)
+
+
 class AcademicWarningCourse(BaseModel):
     course_code: str
     course_name: str

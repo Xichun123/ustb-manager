@@ -62,6 +62,565 @@
         "title": "AcademicContextResponse",
         "type": "object"
       },
+      "AcademicProgress": {
+        "properties": {
+          "completed_courses": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed Courses"
+          },
+          "completed_credits": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed Credits"
+          },
+          "credit_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credit Score"
+          },
+          "cutoff_term": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cutoff Term"
+          },
+          "major_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Major Rank"
+          },
+          "major_student_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Major Student Count"
+          },
+          "remaining_courses": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Courses"
+          },
+          "remaining_credits": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Credits"
+          },
+          "required_courses": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Courses"
+          },
+          "required_credits": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Credits"
+          }
+        },
+        "title": "AcademicProgress",
+        "type": "object"
+      },
+      "AcademicProgressCategory": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "completed_credits": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed Credits"
+          },
+          "converted_credits": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Converted Credits"
+          },
+          "convertible_credits": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Convertible Credits"
+          },
+          "course_nature": {
+            "default": "",
+            "title": "Course Nature",
+            "type": "string"
+          },
+          "course_nature_code": {
+            "default": "",
+            "title": "Course Nature Code",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "name_en": {
+            "default": "",
+            "title": "Name En",
+            "type": "string"
+          },
+          "remaining_credits": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Credits"
+          },
+          "remark": {
+            "default": "",
+            "title": "Remark",
+            "type": "string"
+          },
+          "required_credits": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Credits"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "AcademicProgressCategory",
+        "type": "object"
+      },
+      "AcademicProgressCourse": {
+        "properties": {
+          "college": {
+            "default": "",
+            "title": "College",
+            "type": "string"
+          },
+          "counts_toward_requirement": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Counts Toward Requirement"
+          },
+          "course_category": {
+            "default": "",
+            "title": "Course Category",
+            "type": "string"
+          },
+          "course_category_code": {
+            "default": "",
+            "title": "Course Category Code",
+            "type": "string"
+          },
+          "course_code": {
+            "title": "Course Code",
+            "type": "string"
+          },
+          "course_name": {
+            "title": "Course Name",
+            "type": "string"
+          },
+          "course_name_en": {
+            "default": "",
+            "title": "Course Name En",
+            "type": "string"
+          },
+          "course_nature": {
+            "default": "",
+            "title": "Course Nature",
+            "type": "string"
+          },
+          "course_nature_code": {
+            "default": "",
+            "title": "Course Nature Code",
+            "type": "string"
+          },
+          "credits": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credits"
+          },
+          "hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hours"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_required": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Required"
+          },
+          "major_direction": {
+            "default": "",
+            "title": "Major Direction",
+            "type": "string"
+          },
+          "major_direction_code": {
+            "default": "",
+            "title": "Major Direction Code",
+            "type": "string"
+          },
+          "module_id": {
+            "default": "",
+            "title": "Module Id",
+            "type": "string"
+          },
+          "module_name": {
+            "default": "",
+            "title": "Module Name",
+            "type": "string"
+          },
+          "passed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passed"
+          },
+          "score": {
+            "default": "",
+            "title": "Score",
+            "type": "string"
+          },
+          "term": {
+            "default": "",
+            "title": "Term",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "course_code",
+          "course_name"
+        ],
+        "title": "AcademicProgressCourse",
+        "type": "object"
+      },
+      "AcademicProgressCourses": {
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/AcademicProgressCategory"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "courses": {
+            "items": {
+              "$ref": "#/components/schemas/AcademicProgressCourse"
+            },
+            "title": "Courses",
+            "type": "array"
+          },
+          "is_available": {
+            "title": "Is Available",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "is_available"
+        ],
+        "title": "AcademicProgressCourses",
+        "type": "object"
+      },
+      "AcademicProgressModule": {
+        "properties": {
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/AcademicProgressModule"
+            },
+            "title": "Children",
+            "type": "array"
+          },
+          "completed_courses": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed Courses"
+          },
+          "completed_credits": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed Credits"
+          },
+          "completed_groups": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed Groups"
+          },
+          "completed_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed Hours"
+          },
+          "course_category_code": {
+            "default": "",
+            "title": "Course Category Code",
+            "type": "string"
+          },
+          "course_nature_code": {
+            "default": "",
+            "title": "Course Nature Code",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_required": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Required"
+          },
+          "module_type": {
+            "default": "",
+            "title": "Module Type",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "name_en": {
+            "default": "",
+            "title": "Name En",
+            "type": "string"
+          },
+          "parent_id": {
+            "default": "",
+            "title": "Parent Id",
+            "type": "string"
+          },
+          "passed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passed"
+          },
+          "remark": {
+            "default": "",
+            "title": "Remark",
+            "type": "string"
+          },
+          "required_courses": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Courses"
+          },
+          "required_credits": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Credits"
+          },
+          "required_groups": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Groups"
+          },
+          "required_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Hours"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "AcademicProgressModule",
+        "type": "object"
+      },
+      "AcademicProgressModules": {
+        "properties": {
+          "is_available": {
+            "title": "Is Available",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AcademicProgressModule"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "is_available"
+        ],
+        "title": "AcademicProgressModules",
+        "type": "object"
+      },
       "AcademicTerm": {
         "properties": {
           "code": {
@@ -1945,6 +2504,172 @@
           }
         },
         "summary": "获取日期感知教学上下文",
+        "tags": [
+          "academic"
+        ]
+      }
+    },
+    "/api/academic/progress": {
+      "get": {
+        "operationId": "academic_progress_api_academic_progress_get",
+        "parameters": [
+          {
+            "description": "截止学年学期；不传则查询全部学期",
+            "in": "query",
+            "name": "term",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-\\d{4}-[123]$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "截止学年学期；不传则查询全部学期",
+              "title": "Term"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcademicProgress"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "查询学业进度汇总",
+        "tags": [
+          "academic"
+        ]
+      }
+    },
+    "/api/academic/progress/courses": {
+      "get": {
+        "operationId": "academic_progress_courses_api_academic_progress_courses_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcademicProgressCourses"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "查询学业进度课程要求",
+        "tags": [
+          "academic"
+        ]
+      }
+    },
+    "/api/academic/progress/modules": {
+      "get": {
+        "operationId": "academic_progress_modules_api_academic_progress_modules_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcademicProgressModules"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "查询学业进度模块要求",
         "tags": [
           "academic"
         ]
