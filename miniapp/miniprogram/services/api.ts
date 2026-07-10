@@ -2,7 +2,6 @@ import {
   clearAll,
   getSessionId,
   getWifiStudentId,
-  setSessionId,
   setWifiStudentId,
 } from '../utils/storage'
 
@@ -15,7 +14,6 @@ interface RequestOptions {
   header?: Record<string, string>
   skipAuth?: boolean
   isWifi?: boolean
-  captureSessionCookie?: boolean
 }
 
 interface ApiResponse<T = any> {
@@ -43,7 +41,6 @@ export function request<T = any>(options: RequestOptions): Promise<ApiResponse<T
     header = {},
     skipAuth = false,
     isWifi = false,
-    captureSessionCookie = true,
   } = options
 
   const sessionId = getSessionId()
@@ -54,9 +51,11 @@ export function request<T = any>(options: RequestOptions): Promise<ApiResponse<T
   if (existingCookie) {
     cookieParts.push(existingCookie)
   }
-  // Login bootstrap endpoints still rely on the temporary auth session cookie.
-  if (sessionId) {
-    cookieParts.push(`ustb_sid=${sessionId}`)
+  if (!isWifi) {
+    header['X-Auth-Transport'] = 'bearer'
+    if (sessionId) {
+      header.Authorization = `Bearer ${sessionId}`
+    }
   }
   if (wifiStudentId) {
     cookieParts.push(`wifi_student_id=${wifiStudentId}`)
@@ -83,20 +82,14 @@ export function request<T = any>(options: RequestOptions): Promise<ApiResponse<T
       data,
       header,
       success: (res: any) => {
-        // Save session from Set-Cookie
-        const newSid = extractCookieValue(res.header || {}, 'ustb_sid')
-        if (newSid && captureSessionCookie) {
-          setSessionId(newSid)
-        }
         const newWifiStudentId = extractCookieValue(res.header || {}, 'wifi_student_id')
         if (newWifiStudentId) {
           setWifiStudentId(newWifiStudentId)
         }
 
         // Ignore late responses from an old session so they don't wipe a newer login flow.
-        const effectiveSessionId = captureSessionCookie ? (newSid || sessionId) : sessionId
-        const sessionStillCurrent = effectiveSessionId
-          ? getSessionId() === effectiveSessionId
+        const sessionStillCurrent = sessionId
+          ? getSessionId() === sessionId
           : !getSessionId()
 
         // Handle 401

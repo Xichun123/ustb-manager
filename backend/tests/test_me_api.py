@@ -5,9 +5,10 @@ from pathlib import Path
 import httpx
 from fastapi.testclient import TestClient
 
+from app import dependencies
 from app.dependencies import get_authenticated_session
 from app.main import app
-from app.services.session_store import AuthState, Session
+from app.services.session_store import AuthState, Session, SessionStore
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -66,3 +67,33 @@ def test_me_combines_student_profile_and_normalized_roles():
             }
         ],
     }
+
+
+def test_me_accepts_the_same_session_as_a_bearer_token(monkeypatch):
+    student_fixture = json.loads((FIXTURES / "profile_student.json").read_text())
+    user_fixture = json.loads((FIXTURES / "profile_user.json").read_text())
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/UserManager/queryxsxx":
+            return httpx.Response(200, json=student_fixture)
+        return httpx.Response(200, json=user_fixture)
+
+    session_store = SessionStore()
+    session_id, session = session_store.create()
+    session.client.close()
+    session.client = httpx.Client(transport=httpx.MockTransport(handler))
+    session.state = AuthState.ACTIVE
+    session.authenticated = True
+    monkeypatch.setattr(dependencies, "store", session_store)
+
+    try:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get(
+                "/api/me",
+                headers={"Authorization": f"Bearer {session_id}"},
+            )
+    finally:
+        session_store.stop_cleanup()
+
+    assert response.status_code == 200
+    assert response.json()["student_id"] == "U000000000"

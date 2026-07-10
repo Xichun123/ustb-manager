@@ -53,7 +53,6 @@ export async function initQRLogin(): Promise<{ session_id: string; qr_image: str
     url: '/api/auth/qr/init',
     method: 'POST',
     skipAuth: true,
-    captureSessionCookie: false,
   })
   if (res.statusCode === 200) {
     adoptSessionIfLatest(flowVersion, res.data.session_id)
@@ -91,7 +90,6 @@ export async function completeQRLogin(): Promise<{ status: string; session_id?: 
     url: '/api/auth/qr/complete',
     method: 'POST',
     skipAuth: true,
-    captureSessionCookie: false,
   })
 
   if (res.statusCode !== 200) {
@@ -113,7 +111,6 @@ export async function initSMSLogin(): Promise<{ session_id: string }> {
     url: '/api/auth/sms/init',
     method: 'POST',
     skipAuth: true,
-    captureSessionCookie: false,
   })
   if (res.statusCode === 200) {
     adoptSessionIfLatest(flowVersion, res.data.session_id)
@@ -146,7 +143,6 @@ export async function verifySMS(phone: string, code: string): Promise<void> {
     method: 'POST',
     data: { phone, code },
     skipAuth: true,
-    captureSessionCookie: false,
   })
   if (res.statusCode !== 200) {
     throw new Error(getErrorMessage(res.data, '验证码错误或已过期'))
@@ -164,7 +160,6 @@ export async function cookieLogin(cookies: string): Promise<{ student_id: string
     method: 'POST',
     data: { cookies },
     skipAuth: true,
-    captureSessionCookie: false,
   })
   if (res.statusCode === 200) {
     adoptSessionIfLatest(flowVersion, res.data.session_id)

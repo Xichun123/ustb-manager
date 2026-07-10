@@ -30,6 +30,61 @@ class CapturingSessionStore(SessionStore):
         return session_id, session
 
 
+def test_browser_qr_init_sets_http_only_cookie_without_exposing_session_token(monkeypatch):
+    session_store = CapturingSessionStore()
+    monkeypatch.setattr(auth, "store", session_store)
+
+    async def init_qr(session):
+        return b"qr-image"
+
+    monkeypatch.setattr(auth.auth_service, "init_qr_auth", init_qr)
+
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.post("/api/auth/qr/init")
+
+    assert response.status_code == 200
+    assert response.json()["session_id"] is None
+    assert "ustb_sid=" in response.headers["set-cookie"]
+    assert "HttpOnly" in response.headers["set-cookie"]
+
+
+def test_bearer_qr_init_returns_token_without_setting_browser_cookie(monkeypatch):
+    session_store = CapturingSessionStore()
+    monkeypatch.setattr(auth, "store", session_store)
+
+    async def init_qr(session):
+        return b"qr-image"
+
+    monkeypatch.setattr(auth.auth_service, "init_qr_auth", init_qr)
+
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.post(
+            "/api/auth/qr/init",
+            headers={"X-Auth-Transport": "bearer"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["session_id"] == session_store.created_session_id
+    assert "set-cookie" not in response.headers
+
+
+def test_bearer_token_checks_auth_status(monkeypatch):
+    session_store = CapturingSessionStore()
+    monkeypatch.setattr(auth, "store", session_store)
+    session_id, session = session_store.create()
+    session.state = AuthState.ACTIVE
+    session.authenticated = True
+
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.get(
+            "/api/auth/status",
+            headers={"Authorization": f"Bearer {session_id}"},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {"authenticated": True, "state": "active"}
+
+
 def test_qr_init_hides_upstream_error_and_removes_the_new_session(monkeypatch):
     session_store = CapturingSessionStore()
     monkeypatch.setattr(auth, "store", session_store)
@@ -195,8 +250,9 @@ def test_cookie_login_persists_a_valid_session(monkeypatch, tmp_path):
         "status": "success",
         "student_id": "test-student",
         "student_name": "Test Student",
-        "session_id": session_store.created_session_id,
+        "session_id": None,
     }
+    assert "ustb_sid=" in response.headers["set-cookie"]
     assert session_store.created_session.authenticated is True
     assert session_store.created_session.student_id == "test-student"
     stored = database.load(session_store.created_session_id)

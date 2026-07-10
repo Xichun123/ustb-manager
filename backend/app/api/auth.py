@@ -2,7 +2,7 @@ import base64
 import json
 import re
 import logging
-from fastapi import APIRouter, Response, HTTPException, Cookie
+from fastapi import APIRouter, Depends, Header, HTTPException, Response
 from fastapi.responses import StreamingResponse
 from sse_starlette.sse import EventSourceResponse
 from typing import Optional
@@ -11,6 +11,7 @@ import asyncio
 
 from ..byyt.profile import get_student_identity
 from ..config import COOKIE_NAME, COOKIE_SECURE, SESSION_TTL, SESSION_MAX_AGE
+from ..dependencies import get_optional_session_token
 from ..exceptions import BYYTSessionExpired
 from ..services.session_store import store, AuthState
 from ..services import auth_service
@@ -47,11 +48,23 @@ def _set_session_cookie(response: Response, session_id: str, max_age: int) -> No
     )
 
 
+def _publish_session(
+    response: Response,
+    session_id: str,
+    max_age: int,
+    auth_transport: Optional[str],
+) -> Optional[str]:
+    if (auth_transport or "").lower() == "bearer":
+        return session_id
+    _set_session_cookie(response, session_id, max_age)
+    return None
+
+
 # --------------- models ---------------
 
 
 class QRInitResponse(BaseModel):
-    session_id: str = Field(..., description="会话ID，用于后续轮询")
+    session_id: Optional[str] = Field(None, description="Bearer 客户端后续使用的会话令牌")
     qr_image: str = Field(
         ..., description="Base64编码的二维码图片，格式为data:image/png;base64,..."
     )
@@ -132,7 +145,11 @@ class CookieLoginRequest(BaseModel):
 
 
 @router.post("/qr/init", response_model=QRInitResponse, summary="初始化二维码登录")
-async def qr_init(response: Response, ustb_sid: Optional[str] = Cookie(None)):
+async def qr_init(
+    response: Response,
+    session_token: Optional[str] = Depends(get_optional_session_token),
+    auth_transport: Optional[str] = Header(None, alias="X-Auth-Transport"),
+):
     """
     ## 业务说明
     初始化微信扫码登录流程，生成登录二维码。
@@ -149,7 +166,7 @@ async def qr_init(response: Response, ustb_sid: Optional[str] = Cookie(None)):
     - 二维码图片为Base64编码，可直接用于img标签的src属性
     - 如果已有有效的authenticated session，会复用该session
     """
-    existing_session = store.get(ustb_sid) if ustb_sid else None
+    existing_session = store.get(session_token) if session_token else None
     if existing_session and existing_session.authenticated:
         raise HTTPException(409, "Already authenticated")
 
@@ -160,15 +177,22 @@ async def qr_init(response: Response, ustb_sid: Optional[str] = Cookie(None)):
         store.delete(session_id)
         raise HTTPException(502, _QR_INIT_FAILED_MESSAGE)
 
-    _set_session_cookie(response, session_id, SESSION_MAX_AGE)
+    published_token = _publish_session(
+        response,
+        session_id,
+        SESSION_MAX_AGE,
+        auth_transport,
+    )
     return {
-        "session_id": session_id,
+        "session_id": published_token,
         "qr_image": f"data:image/png;base64,{base64.b64encode(qr_bytes).decode()}",
     }
 
 
 @router.get("/qr/poll", summary="轮询二维码登录状态（非SSE）")
-async def qr_poll(ustb_sid: Optional[str] = Cookie(None)):
+async def qr_poll(
+    session_token: Optional[str] = Depends(get_optional_session_token),
+):
     """
     ## 业务说明
     非SSE方式轮询二维码扫码状态，适用于不支持SSE的客户端（如微信小程序）。
@@ -184,9 +208,9 @@ async def qr_poll(ustb_sid: Optional[str] = Cookie(None)):
     - `success`: 登录成功
     - `expired`: 二维码已过期
     """
-    if not ustb_sid:
+    if not session_token:
         raise HTTPException(401, "No session")
-    session = store.get(ustb_sid)
+    session = store.get(session_token)
     if not session:
         raise HTTPException(401, "Session expired")
 
@@ -208,7 +232,9 @@ async def qr_poll(ustb_sid: Optional[str] = Cookie(None)):
 
 
 @router.get("/qr/status", summary="轮询二维码登录状态")
-async def qr_status(ustb_sid: Optional[str] = Cookie(None)):
+async def qr_status(
+    session_token: Optional[str] = Depends(get_optional_session_token),
+):
     """
     ## 业务说明
     使用Server-Sent Events (SSE)实时推送二维码扫码状态。
@@ -230,9 +256,9 @@ async def qr_status(ustb_sid: Optional[str] = Cookie(None)):
     - 使用SSE协议，前端需使用EventSource API
     - 连接会在收到终态(success/expired/error)后自动关闭
     """
-    if not ustb_sid:
+    if not session_token:
         raise HTTPException(401, "No session")
-    session = store.get(ustb_sid)
+    session = store.get(session_token)
     if not session:
         raise HTTPException(401, "Session expired")
 
@@ -247,7 +273,11 @@ async def qr_status(ustb_sid: Optional[str] = Cookie(None)):
 
 
 @router.post("/qr/complete", response_model=SimpleResponse, summary="完成二维码登录")
-async def qr_complete(response: Response, ustb_sid: Optional[str] = Cookie(None)):
+async def qr_complete(
+    response: Response,
+    session_token: Optional[str] = Depends(get_optional_session_token),
+    auth_transport: Optional[str] = Header(None, alias="X-Auth-Transport"),
+):
     """
     ## 业务说明
     完成二维码登录流程，刷新session并设置长期cookie。
@@ -262,9 +292,9 @@ async def qr_complete(response: Response, ustb_sid: Optional[str] = Cookie(None)
     - 会自动更新cookie，前端无需处理
     - 调用后即可访问需要认证的API
     """
-    if not ustb_sid:
+    if not session_token:
         raise HTTPException(401, "No session")
-    session = store.get(ustb_sid)
+    session = store.get(session_token)
     if session:
         logger.info(
             "QR login completion requested: state=%s authenticated=%s",
@@ -274,14 +304,22 @@ async def qr_complete(response: Response, ustb_sid: Optional[str] = Cookie(None)
     if not session or session.state != AuthState.ACTIVE:
         raise HTTPException(401, "Not authenticated")
 
-    new_id = store.rotate(ustb_sid)
-    if new_id:
-        _set_session_cookie(response, new_id, SESSION_TTL)
-    return {"status": "ok", "session_id": new_id or ustb_sid}
+    new_id = store.rotate(session_token)
+    active_id = new_id or session_token
+    published_token = _publish_session(
+        response,
+        active_id,
+        SESSION_TTL,
+        auth_transport,
+    )
+    return {"status": "ok", "session_id": published_token}
 
 
 @router.post("/sms/init", response_model=dict, summary="初始化短信登录")
-async def sms_init(response: Response):
+async def sms_init(
+    response: Response,
+    auth_transport: Optional[str] = Header(None, alias="X-Auth-Transport"),
+):
     """
     ## 业务说明
     初始化短信验证码登录流程。
@@ -302,12 +340,21 @@ async def sms_init(response: Response):
         store.delete(session_id)
         raise HTTPException(502, _SMS_INIT_FAILED_MESSAGE)
 
-    _set_session_cookie(response, session_id, SESSION_MAX_AGE)
-    return {"session_id": session_id}
+    return {
+        "session_id": _publish_session(
+            response,
+            session_id,
+            SESSION_MAX_AGE,
+            auth_transport,
+        )
+    }
 
 
 @router.post("/sms/send", response_model=SimpleResponse, summary="发送短信验证码")
-async def sms_send(req: SmsRequest, ustb_sid: Optional[str] = Cookie(None)):
+async def sms_send(
+    req: SmsRequest,
+    session_token: Optional[str] = Depends(get_optional_session_token),
+):
     """
     ## 业务说明
     向指定手机号发送短信验证码。
@@ -323,9 +370,9 @@ async def sms_send(req: SmsRequest, ustb_sid: Optional[str] = Cookie(None)):
     - 发送间隔限制：60秒内只能发送一次
     - 如果频繁发送会返回429错误
     """
-    if not ustb_sid:
+    if not session_token:
         raise HTTPException(401, "No session")
-    session = store.get(ustb_sid)
+    session = store.get(session_token)
     if not session:
         raise HTTPException(401, "Session expired")
 
@@ -346,7 +393,10 @@ async def sms_send(req: SmsRequest, ustb_sid: Optional[str] = Cookie(None)):
 
 @router.post("/sms/verify", response_model=SimpleResponse, summary="验证短信验证码")
 async def sms_verify(
-    req: SmsVerifyRequest, response: Response, ustb_sid: Optional[str] = Cookie(None)
+    req: SmsVerifyRequest,
+    response: Response,
+    session_token: Optional[str] = Depends(get_optional_session_token),
+    auth_transport: Optional[str] = Header(None, alias="X-Auth-Transport"),
 ):
     """
     ## 业务说明
@@ -362,9 +412,9 @@ async def sms_verify(
     - 验证成功后会自动轮换session ID
     - 会设置新的session cookie
     """
-    if not ustb_sid:
+    if not session_token:
         raise HTTPException(401, "No session")
-    session = store.get(ustb_sid)
+    session = store.get(session_token)
     if not session:
         raise HTTPException(401, "Session expired")
 
@@ -376,14 +426,21 @@ async def sms_verify(
         logger.error("SMS verification failed: %s", type(exc).__name__)
         raise HTTPException(502, _SMS_VERIFY_FAILED_MESSAGE)
 
-    new_id = store.rotate(ustb_sid)
-    if new_id:
-        _set_session_cookie(response, new_id, SESSION_MAX_AGE)
-    return {"status": "ok", "session_id": new_id or ustb_sid}
+    new_id = store.rotate(session_token)
+    active_id = new_id or session_token
+    published_token = _publish_session(
+        response,
+        active_id,
+        SESSION_MAX_AGE,
+        auth_transport,
+    )
+    return {"status": "ok", "session_id": published_token}
 
 
 @router.get("/status", response_model=StatusResponse, summary="检查认证状态")
-async def auth_status(ustb_sid: Optional[str] = Cookie(None)):
+async def auth_status(
+    session_token: Optional[str] = Depends(get_optional_session_token),
+):
     """
     ## 业务说明
     检查当前用户的认证状态，用于判断是否需要登录。
@@ -402,16 +459,19 @@ async def auth_status(ustb_sid: Optional[str] = Cookie(None)):
     - 此接口不会抛出401错误，始终返回200
     - 即使没有cookie也会返回 `authenticated: false`
     """
-    if not ustb_sid:
+    if not session_token:
         return {"authenticated": False}
-    session = store.get(ustb_sid)
+    session = store.get(session_token)
     if not session:
         return {"authenticated": False}
     return {"authenticated": session.state == AuthState.ACTIVE, "state": session.state.value}
 
 
 @router.post("/logout", response_model=SimpleResponse, summary="退出登录")
-async def logout(response: Response, ustb_sid: Optional[str] = Cookie(None)):
+async def logout(
+    response: Response,
+    session_token: Optional[str] = Depends(get_optional_session_token),
+):
     """
     ## 业务说明
     退出登录，清除session和cookie。
@@ -426,14 +486,18 @@ async def logout(response: Response, ustb_sid: Optional[str] = Cookie(None)):
     - 会删除客户端的cookie
     - 即使没有有效session也会返回成功
     """
-    if ustb_sid:
-        store.delete(ustb_sid)
+    if session_token:
+        store.delete(session_token)
     response.delete_cookie(COOKIE_NAME)
     return {"status": "ok"}
 
 
 @router.post("/cookie/login", response_model=CookieLoginResponse, summary="使用Cookie登录")
-async def cookie_login(req: CookieLoginRequest, response: Response):
+async def cookie_login(
+    req: CookieLoginRequest,
+    response: Response,
+    auth_transport: Optional[str] = Header(None, alias="X-Auth-Transport"),
+):
     """
     ## 业务说明
     使用从浏览器复制的USTB教务系统Cookie直接登录，适合高级用户快速登录。
@@ -493,12 +557,17 @@ async def cookie_login(req: CookieLoginRequest, response: Response):
         session.student_id = identity.student_id
         store.persist(session_id, identity.student_id, cookie_dict)
 
-        _set_session_cookie(response, session_id, SESSION_MAX_AGE)
+        published_token = _publish_session(
+            response,
+            session_id,
+            SESSION_MAX_AGE,
+            auth_transport,
+        )
         return {
             "status": "success",
             "student_id": identity.student_id,
             "student_name": identity.name,
-            "session_id": session_id,
+            "session_id": published_token,
         }
     except BYYTSessionExpired:
         if session_id:

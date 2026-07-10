@@ -20,7 +20,8 @@ function checkAuth(app: WechatMiniprogram.App.Instance<IAppOption>) {
   wx.request({
     url: `${app.globalData.baseUrl}/api/auth/status`,
     header: {
-      Cookie: `ustb_sid=${sessionId}`,
+      Authorization: `Bearer ${sessionId}`,
+      'X-Auth-Transport': 'bearer',
     },
     success: (res: any) => {
       if (res.statusCode === 200 && res.data && res.data.authenticated) {
