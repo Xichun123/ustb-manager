@@ -18,6 +18,17 @@ from ustb_sso._exceptions import APIError
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
 
+_QR_INIT_FAILED_MESSAGE = "二维码登录初始化失败，请稍后重试"
+_SMS_INIT_FAILED_MESSAGE = "短信登录初始化失败，请稍后重试"
+_SMS_SEND_RATE_LIMITED_MESSAGE = "短信发送过于频繁，请稍后重试"
+_SMS_SEND_FAILED_MESSAGE = "短信服务暂时不可用，请稍后重试"
+_SMS_VERIFY_INVALID_MESSAGE = "验证码无效或登录状态已失效"
+_SMS_VERIFY_FAILED_MESSAGE = "短信登录完成失败，请稍后重试"
+_COOKIE_VALIDATION_FAILED_MESSAGE = "Cookie验证失败，请重新登录"
+_COOKIE_FORMAT_INVALID_MESSAGE = "Cookie格式不正确"
+_COOKIE_LOGIN_FAILED_MESSAGE = "Cookie登录失败，请稍后重试"
+_QR_LOGIN_FAILED_MESSAGE = "二维码登录失败，请稍后重试"
+
 
 # --------------- helpers ---------------
 
@@ -143,9 +154,9 @@ async def qr_init(response: Response, ustb_sid: Optional[str] = Cookie(None)):
     session_id, session = store.create()
     try:
         qr_bytes = await auth_service.init_qr_auth(session)
-    except Exception as e:
+    except Exception:
         store.delete(session_id)
-        raise HTTPException(502, str(e))
+        raise HTTPException(502, _QR_INIT_FAILED_MESSAGE)
 
     _set_session_cookie(response, session_id, SESSION_MAX_AGE)
     return {
@@ -178,7 +189,7 @@ async def qr_poll(ustb_sid: Optional[str] = Cookie(None)):
         raise HTTPException(401, "Session expired")
 
     if session.last_error:
-        return {"status": "error", "message": session.last_error}
+        return {"status": "error", "message": _QR_LOGIN_FAILED_MESSAGE}
 
     if session.state == AuthState.QR_READY:
         await auth_service.start_qr_background_monitor(session)
@@ -254,11 +265,9 @@ async def qr_complete(response: Response, ustb_sid: Optional[str] = Cookie(None)
     session = store.get(ustb_sid)
     if session:
         logger.info(
-            "qr_complete called: sid=%s state=%s authenticated=%s student_id=%s",
-            ustb_sid,
+            "QR login completion requested: state=%s authenticated=%s",
             session.state,
             session.authenticated,
-            session.student_id,
         )
     if not session or session.state != AuthState.ACTIVE:
         raise HTTPException(401, "Not authenticated")
@@ -287,9 +296,9 @@ async def sms_init(response: Response):
     session_id, session = store.create()
     try:
         await auth_service.init_sms_auth(session)
-    except Exception as e:
+    except Exception:
         store.delete(session_id)
-        raise HTTPException(502, str(e))
+        raise HTTPException(502, _SMS_INIT_FAILED_MESSAGE)
 
     _set_session_cookie(response, session_id, SESSION_MAX_AGE)
     return {"session_id": session_id}
@@ -323,13 +332,13 @@ async def sms_send(req: SmsRequest, ustb_sid: Optional[str] = Cookie(None)):
 
     try:
         await auth_service.send_sms(session, req.phone)
-    except APIError as e:
-        error_msg = str(e)
-        if "201" in error_msg or "发送间隔过短" in error_msg:
-            raise HTTPException(429, error_msg)
-        raise HTTPException(502, error_msg)
-    except Exception as e:
-        raise HTTPException(502, str(e))
+    except APIError as exc:
+        error_message = str(exc)
+        if "201" in error_message or "发送间隔过短" in error_message:
+            raise HTTPException(429, _SMS_SEND_RATE_LIMITED_MESSAGE)
+        raise HTTPException(502, _SMS_SEND_FAILED_MESSAGE)
+    except Exception:
+        raise HTTPException(502, _SMS_SEND_FAILED_MESSAGE)
     return {"status": "sent"}
 
 
@@ -359,13 +368,11 @@ async def sms_verify(
 
     try:
         await auth_service.verify_sms(session, req.phone, req.code)
-    except APIError as e:
-        raise HTTPException(401, str(e))
-    except ValueError as e:
-        raise HTTPException(401, str(e))
-    except Exception as e:
-        logger.exception("SMS verify failed")
-        raise HTTPException(502, str(e) or "SMS login completion failed")
+    except (APIError, ValueError):
+        raise HTTPException(401, _SMS_VERIFY_INVALID_MESSAGE)
+    except Exception as exc:
+        logger.error("SMS verification failed: %s", type(exc).__name__)
+        raise HTTPException(502, _SMS_VERIFY_FAILED_MESSAGE)
 
     new_id = store.rotate(ustb_sid)
     if new_id:
@@ -458,13 +465,23 @@ async def cookie_login(req: CookieLoginRequest, response: Response):
     """
     import httpx
 
+    session_id: Optional[str] = None
     try:
         cookie_dict = {}
         for item in req.cookies.split(";"):
             item = item.strip()
-            if "=" in item:
-                key, value = item.split("=", 1)
-                cookie_dict[key.strip()] = value.strip()
+            if not item:
+                continue
+            if "=" not in item:
+                raise HTTPException(400, _COOKIE_FORMAT_INVALID_MESSAGE)
+            key, value = item.split("=", 1)
+            key = key.strip()
+            if not key:
+                raise HTTPException(400, _COOKIE_FORMAT_INVALID_MESSAGE)
+            cookie_dict[key] = value.strip()
+
+        if not cookie_dict:
+            raise HTTPException(400, _COOKIE_FORMAT_INVALID_MESSAGE)
 
         session_id, session = store.create()
 
@@ -502,9 +519,14 @@ async def cookie_login(req: CookieLoginRequest, response: Response):
                 "session_id": session_id,
             }
 
-        except httpx.HTTPError as e:
+        except httpx.HTTPError:
             store.delete(session_id)
-            raise HTTPException(401, f"Cookie验证失败: {str(e)}")
+            raise HTTPException(401, _COOKIE_VALIDATION_FAILED_MESSAGE)
 
-    except Exception as e:
-        raise HTTPException(400, f"Cookie格式错误: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        if session_id:
+            store.delete(session_id)
+        logger.error("Cookie login failed: %s", type(exc).__name__)
+        raise HTTPException(502, _COOKIE_LOGIN_FAILED_MESSAGE)

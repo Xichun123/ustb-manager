@@ -98,11 +98,11 @@ async def start_qr_background_monitor(session: Session):
             if student_id and cookies and session.session_id:
                 store.persist(session.session_id, student_id, cookies)
 
-            logger.info(f"QR background monitor completed, student_id={student_id}")
-        except Exception as e:
-            logger.error(f"QR background monitor error: {e}")
+            logger.info("QR background monitor completed")
+        except Exception as exc:
+            logger.error("QR background monitor failed: %s", type(exc).__name__)
             async with session.lock:
-                session.last_error = str(e) or "QR background monitor error"
+                session.last_error = "QR login failed"
         finally:
             session.qr_monitor_started = False
 
@@ -113,7 +113,7 @@ async def poll_qr_status(session: Session) -> AsyncGenerator[dict, None]:
     logger.info(f"poll_qr_status started, state={session.state}")
     proc: QrAuthProcedure = session.procedure
     if not proc or session.state != AuthState.QR_READY:
-        logger.error(f"Invalid state: proc={proc}, state={session.state}")
+        logger.error("QR status polling rejected due to invalid state")
         yield {"status": "error", "message": "Invalid state"}
         return
 
@@ -124,7 +124,7 @@ async def poll_qr_status(session: Session) -> AsyncGenerator[dict, None]:
         logger.info("Starting wait_for_pass_code...")
         try:
             result = proc.wait_for_pass_code()
-            logger.info(f"wait_for_pass_code returned: {result}")
+            logger.info("QR pass-code polling completed")
             return result
         except exceptions.TimeoutError:
             logger.info("wait_for_pass_code timed out")
@@ -158,7 +158,9 @@ async def poll_qr_status(session: Session) -> AsyncGenerator[dict, None]:
                     resp = session.client.post("https://byyt.ustb.edu.cn/UserManager/queryxsxx", data="")
                     # 检查是否被重定向到登录页
                     if resp.status_code == 302 or "session/invalid" in str(resp.url):
-                        logger.warning(f"Session invalid, attempt {attempt + 1}/{max_retries}")
+                        logger.warning(
+                            "QR session invalid, attempt %s/%s", attempt + 1, max_retries
+                        )
                         if attempt < max_retries - 1:
                             time_module.sleep(1)
                             continue
@@ -175,8 +177,13 @@ async def poll_qr_status(session: Session) -> AsyncGenerator[dict, None]:
                             cookies[cookie.name] = cookie.value
 
                     return student_id, cookies
-                except Exception as e:
-                    logger.warning(f"Attempt {attempt + 1}/{max_retries} failed: {e}")
+                except Exception as exc:
+                    logger.warning(
+                        "QR student-info lookup failed, attempt %s/%s: %s",
+                        attempt + 1,
+                        max_retries,
+                        type(exc).__name__,
+                    )
                     if attempt < max_retries - 1:
                         time_module.sleep(1)
                     else:
@@ -192,10 +199,10 @@ async def poll_qr_status(session: Session) -> AsyncGenerator[dict, None]:
         if student_id and cookies and session.session_id:
             store.persist(session.session_id, student_id, cookies)
 
-        logger.info(f"Yielding success status, student_id={student_id}")
+        logger.info("QR status polling completed")
         yield {"status": "success"}
-    except Exception as e:
-        logger.error(f"Auth completion failed: {e}")
+    except Exception as exc:
+        logger.error("QR auth completion failed: %s", type(exc).__name__)
         yield {"status": "error", "message": "Auth completion failed"}
 
 
@@ -236,8 +243,11 @@ async def verify_sms(session: Session, phone: str, code: str) -> None:
         token = proc.submit_sms_code(phone, code)
         try:
             proc.complete_sms_auth(token)
-        except exceptions.BadResponseError as e:
-            logger.warning("SMS complete_auth response parse failed, falling back to cookie verification: %s", e)
+        except exceptions.BadResponseError as exc:
+            logger.warning(
+                "SMS completion response parse failed; using cookie verification: %s",
+                type(exc).__name__,
+            )
 
     await asyncio.to_thread(_sync)
 
