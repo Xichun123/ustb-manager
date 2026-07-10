@@ -135,7 +135,7 @@ def _parse_available_course(course: Dict) -> Dict:
         "category": course.get("kclbmc", ""),  # 课程类别
         "category_code": course.get("kclb", ""),  # 课程类别代码
         "credits": course.get("xf", "0"),  # 学分
-        "hours": course.get("zxs", "") or course.get("xszxs", "0"),  # 学时（总学时或学生学时）
+        "hours": course.get("zxs", "") or course.get("xszxs", ""),  # 学时（总学时或学生学时）
         "selection_method": course.get("rwlxmc", ""),  # 选课方式
         "selection_method_code": course.get("xkfsdm", ""),  # 选课方式代码
         "college": course.get("kkyxmc", ""),  # 开课学院

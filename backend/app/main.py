@@ -8,7 +8,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from .byyt.errors import BYYTRateLimited, BYYTUnavailable, BYYTUpstreamError
 from .config import CORS_ORIGINS
 from .services.session_store import store
-from .api import academic, auth, courses, exams, grades, me, notices, schedule, wifi
+from .api import (
+    academic,
+    auth,
+    course_selection,
+    courses,
+    exams,
+    grades,
+    me,
+    notices,
+    schedule,
+    wifi,
+)
 from .exceptions import (
     BYYTSessionExpired,
     byyt_rate_limited_handler,
@@ -103,6 +114,10 @@ app = FastAPI(
             "description": "**校园网管理接口** - 校园网登录、流量查询、月度账单、MAC地址管理等功能。",
         },
         {
+            "name": "course-selection",
+            "description": "**新版选课接口** - 动态上下文、可选课程、已选课程、购物车与日志。",
+        },
+        {
             "name": "courses",
             "description": "**选课管理接口** - 查询已选课程、开课学期、学院列表、课程类别等选课相关功能。",
         },
@@ -147,6 +162,7 @@ app.include_router(exams.router, prefix="/api")
 app.include_router(notices.router, prefix="/api")
 app.include_router(schedule.router, prefix="/api")
 app.include_router(wifi.router, prefix="/api")
+app.include_router(course_selection.router, prefix="/api")
 app.include_router(courses.router, prefix="/api")
 
 

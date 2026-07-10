@@ -1128,24 +1128,101 @@
         "title": "CourseOperationResponse",
         "type": "object"
       },
-      "CourseSelectionContext": {
+      "CourseReferenceOption": {
         "properties": {
-          "methods": {
-            "items": {
-              "$ref": "#/components/schemas/CourseSelectionMethod"
-            },
-            "title": "Methods",
-            "type": "array"
+          "code": {
+            "title": "Code",
+            "type": "string"
           },
-          "term": {
-            "$ref": "#/components/schemas/CourseSelectionTerm"
+          "name": {
+            "title": "Name",
+            "type": "string"
           }
         },
         "required": [
-          "term",
-          "methods"
+          "code",
+          "name"
         ],
-        "title": "CourseSelectionContext",
+        "title": "CourseReferenceOption",
+        "type": "object"
+      },
+      "CourseSelectionCapabilities": {
+        "properties": {
+          "cart_query": {
+            "default": true,
+            "title": "Cart Query",
+            "type": "boolean"
+          },
+          "course_query": {
+            "default": true,
+            "title": "Course Query",
+            "type": "boolean"
+          },
+          "log_query": {
+            "default": true,
+            "title": "Log Query",
+            "type": "boolean"
+          },
+          "preflight": {
+            "default": true,
+            "title": "Preflight",
+            "type": "boolean"
+          },
+          "selected_query": {
+            "default": true,
+            "title": "Selected Query",
+            "type": "boolean"
+          },
+          "writes_enabled": {
+            "default": false,
+            "title": "Writes Enabled",
+            "type": "boolean"
+          }
+        },
+        "title": "CourseSelectionCapabilities",
+        "type": "object"
+      },
+      "CourseSelectionLog": {
+        "properties": {
+          "course_code": {
+            "default": "",
+            "title": "Course Code",
+            "type": "string"
+          },
+          "course_name": {
+            "default": "",
+            "title": "Course Name",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "operated_at": {
+            "default": "",
+            "title": "Operated At",
+            "type": "string"
+          },
+          "operation": {
+            "default": "",
+            "title": "Operation",
+            "type": "string"
+          },
+          "status": {
+            "default": "",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "CourseSelectionLog",
         "type": "object"
       },
       "CourseSelectionMethod": {
@@ -1174,6 +1251,173 @@
           "name"
         ],
         "title": "CourseSelectionMethod",
+        "type": "object"
+      },
+      "CourseSelectionPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CourseSelectionRecord"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "total_credits": {
+            "title": "Total Credits",
+            "type": "number"
+          }
+        },
+        "required": [
+          "page",
+          "page_size",
+          "total",
+          "total_credits",
+          "method"
+        ],
+        "title": "CourseSelectionPage",
+        "type": "object"
+      },
+      "CourseSelectionRecord": {
+        "properties": {
+          "campus": {
+            "default": "",
+            "title": "Campus",
+            "type": "string"
+          },
+          "capacity": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capacity"
+          },
+          "college": {
+            "default": "",
+            "title": "College",
+            "type": "string"
+          },
+          "course_category": {
+            "default": "",
+            "title": "Course Category",
+            "type": "string"
+          },
+          "course_code": {
+            "default": "",
+            "title": "Course Code",
+            "type": "string"
+          },
+          "course_id": {
+            "title": "Course Id",
+            "type": "string"
+          },
+          "course_name": {
+            "default": "",
+            "title": "Course Name",
+            "type": "string"
+          },
+          "course_name_en": {
+            "default": "",
+            "title": "Course Name En",
+            "type": "string"
+          },
+          "course_nature": {
+            "default": "",
+            "title": "Course Nature",
+            "type": "string"
+          },
+          "credits": {
+            "default": 0,
+            "title": "Credits",
+            "type": "number"
+          },
+          "hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hours"
+          },
+          "is_selected": {
+            "default": false,
+            "title": "Is Selected",
+            "type": "boolean"
+          },
+          "method": {
+            "default": "",
+            "title": "Method",
+            "type": "string"
+          },
+          "schedule_location": {
+            "default": "",
+            "title": "Schedule Location",
+            "type": "string"
+          },
+          "schedule_time": {
+            "default": "",
+            "title": "Schedule Time",
+            "type": "string"
+          },
+          "selected_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Count"
+          },
+          "selection_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selection Id"
+          },
+          "selection_status": {
+            "default": "",
+            "title": "Selection Status",
+            "type": "string"
+          },
+          "teacher": {
+            "default": "",
+            "title": "Teacher",
+            "type": "string"
+          }
+        },
+        "required": [
+          "course_id"
+        ],
+        "title": "CourseSelectionRecord",
         "type": "object"
       },
       "CourseSelectionTerm": {
@@ -1918,6 +2162,31 @@
         "title": "ScheduleView",
         "type": "object"
       },
+      "SelectedCoursePage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CourseSelectionRecord"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "total_credits": {
+            "title": "Total Credits",
+            "type": "number"
+          }
+        },
+        "required": [
+          "total",
+          "total_credits"
+        ],
+        "title": "SelectedCoursePage",
+        "type": "object"
+      },
       "SelectedCoursesResponse": {
         "properties": {
           "courses": {
@@ -2355,6 +2624,70 @@
           "password"
         ],
         "title": "WifiStandaloneLoginRequest",
+        "type": "object"
+      },
+      "app__api__courses__CourseSelectionContext": {
+        "properties": {
+          "methods": {
+            "items": {
+              "$ref": "#/components/schemas/CourseSelectionMethod"
+            },
+            "title": "Methods",
+            "type": "array"
+          },
+          "term": {
+            "$ref": "#/components/schemas/CourseSelectionTerm"
+          }
+        },
+        "required": [
+          "term",
+          "methods"
+        ],
+        "title": "CourseSelectionContext",
+        "type": "object"
+      },
+      "app__models__courses__CourseSelectionContext": {
+        "properties": {
+          "campuses": {
+            "items": {
+              "$ref": "#/components/schemas/CourseReferenceOption"
+            },
+            "title": "Campuses",
+            "type": "array"
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/CourseSelectionCapabilities"
+          },
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/CourseReferenceOption"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "colleges": {
+            "items": {
+              "$ref": "#/components/schemas/CourseReferenceOption"
+            },
+            "title": "Colleges",
+            "type": "array"
+          },
+          "methods": {
+            "items": {
+              "$ref": "#/components/schemas/CourseSelectionMethod"
+            },
+            "title": "Methods",
+            "type": "array"
+          },
+          "term": {
+            "$ref": "#/components/schemas/CourseSelectionTerm"
+          }
+        },
+        "required": [
+          "term",
+          "capabilities"
+        ],
+        "title": "CourseSelectionContext",
         "type": "object"
       }
     },
@@ -3183,6 +3516,340 @@
         ]
       }
     },
+    "/api/course-selection/cart": {
+      "get": {
+        "operationId": "cart_api_course_selection_cart_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "method",
+            "required": false,
+            "schema": {
+              "default": "bx-b-b",
+              "title": "Method",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SelectedCoursePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "查询选课购物车",
+        "tags": [
+          "course-selection"
+        ]
+      }
+    },
+    "/api/course-selection/context": {
+      "get": {
+        "operationId": "context_api_course_selection_context_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__models__courses__CourseSelectionContext"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "获取选课上下文",
+        "tags": [
+          "course-selection"
+        ]
+      }
+    },
+    "/api/course-selection/courses": {
+      "get": {
+        "operationId": "courses_api_course_selection_courses_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "year",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year"
+            }
+          },
+          {
+            "in": "query",
+            "name": "semester",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[123]$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Semester"
+            }
+          },
+          {
+            "in": "query",
+            "name": "method",
+            "required": false,
+            "schema": {
+              "default": "bx-b-b",
+              "title": "Method",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "college",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "College",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Category",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "campus",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Campus",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "keyword",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Keyword",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseSelectionPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "查询可选课程",
+        "tags": [
+          "course-selection"
+        ]
+      }
+    },
+    "/api/course-selection/logs": {
+      "get": {
+        "operationId": "logs_api_course_selection_logs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CourseSelectionLog"
+                  },
+                  "title": "Response Logs Api Course Selection Logs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "查询选课日志",
+        "tags": [
+          "course-selection"
+        ]
+      }
+    },
+    "/api/course-selection/selected": {
+      "get": {
+        "operationId": "selected_api_course_selection_selected_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "year",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year"
+            }
+          },
+          {
+            "in": "query",
+            "name": "semester",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[123]$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Semester"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SelectedCoursePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "查询已选课程",
+        "tags": [
+          "course-selection"
+        ]
+      }
+    },
     "/api/courses/announcements": {
       "get": {
         "description": "## 业务说明\n查询选课公告信息，包含选课时间安排、注意事项等。\n\n## 参数说明\n- xn: 学年（可选，不传则使用当前选课学年）\n- xq: 学期（可选，不传则使用当前选课学期）\n\n## 返回数据\n选课公告列表",
@@ -3795,7 +4462,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CourseSelectionContext"
+                  "$ref": "#/components/schemas/app__api__courses__CourseSelectionContext"
                 }
               }
             },
@@ -5709,6 +6376,10 @@
     {
       "description": "**校园网管理接口** - 校园网登录、流量查询、月度账单、MAC地址管理等功能。",
       "name": "wifi"
+    },
+    {
+      "description": "**新版选课接口** - 动态上下文、可选课程、已选课程、购物车与日志。",
+      "name": "course-selection"
     },
     {
       "description": "**选课管理接口** - 查询已选课程、开课学期、学院列表、课程类别等选课相关功能。",
