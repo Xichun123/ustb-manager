@@ -1,10 +1,10 @@
 """选课管理服务"""
-import asyncio
+
 import logging
 from typing import Dict, List
-from app.byyt.client import BYYTClient
+
+from app.byyt import courses as byyt_courses
 from app.services.session_store import Session
-from app.services.grades_service import _check_byyt_response
 from app.services.schedule_service import get_term_list as _get_schedule_term_list
 from app.cache import reference_data_cache
 
@@ -24,12 +24,7 @@ async def get_course_term_info(session: Session) -> Dict:
         "&p_xzcxtjz_zy=&p_xzcxtjz_zyfx=&p_xzcxtjz_bj=&p_sfxsgwckb=1"
         "&p_skyy=&p_sfmxzj=0"
     )
-    result = await BYYTClient(session).request_json(
-        "POST",
-        "/Xsxk/queryXkdqXnxq",
-        content=params.encode(),
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-    )
+    result = await byyt_courses.query_selection_term(session, params.encode())
     return result if isinstance(result, dict) else {}
 
 
@@ -50,11 +45,7 @@ async def get_course_context(session: Session) -> Dict:
         term_info.get("p_dqxnxq", ""),
         xkfsdm="yixuan",
     )
-    result = await BYYTClient(session).request_json(
-        "POST",
-        "/Xsxk/queryYxkc",
-        data=params,
-    )
+    result = await byyt_courses.query_selected_courses(session, params)
 
     methods = []
     raw_methods = result.get("xkgzszList", []) if isinstance(result, dict) else []
@@ -104,20 +95,16 @@ async def get_selected_courses(
     """
 
     params = _build_queryform(
-        xn, xq, xnxq, dqxn, dqxq, dqxnxq,
+        xn,
+        xq,
+        xnxq,
+        dqxn,
+        dqxq,
+        dqxnxq,
         xkfsdm="yixuan",
     )
 
-    def _fetch():
-        resp = session.client.post(
-            "https://byyt.ustb.edu.cn/Xsxk/queryYxkc",
-            data=params,
-        )
-        _check_byyt_response(resp)
-        resp.raise_for_status()
-        return resp.json()
-
-    result = await asyncio.to_thread(_fetch)
+    result = await byyt_courses.query_selected_courses(session, params)
 
     # 解析返回数据
     courses = []
@@ -250,7 +237,12 @@ async def get_available_courses(
     """
 
     params = _build_queryform(
-        xn, xq, xnxq, dqxn, dqxq, dqxnxq,
+        xn,
+        xq,
+        xnxq,
+        dqxn,
+        dqxq,
+        dqxnxq,
         xkfsdm=xkfsdm,
         p_gjz=gjz,
         p_xiaoqu=xiaoqu,
@@ -261,16 +253,7 @@ async def get_available_courses(
         pageSize=str(page_size),
     )
 
-    def _fetch():
-        resp = session.client.post(
-            "https://byyt.ustb.edu.cn/Xsxk/queryKxrw",
-            data=params,
-        )
-        _check_byyt_response(resp)
-        resp.raise_for_status()
-        return resp.json()
-
-    result = await asyncio.to_thread(_fetch)
+    result = await byyt_courses.query_available_courses(session, params)
 
     # 解析返回数据
     courses = []
@@ -297,8 +280,12 @@ async def get_available_courses(
 
 
 def _build_queryform(
-    xn: str, xq: str, xnxq: str,
-    dqxn: str, dqxq: str, dqxnxq: str,
+    xn: str,
+    xq: str,
+    xnxq: str,
+    dqxn: str,
+    dqxq: str,
+    dqxnxq: str,
     xkfsdm: str = "",
     **overrides,
 ) -> Dict:
@@ -354,8 +341,12 @@ def _build_queryform(
 async def select_course(
     session: Session,
     course_id: str,
-    xn: str, xq: str, xnxq: str,
-    dqxn: str, dqxq: str, dqxnxq: str,
+    xn: str,
+    xq: str,
+    xnxq: str,
+    dqxn: str,
+    dqxq: str,
+    dqxnxq: str,
     xkfsdm: str = "bx-b-b",
 ) -> Dict:
     """选课（先到先得模式：直接选课）
@@ -367,22 +358,18 @@ async def select_course(
         {"success": bool, "message": str}
     """
     params = _build_queryform(
-        xn, xq, xnxq, dqxn, dqxq, dqxnxq,
+        xn,
+        xq,
+        xnxq,
+        dqxn,
+        dqxq,
+        dqxnxq,
         xkfsdm=xkfsdm,
         p_id=course_id,
         p_xktjz="rwtjzyx",  # 任务提交至已选（直接选课）
     )
 
-    def _fetch():
-        resp = session.client.post(
-            "https://byyt.ustb.edu.cn/Xsxk/addGouwuche",
-            data=params,
-        )
-        _check_byyt_response(resp)
-        resp.raise_for_status()
-        return resp.json()
-
-    result = await asyncio.to_thread(_fetch)
+    result = await byyt_courses.select_or_add_to_cart(session, params)
     return {
         "success": result.get("jg") == "1",
         "message": result.get("message", ""),
@@ -392,8 +379,12 @@ async def select_course(
 async def drop_course(
     session: Session,
     course_id: str,
-    xn: str, xq: str, xnxq: str,
-    dqxn: str, dqxq: str, dqxnxq: str,
+    xn: str,
+    xq: str,
+    xnxq: str,
+    dqxn: str,
+    dqxq: str,
+    dqxnxq: str,
     xkfsdm: str = "bx-b-b",
 ) -> Dict:
     """退课
@@ -404,21 +395,17 @@ async def drop_course(
         {"success": bool, "message": str}
     """
     params = _build_queryform(
-        xn, xq, xnxq, dqxn, dqxq, dqxnxq,
+        xn,
+        xq,
+        xnxq,
+        dqxn,
+        dqxq,
+        dqxnxq,
         xkfsdm="yixuan",
         p_id=course_id,
     )
 
-    def _fetch():
-        resp = session.client.post(
-            "https://byyt.ustb.edu.cn/Xsxk/tuike",
-            data=params,
-        )
-        _check_byyt_response(resp)
-        resp.raise_for_status()
-        return resp.json()
-
-    result = await asyncio.to_thread(_fetch)
+    result = await byyt_courses.drop_course(session, params)
     return {
         "success": result.get("jg") == "1",
         "message": result.get("message", ""),
@@ -428,8 +415,12 @@ async def drop_course(
 async def add_to_cart(
     session: Session,
     course_id: str,
-    xn: str, xq: str, xnxq: str,
-    dqxn: str, dqxq: str, dqxnxq: str,
+    xn: str,
+    xq: str,
+    xnxq: str,
+    dqxn: str,
+    dqxq: str,
+    dqxnxq: str,
     xkfsdm: str = "bx-b-b",
 ) -> Dict:
     """添加课程到购物车
@@ -440,22 +431,18 @@ async def add_to_cart(
         {"success": bool, "message": str}
     """
     params = _build_queryform(
-        xn, xq, xnxq, dqxn, dqxq, dqxnxq,
+        xn,
+        xq,
+        xnxq,
+        dqxn,
+        dqxq,
+        dqxnxq,
         xkfsdm=xkfsdm,
         p_id=course_id,
         p_xktjz="rwtjzgwc",  # 任务提交至购物车
     )
 
-    def _fetch():
-        resp = session.client.post(
-            "https://byyt.ustb.edu.cn/Xsxk/addGouwuche",
-            data=params,
-        )
-        _check_byyt_response(resp)
-        resp.raise_for_status()
-        return resp.json()
-
-    result = await asyncio.to_thread(_fetch)
+    result = await byyt_courses.select_or_add_to_cart(session, params)
     return {
         "success": result.get("jg") == "1",
         "message": result.get("message", ""),
@@ -465,8 +452,12 @@ async def add_to_cart(
 async def remove_from_cart(
     session: Session,
     course_ids: List[str],
-    xn: str, xq: str, xnxq: str,
-    dqxn: str, dqxq: str, dqxnxq: str,
+    xn: str,
+    xq: str,
+    xnxq: str,
+    dqxn: str,
+    dqxq: str,
+    dqxnxq: str,
     xkfsdm: str = "bx-b-b",
 ) -> Dict:
     """从购物车移除课程
@@ -477,7 +468,12 @@ async def remove_from_cart(
         {"success": bool, "message": str}
     """
     params = _build_queryform(
-        xn, xq, xnxq, dqxn, dqxq, dqxnxq,
+        xn,
+        xq,
+        xnxq,
+        dqxn,
+        dqxq,
+        dqxnxq,
         xkfsdm=xkfsdm,
     )
     # p_ids 需要以数组形式传递
@@ -486,16 +482,7 @@ async def remove_from_cart(
         if isinstance(params["p_ids[]"], list):
             params["p_ids[]"].append(cid)
 
-    def _fetch():
-        resp = session.client.post(
-            "https://byyt.ustb.edu.cn/Xsxk/delGouwuche",
-            data=params,
-        )
-        _check_byyt_response(resp)
-        resp.raise_for_status()
-        return resp.json()
-
-    result = await asyncio.to_thread(_fetch)
+    result = await byyt_courses.remove_from_cart(session, params)
     return {
         "success": result.get("jg") == "1",
         "message": result.get("message", ""),
@@ -504,8 +491,12 @@ async def remove_from_cart(
 
 async def submit_cart(
     session: Session,
-    xn: str, xq: str, xnxq: str,
-    dqxn: str, dqxq: str, dqxnxq: str,
+    xn: str,
+    xq: str,
+    xnxq: str,
+    dqxn: str,
+    dqxq: str,
+    dqxnxq: str,
     xkfsdm: str = "bx-b-b",
 ) -> Dict:
     """提交购物车（将购物车中的课程确认选课）
@@ -514,21 +505,17 @@ async def submit_cart(
         {"success": bool, "message": str}
     """
     params = _build_queryform(
-        xn, xq, xnxq, dqxn, dqxq, dqxnxq,
+        xn,
+        xq,
+        xnxq,
+        dqxn,
+        dqxq,
+        dqxnxq,
         xkfsdm=xkfsdm,
         p_xktjz="gwctjzyx",  # 购物车提交至已选
     )
 
-    def _fetch():
-        resp = session.client.post(
-            "https://byyt.ustb.edu.cn/Xsxk/addXuanke",
-            data=params,
-        )
-        _check_byyt_response(resp)
-        resp.raise_for_status()
-        return resp.json()
-
-    result = await asyncio.to_thread(_fetch)
+    result = await byyt_courses.submit_cart(session, params)
     return {
         "success": result.get("jg") == "1",
         "message": result.get("message", ""),
@@ -537,26 +524,26 @@ async def submit_cart(
 
 async def get_cart(
     session: Session,
-    xn: str, xq: str, xnxq: str,
-    dqxn: str, dqxq: str, dqxnxq: str,
+    xn: str,
+    xq: str,
+    xnxq: str,
+    dqxn: str,
+    dqxq: str,
+    dqxnxq: str,
     xkfsdm: str = "bx-b-b",
 ) -> Dict:
     """查询选课购物车"""
     params = _build_queryform(
-        xn, xq, xnxq, dqxn, dqxq, dqxnxq,
+        xn,
+        xq,
+        xnxq,
+        dqxn,
+        dqxq,
+        dqxnxq,
         xkfsdm=xkfsdm,
     )
 
-    def _fetch():
-        resp = session.client.post(
-            "https://byyt.ustb.edu.cn/Xsxk/queryXkgwc",
-            data=params,
-        )
-        _check_byyt_response(resp)
-        resp.raise_for_status()
-        return resp.json()
-
-    result = await asyncio.to_thread(_fetch)
+    result = await byyt_courses.query_cart(session, params)
 
     courses = []
     if isinstance(result, dict):
@@ -573,36 +560,35 @@ async def get_cart(
 
 async def get_selection_log(
     session: Session,
-    xn: str, xq: str, xnxq: str,
-    dqxn: str, dqxq: str, dqxnxq: str,
+    xn: str,
+    xq: str,
+    xnxq: str,
+    dqxn: str,
+    dqxq: str,
+    dqxnxq: str,
 ) -> List[Dict]:
     """查询选课操作日志"""
     params = _build_queryform(
-        xn, xq, xnxq, dqxn, dqxq, dqxnxq,
+        xn,
+        xq,
+        xnxq,
+        dqxn,
+        dqxq,
+        dqxnxq,
     )
 
-    def _fetch():
-        resp = session.client.post(
-            "https://byyt.ustb.edu.cn/Xsxk/queryXsxkrzList",
-            data=params,
-        )
-        _check_byyt_response(resp)
-        resp.raise_for_status()
-        return resp.json()
-
-    result = await asyncio.to_thread(_fetch)
-    if isinstance(result, list):
-        return result
-    if isinstance(result, dict):
-        return result.get("list", [])
-    return []
+    return await byyt_courses.query_selection_log(session, params)
 
 
 async def check_time_conflict(
     session: Session,
     course_id: str,
-    xn: str, xq: str, xnxq: str,
-    dqxn: str, dqxq: str, dqxnxq: str,
+    xn: str,
+    xq: str,
+    xnxq: str,
+    dqxn: str,
+    dqxq: str,
+    dqxnxq: str,
     xkfsdm: str = "bx-b-b",
 ) -> Dict:
     """检测选课时间冲突
@@ -616,16 +602,17 @@ async def check_time_conflict(
         {"has_conflict": bool, "message": str}
     """
     params = _build_queryform(
-        xn, xq, xnxq, dqxn, dqxq, dqxnxq,
+        xn,
+        xq,
+        xnxq,
+        dqxn,
+        dqxq,
+        dqxnxq,
         xkfsdm=xkfsdm,
         p_id=course_id,
     )
 
-    result = await BYYTClient(session).request_json(
-        "POST",
-        "/Xsxk/cxmtctPd",
-        data=params,
-    )
+    result = await byyt_courses.check_time_conflict(session, params)
 
     # 当前上游语义：-9=存在冲突，-1=禁止操作，1=无冲突。
     result_code = str(result.get("jg", "")) if isinstance(result, dict) else ""
@@ -650,18 +637,11 @@ async def get_announcements(
     xq: str,
 ) -> List[Dict]:
     """查询选课公告；无公告时上游会返回 HTTP 200 空响应。"""
-    result = await BYYTClient(session).request_json(
-        "POST",
-        "/Xsxk/queryXkggZx",
-        data={"xn": xn, "xq": xq},
-        allow_empty=True,
+    return await byyt_courses.query_announcements(
+        session,
+        year=xn,
+        semester=xq,
     )
-
-    if isinstance(result, list):
-        return result
-    if isinstance(result, dict):
-        return result.get("list", result.get("content", []))
-    return []
 
 
 async def get_colleges(session: Session) -> List[Dict]:
@@ -670,24 +650,17 @@ async def get_colleges(session: Session) -> List[Dict]:
     if cached is not None:
         return cached
 
-    def _fetch():
-        resp = session.client.post(
-            "https://byyt.ustb.edu.cn/component/queryKkyx",
-            data="nodataqx=1",
-        )
-        _check_byyt_response(resp)
-        resp.raise_for_status()
-        return resp.json()
-
-    result = await asyncio.to_thread(_fetch)
+    result = await byyt_courses.query_colleges(session)
 
     colleges = []
     if isinstance(result, list):
         for item in result:
-            colleges.append({
-                "code": item.get("YXDM", "") or item.get("DM", ""),
-                "name": item.get("YXMC", "") or item.get("MC", ""),
-            })
+            colleges.append(
+                {
+                    "code": item.get("YXDM", "") or item.get("DM", ""),
+                    "name": item.get("YXMC", "") or item.get("MC", ""),
+                }
+            )
     reference_data_cache.set("colleges", colleges)
     return colleges
 
@@ -698,12 +671,7 @@ async def get_course_categories(session: Session) -> List[Dict]:
     if cached is not None:
         return cached
 
-    result = await BYYTClient(session).request_json(
-        "POST",
-        "/component/queryKclb",
-        data={"pylb": "1"},
-        unwrap_content=True,
-    )
+    result = await byyt_courses.query_categories(session)
 
     categories = []
     if isinstance(result, list):
@@ -724,30 +692,16 @@ async def get_campuses(session: Session) -> List[Dict]:
     if cached is not None:
         return cached
 
-    def _fetch():
-        resp = session.client.post(
-            "https://byyt.ustb.edu.cn/component/queryXiaoqu?pylx=3",
-            data="",
-        )
-        _check_byyt_response(resp)
-        resp.raise_for_status()
-        return resp.json()
-
-    result = await asyncio.to_thread(_fetch)
+    items = await byyt_courses.query_campuses(session)
 
     campuses = []
-    # 处理嵌套结构 {"code": 200, "content": [...]}
-    if isinstance(result, dict) and "content" in result:
-        items = result.get("content", [])
-    elif isinstance(result, list):
-        items = result
-    else:
-        items = []
 
     for item in items:
-        campuses.append({
-            "code": item.get("dm", "") or item.get("DM", ""),
-            "name": item.get("mc", "") or item.get("MC", ""),
-        })
+        campuses.append(
+            {
+                "code": item.get("dm", "") or item.get("DM", ""),
+                "name": item.get("mc", "") or item.get("MC", ""),
+            }
+        )
     reference_data_cache.set("campuses", campuses)
     return campuses

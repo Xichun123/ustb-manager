@@ -271,6 +271,109 @@ def test_upstream_failure_envelopes_are_exposed_as_502():
     }
 
 
+def test_legacy_selected_courses_use_the_byyt_adapter():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/Xsxk/queryXkdqXnxq":
+            return httpx.Response(
+                200,
+                json={
+                    "p_xn": "2025-2026",
+                    "p_xq": "2",
+                    "p_xnxq": "2025-20262",
+                    "p_dqxn": "2025-2026",
+                    "p_dqxq": "2",
+                    "p_dqxnxq": "2025-20262",
+                },
+            )
+        assert request.url.path == "/Xsxk/queryYxkc"
+        return httpx.Response(
+            200,
+            json={"yxkcList": [{"rwh": "task-1", "kcdm": "CS1", "kcmc": "程序设计", "xf": "3"}]},
+        )
+
+    upstream = httpx.Client(transport=httpx.MockTransport(handler))
+    session = Session(client=upstream, state=AuthState.ACTIVE, authenticated=True)
+    app.dependency_overrides[get_authenticated_session] = lambda: session
+    try:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get("/api/courses/selected")
+    finally:
+        app.dependency_overrides.clear()
+        upstream.close()
+
+    assert response.status_code == 200
+    assert response.json()["courses"][0]["task_id"] == "task-1"
+    assert response.json()["total_credits"] == 3.0
+
+
+def test_legacy_course_write_uses_the_byyt_adapter_without_real_network():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/Xsxk/queryXkdqXnxq":
+            return httpx.Response(
+                200,
+                json={
+                    "p_xn": "2025-2026",
+                    "p_xq": "2",
+                    "p_xnxq": "2025-20262",
+                    "p_dqxn": "2025-2026",
+                    "p_dqxq": "2",
+                    "p_dqxnxq": "2025-20262",
+                },
+            )
+        assert request.url.path == "/Xsxk/addGouwuche"
+        form = parse_qs(request.content.decode(), keep_blank_values=True)
+        assert form["p_id"] == ["task-1"]
+        assert form["p_xktjz"] == ["rwtjzyx"]
+        return httpx.Response(200, json={"jg": "1", "message": "成功"})
+
+    upstream = httpx.Client(transport=httpx.MockTransport(handler))
+    session = Session(client=upstream, state=AuthState.ACTIVE, authenticated=True)
+    app.dependency_overrides[get_authenticated_session] = lambda: session
+    try:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.post(
+                "/api/courses/select",
+                json={"course_id": "task-1", "method": "bx-b-b"},
+            )
+    finally:
+        app.dependency_overrides.clear()
+        upstream.close()
+
+    assert response.status_code == 200
+    assert response.json() == {"success": True, "message": "成功"}
+
+
+def test_legacy_course_reference_data_classifies_malformed_json():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/component/queryKkyx"
+        return httpx.Response(
+            200,
+            headers={"content-type": "application/json"},
+            content=b"not-json",
+        )
+
+    upstream = httpx.Client(transport=httpx.MockTransport(handler))
+    session = Session(
+        client=upstream,
+        state=AuthState.ACTIVE,
+        authenticated=True,
+        lock=asyncio.Lock(),
+    )
+    reference_data_cache.clear()
+    app.dependency_overrides[get_authenticated_session] = lambda: session
+
+    try:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get("/api/courses/colleges")
+    finally:
+        app.dependency_overrides.clear()
+        reference_data_cache.clear()
+        upstream.close()
+
+    assert response.status_code == 502
+    assert response.json()["error"]["code"] == "UPSTREAM_BAD_RESPONSE"
+
+
 def test_course_context_returns_the_dynamic_selection_methods():
     term_fixture = json.loads((FIXTURES / "course_term_info.json").read_text())
     context_fixture = json.loads((FIXTURES / "course_selection_context.json").read_text())
