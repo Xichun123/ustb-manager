@@ -6,8 +6,10 @@ import json
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 import httpx
+
+from ..config import SESSION_MAX_AGE, SESSION_TTL
 
 
 SESSION_MAP_PATH = Path.home() / ".ustb_manager" / "session_map.json"
@@ -45,34 +47,59 @@ class Session:
 
 
 class SessionStore:
-    def __init__(self, ttl: int = 1800, max_age: int = 86400):
+    def __init__(
+        self,
+        ttl: int = 1800,
+        max_age: int = 86400,
+        clock: Callable[[], float] = time.time,
+    ):
         self._sessions: dict[str, Session] = {}
         self._ttl = ttl
         self._max_age = max_age
+        self._clock = clock
         self._cleanup_task: Optional[asyncio.Task] = None
         self._lock = threading.Lock()
         self._session_map: dict[str, dict] = self._load_session_map()
+
+    @property
+    def ttl(self) -> int:
+        return self._ttl
+
+    @property
+    def max_age(self) -> int:
+        return self._max_age
 
     def _load_session_map(self) -> dict[str, dict]:
         """Load session_id -> student_id mapping from file"""
         if not SESSION_MAP_PATH.exists():
             return {}
         try:
-            with open(SESSION_MAP_PATH, 'r') as f:
+            with open(SESSION_MAP_PATH, "r") as f:
                 data = json.load(f)
-                now = time.time()
-                return {k: v for k, v in data.items() if now - v.get("created_at", 0) < self._max_age}
+            now = self._clock()
+            active_mappings = {
+                key: value
+                for key, value in data.items()
+                if now - value.get("created_at", 0) < self._max_age
+            }
+            if active_mappings != data:
+                # Cookie cleanup stays in the SQLite migration; removing the mapping prevents recovery.
+                self._write_session_map(active_mappings)
+            return active_mappings
         except Exception:
             return {}
 
-    def _save_session_map(self):
-        """Save session_id -> student_id mapping to file"""
+    def _write_session_map(self, session_map: dict[str, dict]) -> None:
         SESSION_MAP_PATH.parent.mkdir(parents=True, exist_ok=True)
         try:
-            with open(SESSION_MAP_PATH, 'w') as f:
-                json.dump(self._session_map, f)
+            with open(SESSION_MAP_PATH, "w") as f:
+                json.dump(session_map, f)
         except Exception:
             pass
+
+    def _save_session_map(self) -> None:
+        """Save session_id -> student_id mapping to file"""
+        self._write_session_map(self._session_map)
 
     def _restore_session(self, session_id: str) -> Optional[Session]:
         """Try to restore session from persisted cookies"""
@@ -82,8 +109,16 @@ class SessionStore:
         if not mapping:
             return None
 
+        if self._clock() - mapping.get("created_at", 0) >= self._max_age:
+            # Cookie cleanup stays in the SQLite migration; removing the mapping prevents recovery.
+            self._session_map.pop(session_id, None)
+            self._save_session_map()
+            return None
+
         student_id = mapping.get("student_id")
         if not student_id:
+            self._session_map.pop(session_id, None)
+            self._save_session_map()
             return None
 
         cookies = cookie_store.load_cookies(student_id)
@@ -98,10 +133,12 @@ class SessionStore:
 
         # Verify cookies are still valid by making a test request
         try:
-            resp = session.client.post("https://byyt.ustb.edu.cn/UserManager/queryxsxx", timeout=5.0)
+            resp = session.client.post(
+                "https://byyt.ustb.edu.cn/UserManager/queryxsxx", timeout=5.0
+            )
             resp.raise_for_status()
             data = resp.json()
-            
+
             # If the response doesn't contain student info, cookies are invalid
             if not data or "XH" not in data:
                 # Cookies expired, clean up
@@ -110,7 +147,7 @@ class SessionStore:
                 cookie_store.delete_cookies(student_id)
                 session.client.close()
                 return None
-                
+
         except Exception:
             # Verification failed, cookies are invalid
             del self._session_map[session_id]
@@ -123,48 +160,83 @@ class SessionStore:
         session.authenticated = True
         session.student_id = student_id
         session.session_id = session_id  # 恢复时也要设置 session_id
-        session.created_at = mapping.get("created_at", time.time())
+        session.created_at = mapping.get("created_at", self._clock())
 
         self._sessions[session_id] = session
         return session
 
     def create(self) -> tuple[str, Session]:
         session_id = secrets.token_urlsafe(24)
+        now = self._clock()
         # 增加超时时间，避免 SSO 服务器响应慢导致超时
-        session = Session(client=httpx.Client(follow_redirects=True, timeout=60.0))
+        session = Session(
+            client=httpx.Client(follow_redirects=True, timeout=60.0),
+            created_at=now,
+            last_seen=now,
+        )
         session.session_id = session_id  # 存储 session_id
         with self._lock:
             self._sessions[session_id] = session
         return session_id, session
 
-    def persist(self, session_id: str, student_id: str):
+    def persist(self, session_id: str, student_id: str) -> None:
         """Persist session mapping for recovery after restart"""
-        self._session_map[session_id] = {
-            "student_id": student_id,
-            "created_at": time.time()
-        }
-        self._save_session_map()
-
-    def get(self, session_id: str) -> Optional[Session]:
         with self._lock:
             session = self._sessions.get(session_id)
-            if not session or session.closing:
+            existing_mapping = self._session_map.get(session_id)
+            if existing_mapping:
+                created_at = existing_mapping.get("created_at", self._clock())
+            elif session:
+                created_at = session.created_at
+            else:
+                created_at = self._clock()
+            self._session_map[session_id] = {
+                "student_id": student_id,
+                "created_at": created_at,
+            }
+            self._save_session_map()
+
+    def _is_expired(self, session: Session, now: float) -> bool:
+        return now - session.last_seen >= self._ttl or now - session.created_at >= self._max_age
+
+    @staticmethod
+    def _close_session(session: Session) -> None:
+        if session.closing:
+            return
+        session.closing = True
+        session.client.close()
+
+    def get(self, session_id: str) -> Optional[Session]:
+        expired_session = None
+        with self._lock:
+            session = self._sessions.get(session_id)
+            if session and not session.closing:
+                now = self._clock()
+                if self._is_expired(session, now):
+                    expired_session = self._sessions.pop(session_id)
+                    if self._session_map.pop(session_id, None) is not None:
+                        self._save_session_map()
+                else:
+                    session.last_seen = now
+                    return session
+            else:
                 session = self._restore_session(session_id)
                 if not session:
                     return None
-            # Cookie过期由byyt系统决定，本地不主动限制存活时间
-            # 只更新last_seen用于统计，不用于过期判断
-            session.last_seen = time.time()
-            return session
+                session.last_seen = self._clock()
+                return session
+
+        if expired_session:
+            self._close_session(expired_session)
+        return None
 
     def delete(self, session_id: str) -> None:
         with self._lock:
             session = self._sessions.pop(session_id, None)
             self._session_map.pop(session_id, None)
             self._save_session_map()
-        if session and not session.closing:
-            session.closing = True
-            session.client.close()
+        if session:
+            self._close_session(session)
 
     def rotate(self, old_id: str) -> Optional[str]:
         with self._lock:
@@ -173,7 +245,7 @@ class SessionStore:
             if not session or session.closing:
                 return None
             new_id = secrets.token_urlsafe(24)
-            session.last_seen = time.time()
+            session.last_seen = self._clock()
             session.session_id = new_id  # 更新 session 对象中的 session_id
             self._sessions[new_id] = session
             if old_mapping:
@@ -181,22 +253,32 @@ class SessionStore:
                 self._save_session_map()
             return new_id
 
+    def cleanup_expired(self) -> None:
+        now = self._clock()
+        removed_sessions = []
+        mapping_changed = False
+        with self._lock:
+            expired_ids = [
+                session_id
+                for session_id, session in self._sessions.items()
+                if self._is_expired(session, now)
+            ]
+            for session_id in expired_ids:
+                session = self._sessions.pop(session_id, None)
+                if session:
+                    removed_sessions.append(session)
+                if self._session_map.pop(session_id, None) is not None:
+                    mapping_changed = True
+            if mapping_changed:
+                self._save_session_map()
+
+        for session in removed_sessions:
+            self._close_session(session)
+
     async def cleanup_loop(self) -> None:
-        """清理循环 - 仅清理已标记为closing的session，不主动过期"""
         while True:
             await asyncio.sleep(60)
-            with self._lock:
-                # 只清理已标记为closing的session，不基于时间过期
-                expired = [
-                    sid for sid, s in self._sessions.items()
-                    if s.closing
-                ]
-                for sid in expired:
-                    s = self._sessions.pop(sid, None)
-            for sid in expired:
-                s = self._sessions.get(sid)
-                if s:
-                    s.client.close()
+            self.cleanup_expired()
 
     def start_cleanup(self) -> None:
         if not self._cleanup_task:
@@ -209,9 +291,8 @@ class SessionStore:
         with self._lock:
             sessions = list(self._sessions.items())
             self._sessions.clear()
-        for _, s in sessions:
-            s.closing = True
-            s.client.close()
+        for _, session in sessions:
+            self._close_session(session)
 
 
-store = SessionStore()
+store = SessionStore(ttl=SESSION_TTL, max_age=SESSION_MAX_AGE)
