@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Response
 from fastapi.responses import StreamingResponse
 from sse_starlette.sse import EventSourceResponse
 from typing import Optional
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 import asyncio
 
 from ..byyt.profile import get_student_identity
@@ -64,50 +64,56 @@ def _publish_session(
 
 
 class QRInitResponse(BaseModel):
-    session_id: Optional[str] = Field(None, description="Bearer 客户端后续使用的会话令牌")
-    qr_image: str = Field(
-        ..., description="Base64编码的二维码图片，格式为data:image/png;base64,..."
-    )
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "session_id": "abc123xyz",
                 "qr_image": "data:image/png;base64,iVBORw0KGgo...",
             }
         }
+    )
+
+    session_id: Optional[str] = Field(None, description="Bearer 客户端后续使用的会话令牌")
+    qr_image: str = Field(
+        ..., description="Base64编码的二维码图片，格式为data:image/png;base64,..."
+    )
 
 
 class StatusResponse(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"authenticated": True, "state": "active"}}
+    )
+
     authenticated: bool = Field(..., description="是否已认证")
     state: Optional[str] = Field(None, description="认证状态：init/qr_ready/active等")
 
-    class Config:
-        json_schema_extra = {"example": {"authenticated": True, "state": "active"}}
-
 
 class SimpleResponse(BaseModel):
+    model_config = ConfigDict(json_schema_extra={"example": {"status": "ok"}})
+
     status: str = Field(..., description="操作状态")
     session_id: Optional[str] = Field(None, description="更新后的会话ID")
 
-    class Config:
-        json_schema_extra = {"example": {"status": "ok"}}
-
 
 class CookieLoginResponse(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {"status": "success", "student_id": "41234567", "student_name": "张三"}
+        }
+    )
+
     status: str = Field(..., description="登录状态")
     student_id: str = Field(..., description="学号")
     student_name: Optional[str] = Field(None, description="学生姓名")
     session_id: Optional[str] = Field(None, description="会话ID")
 
-    class Config:
-        json_schema_extra = {
-            "example": {"status": "success", "student_id": "41234567", "student_name": "张三"}
-        }
-
 
 class SmsRequest(BaseModel):
-    phone: str = Field(..., description="手机号码", example="13800138000")
+    phone: str = Field(
+        ...,
+        description="手机号码",
+        json_schema_extra={"example": "13800138000"},
+    )
 
     @field_validator("phone")
     @classmethod
@@ -118,8 +124,16 @@ class SmsRequest(BaseModel):
 
 
 class SmsVerifyRequest(BaseModel):
-    phone: str = Field(..., description="手机号码", example="13800138000")
-    code: str = Field(..., description="短信验证码", example="123456")
+    phone: str = Field(
+        ...,
+        description="手机号码",
+        json_schema_extra={"example": "13800138000"},
+    )
+    code: str = Field(
+        ...,
+        description="短信验证码",
+        json_schema_extra={"example": "123456"},
+    )
 
     @field_validator("phone")
     @classmethod
@@ -140,7 +154,7 @@ class CookieLoginRequest(BaseModel):
     cookies: str = Field(
         ...,
         description="Cookie字符串，格式: 'INCO=xxx; SESSION=yyy'",
-        example="INCO=abc123; SESSION=xyz789",
+        json_schema_extra={"example": "INCO=abc123; SESSION=xyz789"},
     )
 
 

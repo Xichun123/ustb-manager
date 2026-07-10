@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 from typing import Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from app.byyt.grades import query_grade_summary, query_grades as query_current_grades
 from app.models.grades import GradePage, GradeSummary
 from app.services import grades_service
@@ -12,13 +12,8 @@ router = APIRouter(prefix="/grades", tags=["grades"])
 
 # Response Models
 class GPAStats(BaseModel):
-    gpa: float = Field(..., description="GPA")
-    total_credits: float = Field(..., description="总学分")
-    passed_credits: float = Field(..., description="已通过学分")
-    failed_count: int = Field(..., description="不及格门数")
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "gpa": 3.75,
                 "total_credits": 120.5,
@@ -26,17 +21,17 @@ class GPAStats(BaseModel):
                 "failed_count": 1,
             }
         }
+    )
+
+    gpa: float = Field(..., description="GPA")
+    total_credits: float = Field(..., description="总学分")
+    passed_credits: float = Field(..., description="已通过学分")
+    failed_count: int = Field(..., description="不及格门数")
 
 
 class GradeItem(BaseModel):
-    course_name: str = Field(..., description="课程名称")
-    course_code: str = Field(..., description="课程代码")
-    credit: float = Field(..., description="学分")
-    score: str = Field(..., description="成绩")
-    gpa: Optional[float] = Field(None, description="绩点")
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "course_name": "高等数学A(1)",
                 "course_code": "MATH101",
@@ -45,6 +40,13 @@ class GradeItem(BaseModel):
                 "gpa": 4.0,
             }
         }
+    )
+
+    course_name: str = Field(..., description="课程名称")
+    course_code: str = Field(..., description="课程代码")
+    credit: float = Field(..., description="学分")
+    score: str = Field(..., description="成绩")
+    gpa: Optional[float] = Field(None, description="绩点")
 
 
 class GradesListResponse(BaseModel):
@@ -54,13 +56,8 @@ class GradesListResponse(BaseModel):
 
 
 class StudentInfoResponse(BaseModel):
-    student_id: str = Field(..., description="学号")
-    name: str = Field(..., description="姓名")
-    major: Optional[str] = Field(None, description="专业")
-    class_name: Optional[str] = Field(None, description="班级")
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "student_id": "41234567",
                 "name": "张三",
@@ -68,6 +65,12 @@ class StudentInfoResponse(BaseModel):
                 "class_name": "计算机2021-1班",
             }
         }
+    )
+
+    student_id: str = Field(..., description="学号")
+    name: str = Field(..., description="姓名")
+    major: Optional[str] = Field(None, description="专业")
+    class_name: Optional[str] = Field(None, description="班级")
 
 
 @router.get("", response_model=GradePage, summary="查询成绩")
