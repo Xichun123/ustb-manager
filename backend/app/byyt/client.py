@@ -14,7 +14,10 @@ class SupportsBYYTSession(Protocol):
     """Minimal session surface needed by BYYTClient (avoids importing SessionStore)."""
 
     client: Any
-    lock: Any
+    lock: asyncio.Lock
+    singleflight_lock: asyncio.Lock
+    inflight_queries: dict[str, asyncio.Task[Any]]
+    query_cache: dict[str, tuple[float, Any]]
 
 
 class BYYTClient:
@@ -62,17 +65,52 @@ class BYYTClient:
         *,
         allow_empty: bool = False,
         unwrap_content: bool = False,
+        single_flight_key: str | None = None,
+        cache_ttl: float = 0,
         **kwargs: Any,
     ) -> Any:
-        async with self._session.lock:
-            return await asyncio.to_thread(
-                self._request_json_sync,
-                method,
-                path,
-                allow_empty=allow_empty,
-                unwrap_content=unwrap_content,
-                **kwargs,
-            )
+        async def request_once() -> Any:
+            async with self._session.lock:
+                return await asyncio.to_thread(
+                    self._request_json_sync,
+                    method,
+                    path,
+                    allow_empty=allow_empty,
+                    unwrap_content=unwrap_content,
+                    **kwargs,
+                )
+
+        if not single_flight_key:
+            return await request_once()
+
+        loop = asyncio.get_running_loop()
+        async with self._session.singleflight_lock:
+            cached = self._session.query_cache.get(single_flight_key)
+            if cached and cached[0] > loop.time():
+                return cached[1]
+            if cached:
+                self._session.query_cache.pop(single_flight_key, None)
+
+            task = self._session.inflight_queries.get(single_flight_key)
+            if task is None:
+                task = asyncio.create_task(request_once())
+                self._session.inflight_queries[single_flight_key] = task
+
+        try:
+            result = await asyncio.shield(task)
+        finally:
+            if task.done():
+                async with self._session.singleflight_lock:
+                    if self._session.inflight_queries.get(single_flight_key) is task:
+                        self._session.inflight_queries.pop(single_flight_key, None)
+
+        if cache_ttl > 0:
+            async with self._session.singleflight_lock:
+                self._session.query_cache[single_flight_key] = (
+                    loop.time() + cache_ttl,
+                    result,
+                )
+        return result
 
     @staticmethod
     def _classify_json_response(

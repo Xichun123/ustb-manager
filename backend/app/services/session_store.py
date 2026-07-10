@@ -4,7 +4,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 import httpx
 
@@ -35,6 +35,9 @@ class Session:
     created_at: float = field(default_factory=time.time)
     last_seen: float = field(default_factory=time.time)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    singleflight_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    inflight_queries: dict[str, asyncio.Task[Any]] = field(default_factory=dict)
+    query_cache: dict[str, tuple[float, Any]] = field(default_factory=dict)
     qr_image: Optional[bytes] = None
     procedure: Optional[object] = None
     closing: bool = False

@@ -1,4 +1,5 @@
 import asyncio
+import threading
 from types import SimpleNamespace
 
 import httpx
@@ -121,6 +122,79 @@ async def test_request_json_classifies_5xx_as_unavailable():
             await BYYTClient(session).request_json("POST", "/component/queryXnxq")
     finally:
         http_client.close()
+
+
+@pytest.mark.asyncio
+async def test_request_json_coalesces_matching_inflight_queries():
+    started = threading.Event()
+    release = threading.Event()
+    request_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+        started.set()
+        release.wait(timeout=2)
+        return httpx.Response(200, json={"value": "ok"})
+
+    session, http_client = _session_with_transport(handler)
+    session.singleflight_lock = asyncio.Lock()
+    session.inflight_queries = {}
+    session.query_cache = {}
+    client = BYYTClient(session)
+    try:
+        first = asyncio.create_task(
+            client.request_json("POST", "/Xsxk/queryKxrw", single_flight_key="same")
+        )
+        await asyncio.to_thread(started.wait, 2)
+        second = asyncio.create_task(
+            client.request_json("POST", "/Xsxk/queryKxrw", single_flight_key="same")
+        )
+        await asyncio.sleep(0)
+        release.set()
+        assert await asyncio.gather(first, second) == [
+            {"value": "ok"},
+            {"value": "ok"},
+        ]
+    finally:
+        release.set()
+        http_client.close()
+
+    assert request_count == 1
+
+
+@pytest.mark.asyncio
+async def test_request_json_uses_a_short_query_cache():
+    request_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+        return httpx.Response(200, json={"value": request_count})
+
+    session, http_client = _session_with_transport(handler)
+    session.singleflight_lock = asyncio.Lock()
+    session.inflight_queries = {}
+    session.query_cache = {}
+    client = BYYTClient(session)
+    try:
+        first = await client.request_json(
+            "POST",
+            "/Xsxk/queryKxrw",
+            single_flight_key="same",
+            cache_ttl=2,
+        )
+        second = await client.request_json(
+            "POST",
+            "/Xsxk/queryKxrw",
+            single_flight_key="same",
+            cache_ttl=2,
+        )
+    finally:
+        http_client.close()
+
+    assert first == second == {"value": 1}
+    assert request_count == 1
 
 
 @pytest.mark.asyncio

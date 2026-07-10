@@ -1,3 +1,5 @@
+import hashlib
+import json
 from typing import Any
 
 from app.byyt.client import BYYTClient
@@ -20,7 +22,14 @@ async def query_selected_courses(session: Session, form: dict[str, Any]) -> dict
 
 
 async def query_available_courses(session: Session, form: dict[str, Any]) -> dict[str, Any]:
-    result = await BYYTClient(session).request_json("POST", "/Xsxk/queryKxrw", data=form)
+    fingerprint = hashlib.sha256(json.dumps(form, sort_keys=True, default=str).encode()).hexdigest()
+    result = await BYYTClient(session).request_json(
+        "POST",
+        "/Xsxk/queryKxrw",
+        data=form,
+        single_flight_key=f"queryKxrw:{fingerprint}",
+        cache_ttl=2,
+    )
     return result if isinstance(result, dict) else {}
 
 
