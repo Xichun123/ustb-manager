@@ -1,10 +1,69 @@
 import asyncio
 import logging
 from typing import AsyncGenerator
-from ustb_sso import HttpxSession, QrAuthProcedure, SmsAuthProcedure, prefabs, exceptions
-from .session_store import Session, AuthState, store
+
+from ustb_sso import HttpxSession, QrAuthProcedure, SmsAuthProcedure, exceptions, prefabs
+
+from app.byyt.profile import get_student_identity
+
+from .session_store import AuthState, Session, store
 
 logger = logging.getLogger(__name__)
+
+_IDENTITY_ATTEMPTS = 3
+_IDENTITY_RETRY_DELAY = 1
+
+
+def _byyt_cookies(session: Session) -> dict[str, str]:
+    return {
+        cookie.name: cookie.value
+        for cookie in session.client.cookies.jar
+        if "ustb.edu.cn" in cookie.domain
+    }
+
+
+async def _activate_authenticated_session(session: Session, flow: str) -> None:
+    for attempt in range(_IDENTITY_ATTEMPTS):
+        try:
+            identity = await get_student_identity(session)
+            break
+        except Exception as exc:
+            logger.warning(
+                "%s student identity lookup failed, attempt %s/%s: %s",
+                flow,
+                attempt + 1,
+                _IDENTITY_ATTEMPTS,
+                type(exc).__name__,
+            )
+            if attempt == _IDENTITY_ATTEMPTS - 1:
+                raise
+            await asyncio.sleep(_IDENTITY_RETRY_DELAY)
+
+    cookies = _byyt_cookies(session)
+    if cookies and session.session_id:
+        store.persist(session.session_id, identity.student_id, cookies)
+
+    async with session.lock:
+        session.state = AuthState.ACTIVE
+        session.authenticated = True
+        session.student_id = identity.student_id
+
+
+async def _claim_qr_monitor(session: Session) -> tuple[QrAuthProcedure | None, str | None]:
+    async with session.lock:
+        proc: QrAuthProcedure = session.procedure
+        if not proc or session.state != AuthState.QR_READY:
+            return None, "invalid"
+        if session.qr_monitor_started:
+            return None, "active"
+        session.qr_monitor_started = True
+        session.last_error = None
+        return proc, None
+
+
+async def _release_qr_monitor(session: Session) -> None:
+    async with session.lock:
+        session.qr_monitor_started = False
 
 
 async def init_qr_auth(session: Session) -> bytes:
@@ -27,19 +86,14 @@ async def init_qr_auth(session: Session) -> bytes:
 
 
 async def start_qr_background_monitor(session: Session):
-    """Start QR monitoring in background for polling-based clients (mini program)"""
-    proc: QrAuthProcedure = session.procedure
-    if not proc or session.state != AuthState.QR_READY:
+    """Start QR monitoring in background for polling-based clients (mini program)."""
+    proc, reason = await _claim_qr_monitor(session)
+    if reason is not None:
         return
-
-    # Prevent duplicate monitors
-    if session.qr_monitor_started:
-        return
-    session.qr_monitor_started = True
-    session.last_error = None
 
     async def _monitor():
         try:
+
             def _poll():
                 try:
                     return proc.wait_for_pass_code()
@@ -47,7 +101,6 @@ async def start_qr_background_monitor(session: Session):
                     return None
 
             pass_code = await asyncio.to_thread(_poll)
-
             if pass_code is None:
                 async with session.lock:
                     session.state = AuthState.EXPIRED
@@ -58,152 +111,69 @@ async def start_qr_background_monitor(session: Session):
                 session.state = AuthState.CONFIRMED
                 session.last_error = None
 
-            def _complete():
-                return proc.complete_auth(pass_code)
-
-            await asyncio.to_thread(_complete)
-
-            def _get_student_id():
-                import time as time_module
-                max_retries = 3
-                for attempt in range(max_retries):
-                    try:
-                        resp = session.client.post("https://byyt.ustb.edu.cn/UserManager/queryxsxx", data="")
-                        if resp.status_code == 302 or "session/invalid" in str(resp.url):
-                            if attempt < max_retries - 1:
-                                time_module.sleep(1)
-                                continue
-                            raise Exception("Session invalid after auth completion")
-                        resp.raise_for_status()
-                        data = resp.json()
-                        student_id = data.get("content", {}).get("XH") or data.get("XH") or data.get("ID")
-                        cookies = {}
-                        for cookie in session.client.cookies.jar:
-                            if 'ustb.edu.cn' in cookie.domain:
-                                cookies[cookie.name] = cookie.value
-                        return student_id, cookies
-                    except Exception as e:
-                        if attempt < max_retries - 1:
-                            time_module.sleep(1)
-                        else:
-                            raise
-
-            student_id, cookies = await asyncio.to_thread(_get_student_id)
-
-            async with session.lock:
-                session.state = AuthState.ACTIVE
-                session.authenticated = True
-                session.student_id = student_id
-
-            if student_id and cookies and session.session_id:
-                store.persist(session.session_id, student_id, cookies)
-
+            await asyncio.to_thread(proc.complete_auth, pass_code)
+            await _activate_authenticated_session(session, "QR")
             logger.info("QR background monitor completed")
         except Exception as exc:
             logger.error("QR background monitor failed: %s", type(exc).__name__)
             async with session.lock:
                 session.last_error = "QR login failed"
         finally:
-            session.qr_monitor_started = False
+            await _release_qr_monitor(session)
 
     asyncio.create_task(_monitor())
 
 
 async def poll_qr_status(session: Session) -> AsyncGenerator[dict, None]:
-    logger.info(f"poll_qr_status started, state={session.state}")
-    proc: QrAuthProcedure = session.procedure
-    if not proc or session.state != AuthState.QR_READY:
+    logger.info("poll_qr_status started, state=%s", session.state)
+    proc, reason = await _claim_qr_monitor(session)
+    if reason == "active":
+        logger.error("QR status polling rejected because another monitor is active")
+        yield {"status": "error", "message": "Invalid state"}
+        return
+    if reason is not None:
         logger.error("QR status polling rejected due to invalid state")
         yield {"status": "error", "message": "Invalid state"}
         return
 
-    logger.info("Yielding pending status")
-    yield {"status": "pending"}
-
-    def _poll():
-        logger.info("Starting wait_for_pass_code...")
-        try:
-            result = proc.wait_for_pass_code()
-            logger.info("QR pass-code polling completed")
-            return result
-        except exceptions.TimeoutError:
-            logger.info("wait_for_pass_code timed out")
-            return None
-
-    pass_code = await asyncio.to_thread(_poll)
-
-    if pass_code is None:
-        async with session.lock:
-            session.state = AuthState.EXPIRED
-        logger.info("Yielding expired status")
-        yield {"status": "expired"}
-        return
-
-    logger.info("Yielding scanned status")
-    yield {"status": "scanned"}
-
-    def _complete():
-        logger.info("Completing auth...")
-        return proc.complete_auth(pass_code)
-
     try:
-        await asyncio.to_thread(_complete)
+        logger.info("Yielding pending status")
+        yield {"status": "pending"}
 
-        # 获取学生ID和Cookie，带重试逻辑
-        def _get_student_id():
-            import time as time_module
-            max_retries = 3
-            for attempt in range(max_retries):
-                try:
-                    resp = session.client.post("https://byyt.ustb.edu.cn/UserManager/queryxsxx", data="")
-                    # 检查是否被重定向到登录页
-                    if resp.status_code == 302 or "session/invalid" in str(resp.url):
-                        logger.warning(
-                            "QR session invalid, attempt %s/%s", attempt + 1, max_retries
-                        )
-                        if attempt < max_retries - 1:
-                            time_module.sleep(1)
-                            continue
-                        raise Exception("Session invalid after auth completion")
+        def _poll():
+            logger.info("Starting wait_for_pass_code...")
+            try:
+                result = proc.wait_for_pass_code()
+                logger.info("QR pass-code polling completed")
+                return result
+            except exceptions.TimeoutError:
+                logger.info("wait_for_pass_code timed out")
+                return None
 
-                    resp.raise_for_status()
-                    data = resp.json()
-                    student_id = data.get("content", {}).get("XH") or data.get("XH") or data.get("ID")
-
-                    # 获取cookies
-                    cookies = {}
-                    for cookie in session.client.cookies.jar:
-                        if 'ustb.edu.cn' in cookie.domain:
-                            cookies[cookie.name] = cookie.value
-
-                    return student_id, cookies
-                except Exception as exc:
-                    logger.warning(
-                        "QR student-info lookup failed, attempt %s/%s: %s",
-                        attempt + 1,
-                        max_retries,
-                        type(exc).__name__,
-                    )
-                    if attempt < max_retries - 1:
-                        time_module.sleep(1)
-                    else:
-                        raise
-
-        student_id, cookies = await asyncio.to_thread(_get_student_id)
+        pass_code = await asyncio.to_thread(_poll)
+        if pass_code is None:
+            async with session.lock:
+                session.state = AuthState.EXPIRED
+            logger.info("Yielding expired status")
+            yield {"status": "expired"}
+            return
 
         async with session.lock:
-            session.state = AuthState.ACTIVE
-            session.authenticated = True
-            session.student_id = student_id
+            session.state = AuthState.CONFIRMED
+            session.last_error = None
 
-        if student_id and cookies and session.session_id:
-            store.persist(session.session_id, student_id, cookies)
+        logger.info("Yielding scanned status")
+        yield {"status": "scanned"}
 
+        await asyncio.to_thread(proc.complete_auth, pass_code)
+        await _activate_authenticated_session(session, "QR")
         logger.info("QR status polling completed")
         yield {"status": "success"}
     except Exception as exc:
         logger.error("QR auth completion failed: %s", type(exc).__name__)
         yield {"status": "error", "message": "Auth completion failed"}
+    finally:
+        await _release_qr_monitor(session)
 
 
 async def init_sms_auth(session: Session) -> None:
@@ -250,46 +220,4 @@ async def verify_sms(session: Session, phone: str, code: str) -> None:
             )
 
     await asyncio.to_thread(_sync)
-
-    # SMS auth can complete before the BYYT session is fully ready.
-    # Retry the student-info request to avoid false negatives immediately after auth.
-    def _get_student_id():
-        import time as time_module
-
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                resp = session.client.post("https://byyt.ustb.edu.cn/UserManager/queryxsxx", data="")
-                if resp.status_code == 302 or "session/invalid" in str(resp.url):
-                    if attempt < max_retries - 1:
-                        time_module.sleep(1)
-                        continue
-                    raise Exception("Session invalid after SMS auth completion")
-
-                resp.raise_for_status()
-                data = resp.json()
-                student_id = data.get("content", {}).get("XH") or data.get("XH") or data.get("ID")
-                if not student_id:
-                    raise Exception("Student ID not found after SMS auth completion")
-
-                cookies = {}
-                for cookie in session.client.cookies.jar:
-                    if 'ustb.edu.cn' in cookie.domain:
-                        cookies[cookie.name] = cookie.value
-
-                return student_id, cookies
-            except Exception:
-                if attempt < max_retries - 1:
-                    time_module.sleep(1)
-                    continue
-                raise
-
-    student_id, cookies = await asyncio.to_thread(_get_student_id)
-
-    async with session.lock:
-        session.state = AuthState.ACTIVE
-        session.authenticated = True
-        session.student_id = student_id
-
-    if student_id and cookies and session.session_id:
-        store.persist(session.session_id, student_id, cookies)
+    await _activate_authenticated_session(session, "SMS")

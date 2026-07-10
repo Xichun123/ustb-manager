@@ -424,31 +424,11 @@ def test_qr_status_does_not_log_student_id_or_pass_code(monkeypatch, caplog):
         def complete_auth(self, pass_code):
             assert pass_code == "QR_PASS_CODE_SECRET"
 
-    class StudentInfoResponse:
-        status_code = 200
-        url = "https://byyt.ustb.edu.cn/UserManager/queryxsxx"
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/UserManager/queryxsxx"
+        return httpx.Response(200, json={"XH": "STUDENT_ID_SECRET"})
 
-        def raise_for_status(self):
-            pass
-
-        def json(self):
-            return {"XH": "STUDENT_ID_SECRET"}
-
-    class StudentInfoClient:
-        class Cookies:
-            jar = ()
-
-        cookies = Cookies()
-
-        def post(self, url, data):
-            assert url == "https://byyt.ustb.edu.cn/UserManager/queryxsxx"
-            assert data == ""
-            return StudentInfoResponse()
-
-        def close(self):
-            pass
-
-    session.client = StudentInfoClient()
+    session.client = httpx.Client(transport=httpx.MockTransport(handler))
     session.state = AuthState.QR_READY
     session.procedure = CompletedQrProcedure()
     caplog.set_level(logging.INFO, logger=auth_service.__name__)
@@ -456,6 +436,7 @@ def test_qr_status_does_not_log_student_id_or_pass_code(monkeypatch, caplog):
     with TestClient(app, raise_server_exceptions=False) as client:
         client.cookies.set("ustb_sid", session_id)
         response = client.get("/api/auth/qr/status")
+    session.client.close()
 
     assert response.status_code == 200
     assert "success" in response.text
