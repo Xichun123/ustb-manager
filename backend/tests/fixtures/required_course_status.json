@@ -1,0 +1,18 @@
+{
+  "code": 200,
+  "content": {
+    "yqmsxf": {
+      "YQMS": "40",
+      "YQXF": "120.0",
+      "XFJ": "3.5",
+      "PM": "12",
+      "ZYRS": "100"
+    },
+    "ywcms": "30",
+    "ywcxf": "90.0",
+    "wwcms": "10",
+    "wwcxf": "30.0"
+  },
+  "msg": null,
+  "msg_en": null
+}

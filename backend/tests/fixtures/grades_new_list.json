@@ -1,0 +1,54 @@
+{
+  "code": 200,
+  "content": {
+    "pageNum": 1,
+    "pageSize": 20,
+    "total": 2,
+    "list": [
+      {
+        "id": "grade-1",
+        "xnxq": "2025-2026-2",
+        "kcdm": "MATH001",
+        "kcmc": "高等数学",
+        "kcmc_en": "Advanced Mathematics",
+        "xf": "4.0",
+        "xs": "64",
+        "xscj": "92",
+        "xscjen": "92",
+        "kcxz": "必修",
+        "kcxzen": "Required",
+        "kclb": "专业基础课",
+        "kclben": "Major Foundation",
+        "yxmc": "理学院",
+        "yxmc_en": "School of Mathematics",
+        "bkcx": "正考",
+        "bkcx_en": "Regular",
+        "sfjg": "1",
+        "pm": "3"
+      },
+      {
+        "id": "grade-2",
+        "xnxq": "2025-2026-2",
+        "kcdm": "PE001",
+        "kcmc": "体育",
+        "kcmc_en": "Physical Education",
+        "xf": "1.0",
+        "xs": "32",
+        "xscj": "合格",
+        "xscjen": "Pass",
+        "kcxz": "必修",
+        "kcxzen": "Required",
+        "kclb": "公共基础课",
+        "kclben": "General Foundation",
+        "yxmc": "体育部",
+        "yxmc_en": "Department of Physical Education",
+        "bkcx": "正考",
+        "bkcx_en": "Regular",
+        "sfjg": "1",
+        "pm": null
+      }
+    ]
+  },
+  "msg": null,
+  "msg_en": null
+}

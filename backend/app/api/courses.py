@@ -1,6 +1,6 @@
 """选课管理 API 路由"""
 from fastapi import APIRouter, Depends, Query
-from typing import Optional, List
+from typing import Literal, Optional, List
 from pydantic import BaseModel, Field
 from app.services import course_service
 from app.services.session_store import Session
@@ -49,6 +49,24 @@ class TermListItem(BaseModel):
     mc: str = Field(..., description="学期名称")
 
 
+class CourseSelectionTerm(BaseModel):
+    year: str
+    semester: str
+    code: str
+
+
+class CourseSelectionMethod(BaseModel):
+    code: str
+    name: str
+    name_en: str = ""
+    mode: str = ""
+
+
+class CourseSelectionContext(BaseModel):
+    term: CourseSelectionTerm
+    methods: List[CourseSelectionMethod]
+
+
 class CollegeItem(BaseModel):
     code: str = Field(..., description="学院代码")
     name: str = Field(..., description="学院名称")
@@ -71,6 +89,11 @@ class ConflictCheckRequest(BaseModel):
 
 class ConflictCheckResponse(BaseModel):
     has_conflict: bool = Field(..., description="是否存在时间冲突")
+    allowed: bool = Field(..., description="是否允许继续选课操作")
+    status: Literal["clear", "conflict", "blocked", "unknown"] = Field(
+        ...,
+        description="冲突检查状态",
+    )
     message: str = Field("", description="冲突详情说明")
 
 
@@ -87,6 +110,11 @@ class CartRemoveRequest(BaseModel):
 class CourseOperationResponse(BaseModel):
     success: bool = Field(..., description="操作是否成功")
     message: str = Field(..., description="操作结果消息")
+
+
+@router.get("/context", response_model=CourseSelectionContext, summary="获取选课上下文")
+async def get_course_context(session: Session = Depends(get_authenticated_session)):
+    return await course_service.get_course_context(session)
 
 
 @router.get("/term-info", response_model=dict, summary="获取选课学期信息")

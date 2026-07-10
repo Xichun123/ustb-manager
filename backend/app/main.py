@@ -3,10 +3,17 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .byyt.errors import BYYTRateLimited, BYYTUpstreamError
 from .config import CORS_ORIGINS
 from .services.session_store import store
-from .api import auth, byyt, grades, schedule, wifi, courses
-from .exceptions import BYYTSessionExpired, byyt_session_expired_handler, generic_exception_handler
+from .api import academic, auth, courses, exams, grades, me, notices, schedule, wifi
+from .exceptions import (
+    BYYTSessionExpired,
+    byyt_rate_limited_handler,
+    byyt_session_expired_handler,
+    byyt_upstream_error_handler,
+    generic_exception_handler,
+)
 
 logging.basicConfig(level=logging.INFO)
 
@@ -37,11 +44,6 @@ app = FastAPI(
 - **学生信息**: 获取学生基本信息和完整档案
 - **培养方案**: 查看专业培养方案和课程要求
 - **学业进度**: 查询必修课完成情况和学分统计
-
-### 🎓 BYYT系统接口 (BYYT)
-- **原始数据访问**: 直接访问BYYT教务系统的原始数据
-- **成绩数据**: 获取未经处理的成绩数据
-- **用户档案**: 获取完整的用户档案信息
 
 ### 🔒 安全特性
 - HttpOnly Cookie保护
@@ -78,12 +80,20 @@ app = FastAPI(
             "description": "**认证相关接口** - 用户登录、登出、会话管理等功能。支持三种登录方式：二维码、短信验证码、Cookie。",
         },
         {
+            "name": "me",
+            "description": "**个人信息接口** - 查询当前学生的规范化档案与角色。",
+        },
+        {
             "name": "grades",
             "description": "**成绩管理接口** - 成绩查询、GPA计算、学生信息、培养方案、学业进度等功能。提供丰富的筛选和统计功能。",
         },
         {
             "name": "schedule",
             "description": "**课表查询接口** - 查询总课表和周课表，支持按学期和周次查询。",
+        },
+        {
+            "name": "exams",
+            "description": "**考试查询接口** - 分页查询学生考试安排。",
         },
         {
             "name": "wifi",
@@ -94,8 +104,8 @@ app = FastAPI(
             "description": "**选课管理接口** - 查询已选课程、开课学期、学院列表、课程类别等选课相关功能。",
         },
         {
-            "name": "byyt",
-            "description": "**BYYT系统接口** - 直接访问北科大BYYT教务系统的底层接口，返回原始数据格式。适合需要原始数据的高级场景。",
+            "name": "notices",
+            "description": "**通知公告接口** - 分页查询教务系统通知公告。",
         },
     ],
     lifespan=lifespan,
@@ -111,11 +121,16 @@ app.add_middleware(
 
 # 全局异常处理器
 app.add_exception_handler(BYYTSessionExpired, byyt_session_expired_handler)
+app.add_exception_handler(BYYTRateLimited, byyt_rate_limited_handler)
+app.add_exception_handler(BYYTUpstreamError, byyt_upstream_error_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
 
 app.include_router(auth.router, prefix="/api")
-app.include_router(byyt.router, prefix="/api")
+app.include_router(me.router, prefix="/api")
+app.include_router(academic.router, prefix="/api")
 app.include_router(grades.router, prefix="/api")
+app.include_router(exams.router, prefix="/api")
+app.include_router(notices.router, prefix="/api")
 app.include_router(schedule.router, prefix="/api")
 app.include_router(wifi.router, prefix="/api")
 app.include_router(courses.router, prefix="/api")
@@ -126,15 +141,15 @@ async def health():
     """
     ## 业务说明
     检查API服务是否正常运行。
-    
+
     ## 使用场景
     - 服务监控
     - 负载均衡健康检查
     - 部署验证
-    
+
     ## 返回数据
     返回服务状态信息。
-    
+
     ## 注意事项
     - 此接口不需要认证
     - 始终返回200状态码（除非服务完全不可用）

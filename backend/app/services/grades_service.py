@@ -1,10 +1,12 @@
 import asyncio
 import logging
 from typing import Dict, List, Optional
+from app.byyt.academic import get_academic_terms
+from app.byyt.grades import query_grades as query_current_grades
+from app.byyt.progress import query_required_course_status
 from app.services.session_store import Session
 from app.exceptions import BYYTSessionExpired
 from app.cache import reference_data_cache
-from httpx import HTTPStatusError
 
 logger = logging.getLogger(__name__)
 
@@ -34,42 +36,44 @@ async def get_grades(
     kcxz: Optional[str] = None,
     kclb: Optional[str] = None,
 ) -> Dict:
-    """获取成绩列表"""
+    """兼容旧客户端的成绩响应，数据源使用当前个人成绩接口。"""
+    page = await query_current_grades(
+        session,
+        year=xn,
+        semester=xq,
+        page=page_num,
+        page_size=page_size,
+    )
+    records = page["items"]
+    if kcxz:
+        records = [record for record in records if record["course_nature"] == kcxz]
+    if kclb:
+        records = [record for record in records if record["course_category"] == kclb]
 
-    def _fetch():
-        params = {
-            "pageNum": page_num,
-            "pageSize": page_size,
-            "total": 0,
-            "xjid": session.student_id,
-            "sfgld": "1",
-            "pxzd": "",
-            "pxfx": "",
-            "xn": xn or "",
-            "xq": xq or "",
-            "kcxz": kcxz or "",
-            "kclb": kclb or "",
-            "key": "",
-            "pylx": "1",
-            "sffx": "",
-            "sfcxfxcj": "0",
-            "sfsjqx": "1",
-        }
-
-        resp = session.client.post(
-            "https://byyt.ustb.edu.cn/cjgl/grcjcx/dyxwList",
-            data=params,
+    grades = []
+    for record in records:
+        grades.append(
+            {
+                "xnxq": record["term"],
+                "kcdm": record["course_code"],
+                "kcmc": record["course_name"],
+                "kcmc_en": record["course_name_en"],
+                "xf": str(record["credit"]),
+                "xs": "" if record["hours"] is None else str(record["hours"]),
+                "xscj": record["score"],
+                "zpcj": record["score"],
+                "kcxzmc": record["course_nature"],
+                "kclbmc": record["course_category"],
+                "jsxm": "",
+                "kkdw": record["college"],
+                "bkcxbj": record["exam_attempt"],
+            }
         )
-        _check_byyt_response(resp)
-        resp.raise_for_status()
-        return resp.json()
 
-    result = await asyncio.to_thread(_fetch)
-
-    if result.get("code") != 200:
-        raise Exception(f"Failed to fetch grades: {result.get('msg')}")
-
-    return result.get("content", {})
+    return {
+        "list": grades,
+        "total": len(grades) if kcxz or kclb else page["total"],
+    }
 
 
 async def get_student_info(session: Session) -> Dict:
@@ -261,57 +265,19 @@ async def get_required_course_status(
     session: Session,
     jzxnxq: Optional[str] = None,
 ) -> Dict:
-    """查询必修课完成情况"""
-
-    def _fetch():
-        # 如果没有提供截止学年学期，使用当前学年学期
-        term = jzxnxq or ""
-
-        params = {
-            "xh": session.student_id,
-            "pylx": "1",
-            "nj": session.student_id[:4] if session.student_id else "",  # 从学号提取年级
-            "jzxnxq": term,
-            "xjid": session.student_id,
-            "fah": "",
-            "sfcxxfj": "0",
-        }
-
-        resp = session.client.post(
-            "https://byyt.ustb.edu.cn/cjgl/cjzhtjcx/cjcx/queryBxkqk",
-            json=params,
-        )
-        _check_byyt_response(resp)
-        resp.raise_for_status()
-        return resp.json()
-
-    result = await asyncio.to_thread(_fetch)
-
-    if result.get("code") != 200:
-        raise Exception(f"Failed to fetch required course status: {result.get('msg')}")
-
-    return result.get("content", {})
+    """查询必修课完成情况。"""
+    return await query_required_course_status(session, jzxnxq)
 
 
 async def get_term_list(session: Session) -> List[Dict]:
-    """查询学年学期列表（带缓存）"""
+    """查询学年学期列表（带缓存）。"""
     cached = reference_data_cache.get("grades_term_list")
     if cached is not None:
         return cached
 
-    def _fetch():
-        resp = session.client.post(
-            "https://byyt.ustb.edu.cn/component/queryXnxq",
-            data="",
-        )
-        _check_byyt_response(resp)
-        resp.raise_for_status()
-        return resp.json()
-
-    result = await asyncio.to_thread(_fetch)
-    data = result if isinstance(result, list) else []
-    reference_data_cache.set("grades_term_list", data)
-    return data
+    terms = await get_academic_terms(session)
+    reference_data_cache.set("grades_term_list", terms)
+    return terms
 
 
 def calculate_gpa(grades: List[Dict]) -> Dict:

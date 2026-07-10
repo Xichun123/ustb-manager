@@ -1,0 +1,23 @@
+{
+  "code": 200,
+  "content": [
+    {
+      "xn": "2025-2026",
+      "xq": "3",
+      "xnxq": "2025-2026-3",
+      "xqmc": "夏季学期",
+      "xqmc_en": "Summer",
+      "sfdqxq": "1"
+    },
+    {
+      "xn": "2025-2026",
+      "xq": "2",
+      "xnxq": "2025-2026-2",
+      "xqmc": "第二学期",
+      "xqmc_en": "Spring",
+      "sfdqxq": "0"
+    }
+  ],
+  "msg": null,
+  "msg_en": null
+}

@@ -1,0 +1,32 @@
+[
+  {
+    "id": "schedule-1",
+    "key": "xq1_jc1",
+    "ksjc": "1",
+    "jsjc": "2",
+    "kcdm": "CS101",
+    "kbxx": "程序设计\n张老师\n1-8周\n【校本部】教学楼101\n第1-2节",
+    "kbxx_en": "Programming\nTeacher Zhang\nWeeks 1-8\nMain Campus, Teaching Building 101\nPeriods 1-2",
+    "pylx": "1"
+  },
+  {
+    "id": "schedule-2",
+    "key": "xq1_jc1",
+    "ksjc": "1",
+    "jsjc": "2",
+    "kcdm": "CS102",
+    "kbxx": "数据结构\n李老师\n9-16周\n【校本部】教学楼102\n第1-2节",
+    "kbxx_en": "Data Structures\nTeacher Li\nWeeks 9-16\nMain Campus, Teaching Building 102\nPeriods 1-2",
+    "pylx": "1"
+  },
+  {
+    "id": "schedule-3",
+    "key": "xq2_jc2",
+    "ksjc": "3",
+    "jsjc": "4",
+    "kcdm": "MATH002",
+    "kbxx": "线性代数\n王老师\n1-16周\n【管庄校区】综合楼201\n第3-4节",
+    "kbxx_en": "Linear Algebra\nTeacher Wang\nWeeks 1-16\nGuanzhuang Campus, Building 201\nPeriods 3-4",
+    "pylx": "1"
+  }
+]

@@ -1,0 +1,33 @@
+{
+  "sfyyj": "1",
+  "xf_count": "12.5",
+  "sffb": "1",
+  "sfyhd": "0",
+  "hdsj": null,
+  "data_yhd": [
+    {
+      "kcdm": "CS101",
+      "kcmc": "程序设计",
+      "xs": "48",
+      "xf": "3.0",
+      "xnxqmc": "2025-2026-2",
+      "zzzscj": "78",
+      "kclbmc": "专业基础课",
+      "kcxzmc": "必修",
+      "bkcxbj": "正考"
+    }
+  ],
+  "data_whd": [
+    {
+      "kcdm": "MATH001",
+      "kcmc": "高等数学",
+      "xs": "64",
+      "xf": "4.0",
+      "xnxqmc": "2025-2026-2",
+      "zzzscj": "55",
+      "kclbmc": "公共基础课",
+      "kcxzmc": "必修",
+      "bkcxbj": "正考"
+    }
+  ]
+}

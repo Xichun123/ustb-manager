@@ -1,0 +1,20 @@
+{
+  "id": "student-internal-1",
+  "userId": "U000000000",
+  "username": "U000000000",
+  "xm": "测试学生",
+  "xm_en": "Test Student",
+  "sfxs": "1",
+  "pylx": "1",
+  "rolecode": ["01"],
+  "role": [
+    {
+      "jsdm": "01",
+      "jsmc": "学生",
+      "jsmc_en": "Student"
+    }
+  ],
+  "authorities": [
+    {"authority": "ROLE_STUDENT"}
+  ]
+}

@@ -1,6 +1,10 @@
+from datetime import date as Date
 from fastapi import APIRouter, Depends, Query
 from typing import Optional, List
 from pydantic import BaseModel, Field
+from app.byyt.academic import get_academic_context
+from app.byyt.schedule import query_schedule as query_current_schedule
+from app.models.schedule import ScheduleView
 from app.services import schedule_service
 from app.services.session_store import Session
 from app.dependencies import get_authenticated_session
@@ -41,8 +45,36 @@ class ScheduleResponse(BaseModel):
     term: str = Field(..., description="学期信息")
 
 
+@router.get("", response_model=ScheduleView, summary="查询课表")
+async def query_schedule(
+    session: Session = Depends(get_authenticated_session),
+    term: Optional[str] = Query(
+        None,
+        pattern=r"^\d{4}-\d{4}-[123]$",
+        description="学年学期，如 2025-2026-2；默认按今天识别",
+    ),
+    week: Optional[int] = Query(None, ge=1, le=99),
+):
+    if term:
+        year, semester = term.rsplit("-", 1)
+    else:
+        context = await get_academic_context(session, Date.today())
+        teaching_term = context["teaching_term"]
+        year = teaching_term["year"]
+        semester = teaching_term["semester"]
+    return await query_current_schedule(
+        session,
+        year=year,
+        semester=semester,
+        week=week,
+    )
+
+
 @router.get("/current-term", response_model=dict, summary="获取当前学年学期")
-async def get_current_term(session: Session = Depends(get_authenticated_session)):
+async def get_current_term(
+    on_date: Optional[Date] = Query(None, alias="date", description="查询日期，默认今天"),
+    session: Session = Depends(get_authenticated_session),
+):
     """
     ## 业务说明
     获取当前学年学期信息。
@@ -52,7 +84,7 @@ async def get_current_term(session: Session = Depends(get_authenticated_session)
     - XQ: 学期，如 "1"
     - XNXQ: 学年学期，如 "2025-2026-1"
     """
-    return await schedule_service.get_current_term(session)
+    return await schedule_service.get_current_term(session, on_date)
 
 
 @router.get("/term-list", response_model=List[dict], summary="获取学期列表")

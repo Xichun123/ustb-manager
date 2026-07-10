@@ -1,0 +1,48 @@
+name: Backend
+
+on:
+  push:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Install dependencies
+        run: uv sync --frozen --group dev
+
+      - name: Lint
+        run: uv run ruff check app tests scripts
+
+      - name: Check formatting for the new boundary
+        run: uv run ruff format --check app/byyt app/models app/api/academic.py tests scripts
+
+      - name: Check OpenAPI snapshot
+        run: uv run python scripts/export_openapi.py --check
+
+      - name: Test
+        run: uv run pytest -q

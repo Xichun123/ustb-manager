@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, Query
 from typing import Optional, List
 from pydantic import BaseModel, Field
+from app.byyt.grades import query_grade_summary, query_grades as query_current_grades
+from app.models.grades import GradePage, GradeSummary
 from app.services import grades_service
 from app.services.session_store import Session
 from app.dependencies import get_authenticated_session
@@ -21,7 +23,7 @@ class GPAStats(BaseModel):
                 "gpa": 3.75,
                 "total_credits": 120.5,
                 "passed_credits": 118.0,
-                "failed_count": 1
+                "failed_count": 1,
             }
         }
 
@@ -40,7 +42,7 @@ class GradeItem(BaseModel):
                 "course_code": "MATH101",
                 "credit": 5.0,
                 "score": "92",
-                "gpa": 4.0
+                "gpa": 4.0,
             }
         }
 
@@ -63,9 +65,37 @@ class StudentInfoResponse(BaseModel):
                 "student_id": "41234567",
                 "name": "张三",
                 "major": "计算机科学与技术",
-                "class_name": "计算机2021-1班"
+                "class_name": "计算机2021-1班",
             }
         }
+
+
+@router.get("", response_model=GradePage, summary="查询成绩")
+async def query_grades(
+    session: Session = Depends(get_authenticated_session),
+    term: Optional[str] = Query(
+        None,
+        pattern=r"^\d{4}-\d{4}-[123]$",
+        description="学年学期，如 2025-2026-2",
+    ),
+    course_name: Optional[str] = Query(None, description="课程名称关键字"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+):
+    year, semester = term.rsplit("-", 1) if term else (None, None)
+    return await query_current_grades(
+        session,
+        year=year,
+        semester=semester,
+        course_name=course_name,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/summary", response_model=GradeSummary, summary="获取成绩摘要")
+async def get_grade_summary(session: Session = Depends(get_authenticated_session)):
+    return await query_grade_summary(session)
 
 
 @router.get("/list", response_model=GradesListResponse, summary="获取成绩列表")
@@ -264,7 +294,7 @@ async def get_required_course_status(
     return await grades_service.get_required_course_status(session, jzxnxq)
 
 
-@router.get("/term-list", response_model=dict, summary="查询学年学期列表")
+@router.get("/term-list", response_model=List[dict], summary="查询学年学期列表")
 async def get_term_list(session: Session = Depends(get_authenticated_session)):
     """
     ## 业务说明

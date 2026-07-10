@@ -1,9 +1,9 @@
 """选课管理服务"""
 import asyncio
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List
+from app.byyt.client import BYYTClient
 from app.services.session_store import Session
-from app.exceptions import BYYTSessionExpired
 from app.services.grades_service import _check_byyt_response
 from app.services.schedule_service import get_term_list as _get_schedule_term_list
 from app.cache import reference_data_cache
@@ -14,34 +14,72 @@ logger = logging.getLogger(__name__)
 async def get_course_term_info(session: Session) -> Dict:
     """获取选课系统当前学年学期信息"""
 
-    def _fetch():
-        # 构造请求参数
-        params = (
-            "cxsfmt=0&p_pylx=1&mxpylx=1&p_sfgldjr=0&p_sfredis=0&p_sfsyxkgwc=0"
-            "&p_xktjz=&p_chaxunxh=&p_gjz=&p_skjs=&p_xn=&p_xq=&p_xnxq="
-            "&p_dqxn=&p_dqxq=&p_dqxnxq=&p_xkfsdm=&p_xiaoqu=&p_kkyx=&p_kclb="
-            "&p_xkxs=&p_dyc=&p_kkxnxq=&p_id=&p_sfhlctkc=0&p_sfhllrlkc=0"
-            "&p_kxsj_xqj=&p_kxsj_ksjc=&p_kxsj_jsjc=&p_kcdm_js=&p_kcdm_cxrw="
-            "&p_kcdm_cxrw_zckc=&p_kc_gjz=&p_xzcxtjz_nj=&p_xzcxtjz_yx="
-            "&p_xzcxtjz_zy=&p_xzcxtjz_zyfx=&p_xzcxtjz_bj=&p_sfxsgwckb=1"
-            "&p_skyy=&p_sfmxzj=0"
-        )
-        resp = session.client.post(
-            "https://byyt.ustb.edu.cn/Xsxk/queryXkdqXnxq",
-            data=params,
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-        )
-        _check_byyt_response(resp)
-        resp.raise_for_status()
-        return resp.json()
-
-    result = await asyncio.to_thread(_fetch)
-    return result
+    params = (
+        "cxsfmt=0&p_pylx=1&mxpylx=1&p_sfgldjr=0&p_sfredis=0&p_sfsyxkgwc=0"
+        "&p_xktjz=&p_chaxunxh=&p_gjz=&p_skjs=&p_xn=&p_xq=&p_xnxq="
+        "&p_dqxn=&p_dqxq=&p_dqxnxq=&p_xkfsdm=&p_xiaoqu=&p_kkyx=&p_kclb="
+        "&p_xkxs=&p_dyc=&p_kkxnxq=&p_id=&p_sfhlctkc=0&p_sfhllrlkc=0"
+        "&p_kxsj_xqj=&p_kxsj_ksjc=&p_kxsj_jsjc=&p_kcdm_js=&p_kcdm_cxrw="
+        "&p_kcdm_cxrw_zckc=&p_kc_gjz=&p_xzcxtjz_nj=&p_xzcxtjz_yx="
+        "&p_xzcxtjz_zy=&p_xzcxtjz_zyfx=&p_xzcxtjz_bj=&p_sfxsgwckb=1"
+        "&p_skyy=&p_sfmxzj=0"
+    )
+    result = await BYYTClient(session).request_json(
+        "POST",
+        "/Xsxk/queryXkdqXnxq",
+        content=params.encode(),
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    return result if isinstance(result, dict) else {}
 
 
 async def get_course_term_list(session: Session) -> List[Dict]:
     """获取开课学期列表 - 复用课表服务的学期列表"""
     return await _get_schedule_term_list(session)
+
+
+async def get_course_context(session: Session) -> Dict:
+    """获取选课学期与当前账号动态可用的选课方式。"""
+    term_info = await get_course_term_info(session)
+    params = _build_queryform(
+        term_info.get("p_xn", ""),
+        term_info.get("p_xq", ""),
+        term_info.get("p_xnxq", ""),
+        term_info.get("p_dqxn", ""),
+        term_info.get("p_dqxq", ""),
+        term_info.get("p_dqxnxq", ""),
+        xkfsdm="yixuan",
+    )
+    result = await BYYTClient(session).request_json(
+        "POST",
+        "/Xsxk/queryYxkc",
+        data=params,
+    )
+
+    methods = []
+    raw_methods = result.get("xkgzszList", []) if isinstance(result, dict) else []
+    for item in raw_methods:
+        if not isinstance(item, dict) or not item.get("xkfsdm"):
+            continue
+        methods.append(
+            {
+                "code": str(item.get("xkfsdm") or ""),
+                "name": str(item.get("xkfsmc") or ""),
+                "name_en": str(item.get("xkfsmc_en") or ""),
+                "mode": str(item.get("xkms") or ""),
+            }
+        )
+
+    year = str(term_info.get("p_xn") or "")
+    semester = str(term_info.get("p_xq") or "")
+    return {
+        "term": {
+            "year": year,
+            "semester": semester,
+            "code": f"{year}-{semester}" if year and semester else "",
+        },
+        "methods": methods,
+    }
 
 
 async def get_selected_courses(
@@ -583,24 +621,25 @@ async def check_time_conflict(
         p_id=course_id,
     )
 
-    def _fetch():
-        resp = session.client.post(
-            "https://byyt.ustb.edu.cn/Xsxk/cxmtctPd",
-            data=params,
-        )
-        _check_byyt_response(resp)
-        resp.raise_for_status()
-        return resp.json()
+    result = await BYYTClient(session).request_json(
+        "POST",
+        "/Xsxk/cxmtctPd",
+        data=params,
+    )
 
-    result = await asyncio.to_thread(_fetch)
-
-    # BYYT 返回格式: {"jg": "1", "message": "..."} 或类似结构
-    # jg="1" 表示存在冲突，jg="0" 表示无冲突
-    has_conflict = result.get("jg") == "1" if isinstance(result, dict) else False
+    # 当前上游语义：-9=存在冲突，-1=禁止操作，1=无冲突。
+    result_code = str(result.get("jg", "")) if isinstance(result, dict) else ""
+    status = {
+        "1": "clear",
+        "-9": "conflict",
+        "-1": "blocked",
+    }.get(result_code, "unknown")
     message = result.get("message", "") if isinstance(result, dict) else ""
 
     return {
-        "has_conflict": has_conflict,
+        "has_conflict": status == "conflict",
+        "allowed": status == "clear",
+        "status": status,
         "message": message,
     }
 
@@ -610,25 +649,13 @@ async def get_announcements(
     xn: str,
     xq: str,
 ) -> List[Dict]:
-    """查询选课公告
-
-    Args:
-        xn: 学年（如 2025-2026）
-        xq: 学期（如 2）
-    Returns:
-        选课公告列表
-    """
-
-    def _fetch():
-        resp = session.client.post(
-            "https://byyt.ustb.edu.cn/Xsxk/queryXkggZx",
-            data={"xn": xn, "xq": xq},
-        )
-        _check_byyt_response(resp)
-        resp.raise_for_status()
-        return resp.json()
-
-    result = await asyncio.to_thread(_fetch)
+    """查询选课公告；无公告时上游会返回 HTTP 200 空响应。"""
+    result = await BYYTClient(session).request_json(
+        "POST",
+        "/Xsxk/queryXkggZx",
+        data={"xn": xn, "xq": xq},
+        allow_empty=True,
+    )
 
     if isinstance(result, list):
         return result
@@ -666,30 +693,27 @@ async def get_colleges(session: Session) -> List[Dict]:
 
 
 async def get_course_categories(session: Session) -> List[Dict]:
-    """获取课程类别列表（带缓存）"""
+    """获取课程类别列表（带缓存）。"""
     cached = reference_data_cache.get("categories")
     if cached is not None:
         return cached
 
-    def _fetch():
-        params = {"dmbdm": "byyt_kclb", "mbmc": ""}
-        resp = session.client.post(
-            "https://byyt.ustb.edu.cn/component/queryDmb",
-            data=params,
-        )
-        _check_byyt_response(resp)
-        resp.raise_for_status()
-        return resp.json()
-
-    result = await asyncio.to_thread(_fetch)
+    result = await BYYTClient(session).request_json(
+        "POST",
+        "/component/queryKclb",
+        data={"pylb": "1"},
+        unwrap_content=True,
+    )
 
     categories = []
     if isinstance(result, list):
         for item in result:
-            categories.append({
-                "code": item.get("DM", ""),
-                "name": item.get("MC", ""),
-            })
+            categories.append(
+                {
+                    "code": item.get("dm", "") or item.get("DM", ""),
+                    "name": item.get("mc", "") or item.get("MC", ""),
+                }
+            )
     reference_data_cache.set("categories", categories)
     return categories
 

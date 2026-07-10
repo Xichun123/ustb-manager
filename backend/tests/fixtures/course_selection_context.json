@@ -1,0 +1,27 @@
+{
+  "xkgzszList": [
+    {
+      "xkfsdm": "bx-b-b",
+      "xkfsmc": "必修",
+      "xkfsmc_en": "Required",
+      "xkms": "1",
+      "sxh": "1"
+    },
+    {
+      "xkfsdm": "sztzk-b-b",
+      "xkfsmc": "素质拓展选课",
+      "xkfsmc_en": "Quality Development",
+      "xkms": "1",
+      "sxh": "2"
+    },
+    {
+      "xkfsdm": "zytzk-b-b",
+      "xkfsmc": "专业拓展选课",
+      "xkfsmc_en": "Major Development",
+      "xkms": "1",
+      "sxh": "3"
+    }
+  ],
+  "yxkcList": [],
+  "xkgwcList": []
+}

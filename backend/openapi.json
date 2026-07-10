@@ -1,0 +1,5602 @@
+{
+  "components": {
+    "schemas": {
+      "AcademicCalendar": {
+        "properties": {
+          "dates": {
+            "items": {
+              "$ref": "#/components/schemas/CalendarDate"
+            },
+            "title": "Dates",
+            "type": "array"
+          },
+          "month": {
+            "$ref": "#/components/schemas/CalendarMonthMetadata"
+          },
+          "term": {
+            "title": "Term",
+            "type": "string"
+          }
+        },
+        "required": [
+          "term",
+          "month"
+        ],
+        "title": "AcademicCalendar",
+        "type": "object"
+      },
+      "AcademicContextResponse": {
+        "properties": {
+          "administrative_term": {
+            "$ref": "#/components/schemas/AcademicTerm"
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "is_in_teaching_week": {
+            "title": "Is In Teaching Week",
+            "type": "boolean"
+          },
+          "teaching_term": {
+            "$ref": "#/components/schemas/AcademicTerm"
+          },
+          "week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Week"
+          }
+        },
+        "required": [
+          "date",
+          "administrative_term",
+          "teaching_term",
+          "is_in_teaching_week"
+        ],
+        "title": "AcademicContextResponse",
+        "type": "object"
+      },
+      "AcademicTerm": {
+        "properties": {
+          "code": {
+            "description": "规范化学年学期代码",
+            "title": "Code",
+            "type": "string"
+          },
+          "semester": {
+            "description": "学期代码，1/2/3",
+            "title": "Semester",
+            "type": "string"
+          },
+          "year": {
+            "description": "学年，如 2025-2026",
+            "title": "Year",
+            "type": "string"
+          }
+        },
+        "required": [
+          "year",
+          "semester",
+          "code"
+        ],
+        "title": "AcademicTerm",
+        "type": "object"
+      },
+      "AcademicTermOption": {
+        "properties": {
+          "code": {
+            "description": "规范化学年学期代码",
+            "title": "Code",
+            "type": "string"
+          },
+          "is_current": {
+            "default": false,
+            "title": "Is Current",
+            "type": "boolean"
+          },
+          "name": {
+            "default": "",
+            "title": "Name",
+            "type": "string"
+          },
+          "name_en": {
+            "default": "",
+            "title": "Name En",
+            "type": "string"
+          },
+          "semester": {
+            "description": "学期代码，1/2/3",
+            "title": "Semester",
+            "type": "string"
+          },
+          "year": {
+            "description": "学年，如 2025-2026",
+            "title": "Year",
+            "type": "string"
+          }
+        },
+        "required": [
+          "year",
+          "semester",
+          "code"
+        ],
+        "title": "AcademicTermOption",
+        "type": "object"
+      },
+      "AcademicWarning": {
+        "properties": {
+          "acknowledged_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acknowledged At"
+          },
+          "counted_credits": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Counted Credits"
+          },
+          "earned_courses": {
+            "items": {
+              "$ref": "#/components/schemas/AcademicWarningCourse"
+            },
+            "title": "Earned Courses",
+            "type": "array"
+          },
+          "has_warning": {
+            "title": "Has Warning",
+            "type": "boolean"
+          },
+          "is_acknowledged": {
+            "title": "Is Acknowledged",
+            "type": "boolean"
+          },
+          "is_published": {
+            "title": "Is Published",
+            "type": "boolean"
+          },
+          "term": {
+            "title": "Term",
+            "type": "string"
+          },
+          "unearned_courses": {
+            "items": {
+              "$ref": "#/components/schemas/AcademicWarningCourse"
+            },
+            "title": "Unearned Courses",
+            "type": "array"
+          }
+        },
+        "required": [
+          "term",
+          "has_warning",
+          "is_published",
+          "is_acknowledged"
+        ],
+        "title": "AcademicWarning",
+        "type": "object"
+      },
+      "AcademicWarningCourse": {
+        "properties": {
+          "course_category": {
+            "default": "",
+            "title": "Course Category",
+            "type": "string"
+          },
+          "course_code": {
+            "title": "Course Code",
+            "type": "string"
+          },
+          "course_name": {
+            "title": "Course Name",
+            "type": "string"
+          },
+          "course_nature": {
+            "default": "",
+            "title": "Course Nature",
+            "type": "string"
+          },
+          "credits": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credits"
+          },
+          "exam_attempt": {
+            "default": "",
+            "title": "Exam Attempt",
+            "type": "string"
+          },
+          "hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hours"
+          },
+          "score": {
+            "default": "",
+            "title": "Score",
+            "type": "string"
+          },
+          "term": {
+            "default": "",
+            "title": "Term",
+            "type": "string"
+          }
+        },
+        "required": [
+          "course_code",
+          "course_name"
+        ],
+        "title": "AcademicWarningCourse",
+        "type": "object"
+      },
+      "CalendarDate": {
+        "properties": {
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Week"
+          }
+        },
+        "required": [
+          "date"
+        ],
+        "title": "CalendarDate",
+        "type": "object"
+      },
+      "CalendarMonthMetadata": {
+        "properties": {
+          "days_in_month": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days In Month"
+          },
+          "label": {
+            "default": "",
+            "title": "Label",
+            "type": "string"
+          },
+          "month": {
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "Month",
+            "type": "integer"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          }
+        },
+        "required": [
+          "month"
+        ],
+        "title": "CalendarMonthMetadata",
+        "type": "object"
+      },
+      "CampusItem": {
+        "properties": {
+          "code": {
+            "description": "校区代码",
+            "title": "Code",
+            "type": "string"
+          },
+          "name": {
+            "description": "校区名称",
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "CampusItem",
+        "type": "object"
+      },
+      "CartRemoveRequest": {
+        "properties": {
+          "course_ids": {
+            "description": "要移除的课程 ID 列表",
+            "items": {
+              "type": "string"
+            },
+            "title": "Course Ids",
+            "type": "array"
+          },
+          "method": {
+            "default": "bx-b-b",
+            "description": "选课方式代码",
+            "title": "Method",
+            "type": "string"
+          }
+        },
+        "required": [
+          "course_ids"
+        ],
+        "title": "CartRemoveRequest",
+        "type": "object"
+      },
+      "CategoryItem": {
+        "properties": {
+          "code": {
+            "description": "类别代码",
+            "title": "Code",
+            "type": "string"
+          },
+          "name": {
+            "description": "类别名称",
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "CategoryItem",
+        "type": "object"
+      },
+      "CollegeItem": {
+        "properties": {
+          "code": {
+            "description": "学院代码",
+            "title": "Code",
+            "type": "string"
+          },
+          "name": {
+            "description": "学院名称",
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "CollegeItem",
+        "type": "object"
+      },
+      "ConflictCheckRequest": {
+        "properties": {
+          "course_id": {
+            "description": "课程任务 ID",
+            "title": "Course Id",
+            "type": "string"
+          },
+          "method": {
+            "default": "bx-b-b",
+            "description": "选课方式代码",
+            "title": "Method",
+            "type": "string"
+          }
+        },
+        "required": [
+          "course_id"
+        ],
+        "title": "ConflictCheckRequest",
+        "type": "object"
+      },
+      "ConflictCheckResponse": {
+        "properties": {
+          "allowed": {
+            "description": "是否允许继续选课操作",
+            "title": "Allowed",
+            "type": "boolean"
+          },
+          "has_conflict": {
+            "description": "是否存在时间冲突",
+            "title": "Has Conflict",
+            "type": "boolean"
+          },
+          "message": {
+            "default": "",
+            "description": "冲突详情说明",
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "description": "冲突检查状态",
+            "enum": [
+              "clear",
+              "conflict",
+              "blocked",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "has_conflict",
+          "allowed",
+          "status"
+        ],
+        "title": "ConflictCheckResponse",
+        "type": "object"
+      },
+      "CookieLoginRequest": {
+        "properties": {
+          "cookies": {
+            "description": "Cookie字符串，格式: 'INCO=xxx; SESSION=yyy'",
+            "example": "INCO=abc123; SESSION=xyz789",
+            "title": "Cookies",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cookies"
+        ],
+        "title": "CookieLoginRequest",
+        "type": "object"
+      },
+      "CookieLoginResponse": {
+        "example": {
+          "status": "success",
+          "student_id": "41234567",
+          "student_name": "张三"
+        },
+        "properties": {
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "会话ID",
+            "title": "Session Id"
+          },
+          "status": {
+            "description": "登录状态",
+            "title": "Status",
+            "type": "string"
+          },
+          "student_id": {
+            "description": "学号",
+            "title": "Student Id",
+            "type": "string"
+          },
+          "student_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "学生姓名",
+            "title": "Student Name"
+          }
+        },
+        "required": [
+          "status",
+          "student_id"
+        ],
+        "title": "CookieLoginResponse",
+        "type": "object"
+      },
+      "CourseOperationRequest": {
+        "properties": {
+          "course_id": {
+            "description": "课程任务 ID",
+            "title": "Course Id",
+            "type": "string"
+          },
+          "method": {
+            "default": "bx-b-b",
+            "description": "选课方式代码",
+            "title": "Method",
+            "type": "string"
+          }
+        },
+        "required": [
+          "course_id"
+        ],
+        "title": "CourseOperationRequest",
+        "type": "object"
+      },
+      "CourseOperationResponse": {
+        "properties": {
+          "message": {
+            "description": "操作结果消息",
+            "title": "Message",
+            "type": "string"
+          },
+          "success": {
+            "description": "操作是否成功",
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "CourseOperationResponse",
+        "type": "object"
+      },
+      "CourseSelectionContext": {
+        "properties": {
+          "methods": {
+            "items": {
+              "$ref": "#/components/schemas/CourseSelectionMethod"
+            },
+            "title": "Methods",
+            "type": "array"
+          },
+          "term": {
+            "$ref": "#/components/schemas/CourseSelectionTerm"
+          }
+        },
+        "required": [
+          "term",
+          "methods"
+        ],
+        "title": "CourseSelectionContext",
+        "type": "object"
+      },
+      "CourseSelectionMethod": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "mode": {
+            "default": "",
+            "title": "Mode",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "name_en": {
+            "default": "",
+            "title": "Name En",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "CourseSelectionMethod",
+        "type": "object"
+      },
+      "CourseSelectionTerm": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "semester": {
+            "title": "Semester",
+            "type": "string"
+          },
+          "year": {
+            "title": "Year",
+            "type": "string"
+          }
+        },
+        "required": [
+          "year",
+          "semester",
+          "code"
+        ],
+        "title": "CourseSelectionTerm",
+        "type": "object"
+      },
+      "ExamPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ExamRecord"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "page",
+          "page_size",
+          "total"
+        ],
+        "title": "ExamPage",
+        "type": "object"
+      },
+      "ExamRecord": {
+        "properties": {
+          "building": {
+            "default": "",
+            "title": "Building",
+            "type": "string"
+          },
+          "college": {
+            "default": "",
+            "title": "College",
+            "type": "string"
+          },
+          "course_code": {
+            "title": "Course Code",
+            "type": "string"
+          },
+          "course_name": {
+            "title": "Course Name",
+            "type": "string"
+          },
+          "course_name_en": {
+            "default": "",
+            "title": "Course Name En",
+            "type": "string"
+          },
+          "date": {
+            "default": "",
+            "title": "Date",
+            "type": "string"
+          },
+          "date_display": {
+            "default": "",
+            "title": "Date Display",
+            "type": "string"
+          },
+          "end_period": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Period"
+          },
+          "exam_type": {
+            "default": "",
+            "title": "Exam Type",
+            "type": "string"
+          },
+          "exam_type_en": {
+            "default": "",
+            "title": "Exam Type En",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "remark": {
+            "default": "",
+            "title": "Remark",
+            "type": "string"
+          },
+          "room": {
+            "default": "",
+            "title": "Room",
+            "type": "string"
+          },
+          "seat_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seat Number"
+          },
+          "start_period": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Period"
+          },
+          "term": {
+            "title": "Term",
+            "type": "string"
+          },
+          "time": {
+            "default": "",
+            "title": "Time",
+            "type": "string"
+          },
+          "week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Week"
+          },
+          "weekday": {
+            "anyOf": [
+              {
+                "maximum": 7.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekday"
+          },
+          "weekday_name": {
+            "default": "",
+            "title": "Weekday Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "term",
+          "course_code",
+          "course_name"
+        ],
+        "title": "ExamRecord",
+        "type": "object"
+      },
+      "GPAStats": {
+        "example": {
+          "failed_count": 1,
+          "gpa": 3.75,
+          "passed_credits": 118.0,
+          "total_credits": 120.5
+        },
+        "properties": {
+          "failed_count": {
+            "description": "不及格门数",
+            "title": "Failed Count",
+            "type": "integer"
+          },
+          "gpa": {
+            "description": "GPA",
+            "title": "Gpa",
+            "type": "number"
+          },
+          "passed_credits": {
+            "description": "已通过学分",
+            "title": "Passed Credits",
+            "type": "number"
+          },
+          "total_credits": {
+            "description": "总学分",
+            "title": "Total Credits",
+            "type": "number"
+          }
+        },
+        "required": [
+          "gpa",
+          "total_credits",
+          "passed_credits",
+          "failed_count"
+        ],
+        "title": "GPAStats",
+        "type": "object"
+      },
+      "GradePage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GradeRecord"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "page",
+          "page_size",
+          "total"
+        ],
+        "title": "GradePage",
+        "type": "object"
+      },
+      "GradeRecord": {
+        "properties": {
+          "college": {
+            "default": "",
+            "title": "College",
+            "type": "string"
+          },
+          "course_category": {
+            "default": "",
+            "title": "Course Category",
+            "type": "string"
+          },
+          "course_code": {
+            "title": "Course Code",
+            "type": "string"
+          },
+          "course_name": {
+            "title": "Course Name",
+            "type": "string"
+          },
+          "course_name_en": {
+            "default": "",
+            "title": "Course Name En",
+            "type": "string"
+          },
+          "course_nature": {
+            "default": "",
+            "title": "Course Nature",
+            "type": "string"
+          },
+          "credit": {
+            "title": "Credit",
+            "type": "number"
+          },
+          "exam_attempt": {
+            "default": "",
+            "title": "Exam Attempt",
+            "type": "string"
+          },
+          "hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hours"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "passed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passed"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "score": {
+            "title": "Score",
+            "type": "string"
+          },
+          "score_en": {
+            "default": "",
+            "title": "Score En",
+            "type": "string"
+          },
+          "score_numeric": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Numeric"
+          },
+          "term": {
+            "title": "Term",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "term",
+          "course_code",
+          "course_name",
+          "credit",
+          "score"
+        ],
+        "title": "GradeRecord",
+        "type": "object"
+      },
+      "GradeSummary": {
+        "properties": {
+          "earned_credits": {
+            "default": 0.0,
+            "title": "Earned Credits",
+            "type": "number"
+          },
+          "estimated_gpa": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Gpa"
+          },
+          "failed_courses": {
+            "default": 0,
+            "title": "Failed Courses",
+            "type": "integer"
+          },
+          "official_gpa": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Gpa"
+          },
+          "passed_courses": {
+            "default": 0,
+            "title": "Passed Courses",
+            "type": "integer"
+          }
+        },
+        "title": "GradeSummary",
+        "type": "object"
+      },
+      "GradesListResponse": {
+        "properties": {
+          "gpa_stats": {
+            "$ref": "#/components/schemas/GPAStats",
+            "description": "GPA统计信息"
+          },
+          "grades": {
+            "description": "成绩列表",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Grades",
+            "type": "array"
+          },
+          "total": {
+            "description": "总记录数",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "grades",
+          "total",
+          "gpa_stats"
+        ],
+        "title": "GradesListResponse",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "NoticePage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NoticeRecord"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "page",
+          "page_size",
+          "total"
+        ],
+        "title": "NoticePage",
+        "type": "object"
+      },
+      "NoticeRecord": {
+        "properties": {
+          "content": {
+            "default": "",
+            "title": "Content",
+            "type": "string"
+          },
+          "external_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Url"
+          },
+          "has_attachment": {
+            "default": false,
+            "title": "Has Attachment",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_pinned": {
+            "default": false,
+            "title": "Is Pinned",
+            "type": "boolean"
+          },
+          "is_read": {
+            "default": false,
+            "title": "Is Read",
+            "type": "boolean"
+          },
+          "sender": {
+            "default": "",
+            "title": "Sender",
+            "type": "string"
+          },
+          "sent_at": {
+            "default": "",
+            "title": "Sent At",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "NoticeRecord",
+        "type": "object"
+      },
+      "QRInitResponse": {
+        "example": {
+          "qr_image": "data:image/png;base64,iVBORw0KGgo...",
+          "session_id": "abc123xyz"
+        },
+        "properties": {
+          "qr_image": {
+            "description": "Base64编码的二维码图片，格式为data:image/png;base64,...",
+            "title": "Qr Image",
+            "type": "string"
+          },
+          "session_id": {
+            "description": "会话ID，用于后续轮询",
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "qr_image"
+        ],
+        "title": "QRInitResponse",
+        "type": "object"
+      },
+      "ScheduleCourse": {
+        "properties": {
+          "campus": {
+            "default": "",
+            "title": "Campus",
+            "type": "string"
+          },
+          "course_code": {
+            "default": "",
+            "title": "Course Code",
+            "type": "string"
+          },
+          "course_id": {
+            "title": "Course Id",
+            "type": "string"
+          },
+          "course_name": {
+            "title": "Course Name",
+            "type": "string"
+          },
+          "course_name_en": {
+            "default": "",
+            "title": "Course Name En",
+            "type": "string"
+          },
+          "end_period": {
+            "minimum": 1.0,
+            "title": "End Period",
+            "type": "integer"
+          },
+          "location": {
+            "default": "",
+            "title": "Location",
+            "type": "string"
+          },
+          "period_text": {
+            "default": "",
+            "title": "Period Text",
+            "type": "string"
+          },
+          "start_period": {
+            "minimum": 1.0,
+            "title": "Start Period",
+            "type": "integer"
+          },
+          "task_code": {
+            "default": "",
+            "title": "Task Code",
+            "type": "string"
+          },
+          "teacher": {
+            "default": "",
+            "title": "Teacher",
+            "type": "string"
+          },
+          "week_text": {
+            "default": "",
+            "title": "Week Text",
+            "type": "string"
+          },
+          "weekday": {
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Weekday",
+            "type": "integer"
+          },
+          "weeks": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Weeks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "course_id",
+          "course_name",
+          "weekday",
+          "start_period",
+          "end_period"
+        ],
+        "title": "ScheduleCourse",
+        "type": "object"
+      },
+      "ScheduleResponse": {
+        "properties": {
+          "dates": {
+            "additionalProperties": true,
+            "default": {},
+            "description": "日期映射，键为星期几",
+            "title": "Dates",
+            "type": "object"
+          },
+          "schedule": {
+            "description": "课程列表",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Schedule",
+            "type": "array"
+          },
+          "term": {
+            "description": "学期信息",
+            "title": "Term",
+            "type": "string"
+          },
+          "week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "当前查询的周次",
+            "title": "Week"
+          }
+        },
+        "required": [
+          "schedule",
+          "term"
+        ],
+        "title": "ScheduleResponse",
+        "type": "object"
+      },
+      "ScheduleView": {
+        "properties": {
+          "dates": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Dates",
+            "type": "object"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ScheduleCourse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "term": {
+            "title": "Term",
+            "type": "string"
+          },
+          "week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Week"
+          }
+        },
+        "required": [
+          "term"
+        ],
+        "title": "ScheduleView",
+        "type": "object"
+      },
+      "SelectedCoursesResponse": {
+        "properties": {
+          "courses": {
+            "description": "已选课程列表",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Courses",
+            "type": "array"
+          },
+          "total": {
+            "description": "课程总数",
+            "title": "Total",
+            "type": "integer"
+          },
+          "total_credits": {
+            "description": "总学分",
+            "title": "Total Credits",
+            "type": "number"
+          }
+        },
+        "required": [
+          "courses",
+          "total",
+          "total_credits"
+        ],
+        "title": "SelectedCoursesResponse",
+        "type": "object"
+      },
+      "SimpleResponse": {
+        "example": {
+          "status": "ok"
+        },
+        "properties": {
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "更新后的会话ID",
+            "title": "Session Id"
+          },
+          "status": {
+            "description": "操作状态",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "SimpleResponse",
+        "type": "object"
+      },
+      "SmsRequest": {
+        "properties": {
+          "phone": {
+            "description": "手机号码",
+            "example": "13800138000",
+            "title": "Phone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone"
+        ],
+        "title": "SmsRequest",
+        "type": "object"
+      },
+      "SmsVerifyRequest": {
+        "properties": {
+          "code": {
+            "description": "短信验证码",
+            "example": "123456",
+            "title": "Code",
+            "type": "string"
+          },
+          "phone": {
+            "description": "手机号码",
+            "example": "13800138000",
+            "title": "Phone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone",
+          "code"
+        ],
+        "title": "SmsVerifyRequest",
+        "type": "object"
+      },
+      "StatusResponse": {
+        "example": {
+          "authenticated": true,
+          "state": "active"
+        },
+        "properties": {
+          "authenticated": {
+            "description": "是否已认证",
+            "title": "Authenticated",
+            "type": "boolean"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "认证状态：init/qr_ready/active等",
+            "title": "State"
+          }
+        },
+        "required": [
+          "authenticated"
+        ],
+        "title": "StatusResponse",
+        "type": "object"
+      },
+      "TermListItem": {
+        "properties": {
+          "dm": {
+            "description": "学期代码",
+            "title": "Dm",
+            "type": "string"
+          },
+          "mc": {
+            "description": "学期名称",
+            "title": "Mc",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dm",
+          "mc"
+        ],
+        "title": "TermListItem",
+        "type": "object"
+      },
+      "UnbindMacRequest": {
+        "properties": {
+          "mac_address": {
+            "title": "Mac Address",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mac_address"
+        ],
+        "title": "UnbindMacRequest",
+        "type": "object"
+      },
+      "UserProfile": {
+        "properties": {
+          "class_name": {
+            "default": "",
+            "title": "Class Name",
+            "type": "string"
+          },
+          "class_name_en": {
+            "default": "",
+            "title": "Class Name En",
+            "type": "string"
+          },
+          "college": {
+            "default": "",
+            "title": "College",
+            "type": "string"
+          },
+          "college_en": {
+            "default": "",
+            "title": "College En",
+            "type": "string"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "grade": {
+            "default": "",
+            "title": "Grade",
+            "type": "string"
+          },
+          "grade_en": {
+            "default": "",
+            "title": "Grade En",
+            "type": "string"
+          },
+          "major": {
+            "default": "",
+            "title": "Major",
+            "type": "string"
+          },
+          "major_en": {
+            "default": "",
+            "title": "Major En",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "name_en": {
+            "default": "",
+            "title": "Name En",
+            "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Url"
+          },
+          "roles": {
+            "items": {
+              "$ref": "#/components/schemas/UserRole"
+            },
+            "title": "Roles",
+            "type": "array"
+          },
+          "student_id": {
+            "title": "Student Id",
+            "type": "string"
+          },
+          "training_type": {
+            "default": "",
+            "title": "Training Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "student_id",
+          "name"
+        ],
+        "title": "UserProfile",
+        "type": "object"
+      },
+      "UserRole": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "name": {
+            "default": "",
+            "title": "Name",
+            "type": "string"
+          },
+          "name_en": {
+            "default": "",
+            "title": "Name En",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "UserRole",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "WifiLoginChallengeRequest": {
+        "properties": {
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "student_id": {
+            "anyOf": [
+              {
+                "maxLength": 13,
+                "minLength": 8,
+                "pattern": "^[Uu]?\\d{8,12}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Id"
+          }
+        },
+        "title": "WifiLoginChallengeRequest",
+        "type": "object"
+      },
+      "WifiLoginRequest": {
+        "properties": {
+          "captcha_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captcha Code"
+          },
+          "challenge_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Challenge Token"
+          },
+          "password": {
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "title": "WifiLoginRequest",
+        "type": "object"
+      },
+      "WifiStandaloneLoginRequest": {
+        "properties": {
+          "captcha_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captcha Code"
+          },
+          "challenge_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Challenge Token"
+          },
+          "password": {
+            "title": "Password",
+            "type": "string"
+          },
+          "student_id": {
+            "maxLength": 13,
+            "minLength": 8,
+            "pattern": "^[Uu]?\\d{8,12}$",
+            "title": "Student Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "student_id",
+          "password"
+        ],
+        "title": "WifiStandaloneLoginRequest",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "contact": {
+      "name": "USTB Manager",
+      "url": "https://github.com/yourusername/ustb-manager"
+    },
+    "description": "\n## USTB Manager - 北科大教务管理系统API\n\n这是一个用于访问北京科技大学教务系统的API服务，提供以下功能：\n\n### 🔐 认证模块 (Authentication)\n- **二维码登录**: 使用微信扫码快速登录\n- **短信验证码登录**: 通过手机号接收验证码登录\n- **Cookie登录**: 使用浏览器Cookie直接登录（高级用户）\n- **会话管理**: 自动管理用户会话，支持后端重启后恢复\n\n### 📊 成绩查询模块 (Grades)\n- **成绩列表**: 支持分页、筛选的成绩查询\n- **GPA计算**: 自动计算总GPA和加权GPA\n- **学生信息**: 获取学生基本信息和完整档案\n- **培养方案**: 查看专业培养方案和课程要求\n- **学业进度**: 查询必修课完成情况和学分统计\n\n### 🔒 安全特性\n- HttpOnly Cookie保护\n- Session自动过期和清理\n- Cookie有效性验证\n- 支持CORS跨域访问\n\n### 📝 使用说明\n1. 首先调用认证接口（QR/SMS/Cookie）完成登录\n2. 登录成功后会自动设置session cookie\n3. 后续请求会自动携带cookie进行认证\n4. 可以调用 `/api/auth/status` 检查登录状态\n5. 使用 `/api/auth/logout` 退出登录\n\n### 🌐 环境信息\n- 开发环境: http://localhost:8000\n- API前缀: `/api`\n- 文档地址: `/docs` (Swagger UI) 或 `/redoc` (ReDoc)\n\n### 📞 技术支持\n如有问题，请查看各接口的详细文档说明。\n    ",
+    "license": {
+      "name": "MIT License"
+    },
+    "title": "USTB Manager API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/academic/calendar": {
+      "get": {
+        "operationId": "academic_calendar_api_academic_calendar_get",
+        "parameters": [
+          {
+            "description": "学年学期代码",
+            "in": "query",
+            "name": "term",
+            "required": true,
+            "schema": {
+              "description": "学年学期代码",
+              "pattern": "^\\d{4}-\\d{4}-[123]$",
+              "title": "Term",
+              "type": "string"
+            }
+          },
+          {
+            "description": "月份",
+            "in": "query",
+            "name": "month",
+            "required": true,
+            "schema": {
+              "description": "月份",
+              "maximum": 12,
+              "minimum": 1,
+              "title": "Month",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcademicCalendar"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "获取学期校历",
+        "tags": [
+          "academic"
+        ]
+      }
+    },
+    "/api/academic/context": {
+      "get": {
+        "operationId": "academic_context_api_academic_context_get",
+        "parameters": [
+          {
+            "description": "查询日期，默认今天",
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "查询日期，默认今天",
+              "title": "Date"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcademicContextResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "获取日期感知教学上下文",
+        "tags": [
+          "academic"
+        ]
+      }
+    },
+    "/api/academic/terms": {
+      "get": {
+        "operationId": "academic_terms_api_academic_terms_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AcademicTermOption"
+                  },
+                  "title": "Response Academic Terms Api Academic Terms Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "获取学年学期列表",
+        "tags": [
+          "academic"
+        ]
+      }
+    },
+    "/api/academic/warnings": {
+      "get": {
+        "operationId": "academic_warnings_api_academic_warnings_get",
+        "parameters": [
+          {
+            "description": "学年学期；默认使用学业警示模块当前学期",
+            "in": "query",
+            "name": "term",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-\\d{4}-[123]$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "学年学期；默认使用学业警示模块当前学期",
+              "title": "Term"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcademicWarning"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "查询学业警示",
+        "tags": [
+          "academic"
+        ]
+      }
+    },
+    "/api/auth/cookie/login": {
+      "post": {
+        "description": "## 业务说明\n使用从浏览器复制的USTB教务系统Cookie直接登录，适合高级用户快速登录。\n\n## 使用流程\n1. 用户在浏览器中登录USTB教务系统\n2. 从浏览器开发者工具复制Cookie字符串\n3. 粘贴到登录表单并提交\n4. 系统验证Cookie有效性\n5. 验证成功后创建session\n\n## Cookie格式\n```\nINCO=abc123; SESSION=xyz789\n```\n\n## 验证机制\n- 系统会使用提供的Cookie访问教务系统API\n- 尝试获取学生信息以验证Cookie有效性\n- 如果能成功获取学号和姓名，则认为Cookie有效\n\n## 注意事项\n- Cookie必须包含USTB教务系统的认证信息\n- Cookie过期会返回401错误\n- 验证成功后会保存Cookie到本地，支持后端重启后恢复\n- 会自动设置session cookie\n\n## 安全提示\n- Cookie包含敏感信息，请勿分享给他人\n- 建议定期更换Cookie",
+        "operationId": "cookie_login_api_auth_cookie_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CookieLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CookieLoginResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "使用Cookie登录",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "description": "## 业务说明\n退出登录，清除session和cookie。\n\n## 使用流程\n1. 用户点击退出按钮\n2. 调用此接口\n3. 前端跳转到登录页\n\n## 注意事项\n- 会清除服务器端的session数据\n- 会删除客户端的cookie\n- 即使没有有效session也会返回成功",
+        "operationId": "logout_api_auth_logout_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "退出登录",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/qr/complete": {
+      "post": {
+        "description": "## 业务说明\n完成二维码登录流程，刷新session并设置长期cookie。\n\n## 使用流程\n1. 在 `/qr/status` 收到success状态后调用此接口\n2. 服务器会轮换session ID（安全措施）\n3. 设置新的session cookie\n\n## 注意事项\n- 必须在认证成功后调用\n- 会自动更新cookie，前端无需处理\n- 调用后即可访问需要认证的API",
+        "operationId": "qr_complete_api_auth_qr_complete_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "完成二维码登录",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/qr/init": {
+      "post": {
+        "description": "## 业务说明\n初始化微信扫码登录流程，生成登录二维码。\n\n## 使用流程\n1. 调用此接口获取二维码图片和session_id\n2. 前端展示二维码供用户扫描\n3. 使用返回的session_id调用 `/qr/status` 轮询登录状态\n4. 登录成功后调用 `/qr/complete` 完成认证\n\n## 注意事项\n- 二维码有效期约5分钟\n- 接口会自动设置session cookie (ustb_sid)\n- 二维码图片为Base64编码，可直接用于img标签的src属性\n- 如果已有有效的authenticated session，会复用该session",
+        "operationId": "qr_init_api_auth_qr_init_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QRInitResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "初始化二维码登录",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/qr/poll": {
+      "get": {
+        "description": "## 业务说明\n非SSE方式轮询二维码扫码状态，适用于不支持SSE的客户端（如微信小程序）。\n\n## 使用流程\n1. 调用 `/qr/init` 获取二维码后\n2. 每隔2秒调用此接口轮询状态\n3. 收到 success 后调用 `/qr/complete` 完成登录\n\n## 状态说明\n- `waiting`: 等待扫码\n- `scanned`: 已扫码，等待确认\n- `success`: 登录成功\n- `expired`: 二维码已过期",
+        "operationId": "qr_poll_api_auth_qr_poll_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "轮询二维码登录状态（非SSE）",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/qr/status": {
+      "get": {
+        "description": "## 业务说明\n使用Server-Sent Events (SSE)实时推送二维码扫码状态。\n\n## 使用流程\n1. 前端使用EventSource连接此接口\n2. 服务器会持续推送状态更新\n3. 收到success状态后，调用 `/qr/complete` 完成登录\n\n## 状态说明\n- `waiting`: 等待扫码\n- `scanned`: 已扫码，等待确认\n- `success`: 登录成功\n- `expired`: 二维码已过期\n- `error`: 发生错误\n\n## 注意事项\n- 需要携带 ustb_sid cookie\n- 使用SSE协议，前端需使用EventSource API\n- 连接会在收到终态(success/expired/error)后自动关闭",
+        "operationId": "qr_status_api_auth_qr_status_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "轮询二维码登录状态",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/sms/init": {
+      "post": {
+        "description": "## 业务说明\n初始化短信验证码登录流程。\n\n## 使用流程\n1. 调用此接口初始化session\n2. 调用 `/sms/send` 发送验证码\n3. 调用 `/sms/verify` 验证验证码\n\n## 注意事项\n- 接口会自动设置session cookie\n- session有效期24小时",
+        "operationId": "sms_init_api_auth_sms_init_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Sms Init Api Auth Sms Init Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "初始化短信登录",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/sms/send": {
+      "post": {
+        "description": "## 业务说明\n向指定手机号发送短信验证码。\n\n## 使用流程\n1. 先调用 `/sms/init` 初始化\n2. 调用此接口发送验证码到手机\n3. 用户收到验证码后，调用 `/sms/verify` 验证\n\n## 注意事项\n- 手机号必须是已在教务系统注册的号码\n- 验证码有效期通常为5分钟\n- 发送间隔限制：60秒内只能发送一次\n- 如果频繁发送会返回429错误",
+        "operationId": "sms_send_api_auth_sms_send_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SmsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "发送短信验证码",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/sms/verify": {
+      "post": {
+        "description": "## 业务说明\n验证短信验证码并完成登录。\n\n## 使用流程\n1. 用户输入收到的验证码\n2. 调用此接口验证\n3. 验证成功后即可访问需要认证的API\n\n## 注意事项\n- 验证码错误会返回401错误\n- 验证成功后会自动轮换session ID\n- 会设置新的session cookie",
+        "operationId": "sms_verify_api_auth_sms_verify_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SmsVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "验证短信验证码",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/status": {
+      "get": {
+        "description": "## 业务说明\n检查当前用户的认证状态，用于判断是否需要登录。\n\n## 使用场景\n- 页面加载时检查登录状态\n- 路由守卫判断是否需要跳转登录页\n- 定期检查session是否过期\n\n## 返回说明\n- `authenticated: true` - 已登录，可以访问受保护的API\n- `authenticated: false` - 未登录或session已过期\n- `state` - 当前认证状态（仅在已登录时返回）\n\n## 注意事项\n- 此接口不会抛出401错误，始终返回200\n- 即使没有cookie也会返回 `authenticated: false`",
+        "operationId": "auth_status_api_auth_status_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "检查认证状态",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/courses/announcements": {
+      "get": {
+        "description": "## 业务说明\n查询选课公告信息，包含选课时间安排、注意事项等。\n\n## 参数说明\n- xn: 学年（可选，不传则使用当前选课学年）\n- xq: 学期（可选，不传则使用当前选课学期）\n\n## 返回数据\n选课公告列表",
+        "operationId": "get_announcements_api_courses_announcements_get",
+        "parameters": [
+          {
+            "description": "学年，如 2025-2026",
+            "in": "query",
+            "name": "xn",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "学年，如 2025-2026",
+              "title": "Xn"
+            }
+          },
+          {
+            "description": "学期，如 2",
+            "in": "query",
+            "name": "xq",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "学期，如 2",
+              "title": "Xq"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {},
+                  "title": "Response Get Announcements Api Courses Announcements Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "查询选课公告",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/api/courses/available": {
+      "get": {
+        "description": "## 业务说明\n获取可选课程列表，支持按选课方式、学院、类别、校区筛选。\n\n## 参数说明\n- method: 选课方式代码\n  - `bx-b-b`: 必修课\n  - `mooc-b-b`: MOOC在线课程\n  - `sztzk`: 素质拓展课\n  - `zytzk`: 专业拓展课\n  - `ggkrw`: 公共课\n- college: 开课学院代码（通过 /courses/colleges 获取）\n- category: 课程类别代码（通过 /courses/categories 获取）\n- campus: 校区代码（通过 /courses/campuses 获取）\n- keyword: 课程名称关键字\n\n## 返回数据\n- courses: 可选课程列表\n- total: 课程总数\n- total_credits: 总学分\n- selection_method: 当前查询的选课方式",
+        "operationId": "get_available_courses_api_courses_available_get",
+        "parameters": [
+          {
+            "description": "选课学年，如 2025-2026",
+            "in": "query",
+            "name": "xn",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "选课学年，如 2025-2026",
+              "title": "Xn"
+            }
+          },
+          {
+            "description": "选课学期，如 2",
+            "in": "query",
+            "name": "xq",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "选课学期，如 2",
+              "title": "Xq"
+            }
+          },
+          {
+            "description": "选课方式: bx-b-b(必修), mooc-b-b(MOOC), sztzk(素质拓展), zytzk(专业拓展), ggkrw(公共课)",
+            "in": "query",
+            "name": "method",
+            "required": false,
+            "schema": {
+              "default": "bx-b-b",
+              "description": "选课方式: bx-b-b(必修), mooc-b-b(MOOC), sztzk(素质拓展), zytzk(专业拓展), ggkrw(公共课)",
+              "title": "Method",
+              "type": "string"
+            }
+          },
+          {
+            "description": "开课学院代码",
+            "in": "query",
+            "name": "college",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "开课学院代码",
+              "title": "College"
+            }
+          },
+          {
+            "description": "课程类别代码",
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "课程类别代码",
+              "title": "Category"
+            }
+          },
+          {
+            "description": "校区代码",
+            "in": "query",
+            "name": "campus",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "校区代码",
+              "title": "Campus"
+            }
+          },
+          {
+            "description": "课程关键字搜索",
+            "in": "query",
+            "name": "keyword",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "课程关键字搜索",
+              "title": "Keyword"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Available Courses Api Courses Available Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "获取可选课程列表",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/api/courses/campuses": {
+      "get": {
+        "description": "## 业务说明\n获取所有校区的列表，用于筛选课程。\n\n## 返回数据\n校区列表，每项包含：\n- code: 校区代码\n- name: 校区名称",
+        "operationId": "get_campuses_api_courses_campuses_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CampusItem"
+                  },
+                  "title": "Response Get Campuses Api Courses Campuses Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "获取校区列表",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/api/courses/cart": {
+      "get": {
+        "description": "## 业务说明\n查询当前购物车中的课程列表。\n\n## 返回数据\n- `courses`: 购物车中的课程列表\n- `total`: 课程总数\n- `total_credits`: 总学分",
+        "operationId": "get_cart_api_courses_cart_get",
+        "parameters": [
+          {
+            "description": "选课方式代码",
+            "in": "query",
+            "name": "method",
+            "required": false,
+            "schema": {
+              "default": "bx-b-b",
+              "description": "选课方式代码",
+              "title": "Method",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SelectedCoursesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "查询选课购物车",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/api/courses/cart/add": {
+      "post": {
+        "description": "## 业务说明\n将一门可选课程添加到购物车（不直接选课）。\n\n## 使用场景\n- 意愿选课模式下先加入购物车\n- 需要比较多门课程后再确认选课",
+        "operationId": "add_to_cart_api_courses_cart_add_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CourseOperationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseOperationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "添加课程到购物车",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/api/courses/cart/remove": {
+      "post": {
+        "description": "## 业务说明\n从购物车中移除一门或多门课程。\n\n## 参数说明\n- `course_ids`: 要移除的课程 ID 列表（支持批量操作）",
+        "operationId": "remove_from_cart_api_courses_cart_remove_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CartRemoveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseOperationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "从购物车移除课程",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/api/courses/cart/submit": {
+      "post": {
+        "description": "## 业务说明\n将购物车中的所有课程提交确认选课。\n\n## 注意事项\n- 购物车中的所有课程将被批量提交\n- 提交后无法撤回，需要通过退课操作",
+        "operationId": "submit_cart_api_courses_cart_submit_post",
+        "parameters": [
+          {
+            "description": "选课方式代码",
+            "in": "query",
+            "name": "method",
+            "required": false,
+            "schema": {
+              "default": "bx-b-b",
+              "description": "选课方式代码",
+              "title": "Method",
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseOperationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "提交购物车确认选课",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/api/courses/categories": {
+      "get": {
+        "description": "## 业务说明\n获取所有课程类别的列表，用于筛选课程。\n\n## 返回数据\n类别列表，每项包含：\n- code: 类别代码\n- name: 类别名称",
+        "operationId": "get_categories_api_courses_categories_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryItem"
+                  },
+                  "title": "Response Get Categories Api Courses Categories Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "获取课程类别列表",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/api/courses/check-conflict": {
+      "post": {
+        "description": "## 业务说明\n在选课或加入购物车前调用，检测目标课程与已选课程是否存在时间冲突。\n\n## 参数说明\n- `course_id`: 课程任务 ID，可通过 `/courses/available` 获取\n- `method`: 选课方式代码\n\n## 返回数据\n- `has_conflict`: 是否存在时间冲突\n- `message`: 冲突详情说明",
+        "operationId": "check_time_conflict_api_courses_check_conflict_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConflictCheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictCheckResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "检测选课时间冲突",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/api/courses/colleges": {
+      "get": {
+        "description": "## 业务说明\n获取所有开课学院的列表，用于筛选课程。\n\n## 返回数据\n学院列表，每项包含：\n- code: 学院代码\n- name: 学院名称",
+        "operationId": "get_colleges_api_courses_colleges_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CollegeItem"
+                  },
+                  "title": "Response Get Colleges Api Courses Colleges Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "获取开课学院列表",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/api/courses/context": {
+      "get": {
+        "operationId": "get_course_context_api_courses_context_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseSelectionContext"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "获取选课上下文",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/api/courses/drop": {
+      "post": {
+        "description": "## 业务说明\n退选一门已选课程。\n\n## 参数说明\n- `course_id`: 已选课程的 ID，可通过 `/courses/selected` 获取\n- `method`: 选课方式代码\n\n## 注意事项\n- 退课有时间限制，超过退课截止时间将无法退课\n- 必修课退课需谨慎",
+        "operationId": "drop_course_api_courses_drop_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CourseOperationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseOperationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "退课",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/api/courses/select": {
+      "post": {
+        "description": "## 业务说明\n直接选择一门课程（先到先得模式）。\n\n## 参数说明\n- `course_id`: 课程任务 ID，可通过 `/courses/available` 获取可选课程列表中的 `id` 字段\n- `method`: 选课方式代码（默认 bx-b-b 必修）\n\n## 选课方式代码\n- `bx-b-b`: 必修课\n- `mooc-b-b`: MOOC\n- `sztzk`: 素质拓展课\n- `zytzk`: 专业拓展课\n- `ggkrw`: 公共课\n\n## 返回数据\n- `success`: 是否成功\n- `message`: 操作结果描述",
+        "operationId": "select_course_api_courses_select_post",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CourseOperationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseOperationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "选课",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/api/courses/selected": {
+      "get": {
+        "description": "## 业务说明\n获取学生已选课程的详细列表。\n\n## 参数说明\n- xn: 选课学年（可选，不传则使用当前选课学年）\n- xq: 选课学期（可选，不传则使用当前选课学期）\n\n## 返回数据\n- courses: 已选课程列表\n- total: 课程总数\n- total_credits: 总学分",
+        "operationId": "get_selected_courses_api_courses_selected_get",
+        "parameters": [
+          {
+            "description": "选课学年，如 2025-2026",
+            "in": "query",
+            "name": "xn",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "选课学年，如 2025-2026",
+              "title": "Xn"
+            }
+          },
+          {
+            "description": "选课学期，如 2",
+            "in": "query",
+            "name": "xq",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "选课学期，如 2",
+              "title": "Xq"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SelectedCoursesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "获取已选课程列表",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/api/courses/selection-log": {
+      "get": {
+        "description": "## 业务说明\n查询本学期的选课操作日志。\n\n## 返回数据\n选课操作记录列表，包含选课/退课的操作时间和详情。",
+        "operationId": "get_selection_log_api_courses_selection_log_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {},
+                  "title": "Response Get Selection Log Api Courses Selection Log Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "查询选课操作日志",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/api/courses/term-info": {
+      "get": {
+        "description": "## 业务说明\n获取选课系统当前学年学期信息，包括当前学期和选课学期。\n\n## 返回数据\n- p_xn: 选课学年\n- p_xq: 选课学期\n- p_xnxq: 选课学年学期\n- p_dqxn: 当前学年\n- p_dqxq: 当前学期\n- p_dqxnxq: 当前学年学期",
+        "operationId": "get_term_info_api_courses_term_info_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Term Info Api Courses Term Info Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "获取选课学期信息",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/api/courses/term-list": {
+      "get": {
+        "description": "## 业务说明\n获取可供选课的学期列表。\n\n## 返回数据\n学期列表，每项包含：\n- dm: 学期代码（如 2025-20262）\n- mc: 学期名称（如 2025-2026-2）",
+        "operationId": "get_term_list_api_courses_term_list_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TermListItem"
+                  },
+                  "title": "Response Get Term List Api Courses Term List Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "获取开课学期列表",
+        "tags": [
+          "courses"
+        ]
+      }
+    },
+    "/api/exams": {
+      "get": {
+        "operationId": "exams_api_exams_get",
+        "parameters": [
+          {
+            "description": "学年学期，如 2025-2026-2；默认按今天识别",
+            "in": "query",
+            "name": "term",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-\\d{4}-[123]$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "学年学期，如 2025-2026-2；默认按今天识别",
+              "title": "Term"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "查询考试安排",
+        "tags": [
+          "exams"
+        ]
+      }
+    },
+    "/api/grades": {
+      "get": {
+        "operationId": "query_grades_api_grades_get",
+        "parameters": [
+          {
+            "description": "学年学期，如 2025-2026-2",
+            "in": "query",
+            "name": "term",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-\\d{4}-[123]$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "学年学期，如 2025-2026-2",
+              "title": "Term"
+            }
+          },
+          {
+            "description": "课程名称关键字",
+            "in": "query",
+            "name": "course_name",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "课程名称关键字",
+              "title": "Course Name"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GradePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "查询成绩",
+        "tags": [
+          "grades"
+        ]
+      }
+    },
+    "/api/grades/available-terms": {
+      "get": {
+        "description": "## 业务说明\n获取系统中可用的学年学期列表，用于成绩查询的筛选条件。\n\n## 使用场景\n- 成绩查询页面的学期选择下拉框\n- 动态获取可查询的学期范围\n\n## 返回数据\n可用的学年学期列表，通常包括：\n- 学年（如 \"2023-2024\"）\n- 学期代码（1/2/3）\n- 学期名称（如 \"2023-2024学年第一学期\"）\n\n## 注意事项\n- 需要先登录认证\n- 返回的学期列表是动态的，会随着时间更新",
+        "operationId": "get_available_terms_api_grades_available_terms_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Available Terms Api Grades Available Terms Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "查询可选学年学期",
+        "tags": [
+          "grades"
+        ]
+      }
+    },
+    "/api/grades/credit-completion-status": {
+      "get": {
+        "description": "## 业务说明\n获取学生的学分完成情况统计，包括各类课程的学分完成度。\n\n## 使用场景\n- 学业进度仪表盘\n- 毕业资格审核\n- 学分统计分析\n\n## 返回数据\n学分完成情况统计，通常包括：\n- 总学分要求\n- 已获得学分\n- 各类课程学分统计：\n  - 必修课学分\n  - 选修课学分\n  - 通识教育课学分\n  - 专业课学分\n- 完成百分比\n\n## 注意事项\n- 需要先登录认证\n- 数据来源于教务系统\n- 统计基于培养方案和已修课程",
+        "operationId": "get_credit_completion_status_api_grades_credit_completion_status_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Credit Completion Status Api Grades Credit Completion Status Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "获取学分完成情况",
+        "tags": [
+          "grades"
+        ]
+      }
+    },
+    "/api/grades/list": {
+      "get": {
+        "description": "## 业务说明\n获取学生的成绩列表，支持分页和多维度筛选。同时计算GPA统计信息。\n\n## 使用场景\n- 成绩查询页面展示成绩列表\n- 按学年学期筛选成绩\n- 按课程性质（必修/选修）筛选\n- 查看GPA统计\n\n## 筛选参数说明\n- `xn`: 学年，如 \"2023-2024\"\n- `xq`: 学期代码\n  - 1: 第一学期（秋季）\n  - 2: 第二学期（春季）\n  - 3: 夏季学期\n- `kcxz`: 课程性质，常见值：\n  - \"必修\": 必修课\n  - \"选修\": 选修课\n  - \"任选\": 任意选修\n- `kclb`: 课程类别，如 \"通识教育课\"、\"专业课\" 等\n\n## 返回数据\n- `grades`: 成绩列表，包含课程名称、学分、成绩、绩点等\n- `total`: 符合条件的总记录数\n- `gpa_stats`: GPA统计\n  - `total_gpa`: 算术平均GPA\n  - `weighted_gpa`: 学分加权GPA\n  - `total_credits`: 总学分\n\n## 注意事项\n- 需要先登录认证\n- 分页参数：page_num从1开始，page_size最大200\n- 不传筛选参数时返回所有成绩",
+        "operationId": "get_grades_api_grades_list_get",
+        "parameters": [
+          {
+            "description": "页码，从1开始",
+            "in": "query",
+            "name": "page_num",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "description": "页码，从1开始",
+              "minimum": 1,
+              "title": "Page Num",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "每页记录数，最大200",
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "description": "每页记录数，最大200",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "学年，格式：2023-2024",
+            "in": "query",
+            "name": "xn",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "学年，格式：2023-2024",
+              "title": "Xn"
+            }
+          },
+          {
+            "description": "学期，1=第一学期，2=第二学期，3=夏季学期",
+            "in": "query",
+            "name": "xq",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "学期，1=第一学期，2=第二学期，3=夏季学期",
+              "title": "Xq"
+            }
+          },
+          {
+            "description": "课程性质，如：必修、选修",
+            "in": "query",
+            "name": "kcxz",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "课程性质，如：必修、选修",
+              "title": "Kcxz"
+            }
+          },
+          {
+            "description": "课程类别",
+            "in": "query",
+            "name": "kclb",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "课程类别",
+              "title": "Kclb"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GradesListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "获取成绩列表",
+        "tags": [
+          "grades"
+        ]
+      }
+    },
+    "/api/grades/required-course-status": {
+      "get": {
+        "description": "## 业务说明\n查询学生必修课程的完成情况，用于了解学业进度。\n\n## 使用场景\n- 学业进度页面\n- 毕业审核\n- 了解必修课完成度\n\n## 参数说明\n- `jzxnxq`: 截止学年学期，格式为 \"学年-学期\"\n  - 例如: \"2023-2024-1\" 表示2023-2024学年第一学期\n  - 不传则查询所有学期\n\n## 返回数据\n必修课完成情况统计，通常包括：\n- 应修必修课列表\n- 已完成的必修课\n- 未完成的必修课\n- 完成率统计\n\n## 注意事项\n- 需要先登录认证\n- 数据基于培养方案和已修课程计算",
+        "operationId": "get_required_course_status_api_grades_required_course_status_get",
+        "parameters": [
+          {
+            "description": "截止学年学期，格式：2023-2024-1",
+            "in": "query",
+            "name": "jzxnxq",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "截止学年学期，格式：2023-2024-1",
+              "title": "Jzxnxq"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Required Course Status Api Grades Required Course Status Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "查询必修课完成情况",
+        "tags": [
+          "grades"
+        ]
+      }
+    },
+    "/api/grades/student-info": {
+      "get": {
+        "description": "## 业务说明\n获取当前登录学生的基本信息，包括学号、姓名、专业、班级等。\n\n## 使用场景\n- 个人信息页面展示\n- 页面头部显示用户信息\n- 验证用户身份\n\n## 返回数据\n返回学生的基本信息字段，具体字段取决于教务系统返回的数据。\n常见字段包括：\n- XH: 学号\n- XM: 姓名\n- ZYMC: 专业名称\n- BJMC: 班级名称\n\n## 注意事项\n- 需要先登录认证\n- 数据来源于教务系统，字段名为拼音缩写",
+        "operationId": "get_student_info_api_grades_student_info_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Student Info Api Grades Student Info Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "获取学生基本信息",
+        "tags": [
+          "grades"
+        ]
+      }
+    },
+    "/api/grades/student-plan": {
+      "get": {
+        "description": "## 业务说明\n获取学生的培养方案信息，包括专业要求、课程计划等。\n\n## 使用场景\n- 学业规划页面\n- 查看专业培养方案\n- 了解毕业要求\n\n## 返回数据\n培养方案的详细信息，通常包括：\n- 专业培养目标\n- 课程体系结构\n- 学分要求\n- 必修课程列表\n- 选修课程要求\n\n## 注意事项\n- 需要先登录认证\n- 数据来源于教务系统\n- 不同专业的培养方案结构可能不同",
+        "operationId": "get_student_plan_api_grades_student_plan_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {},
+                  "title": "Response Get Student Plan Api Grades Student Plan Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "获取学生培养方案",
+        "tags": [
+          "grades"
+        ]
+      }
+    },
+    "/api/grades/summary": {
+      "get": {
+        "operationId": "get_grade_summary_api_grades_summary_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GradeSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "获取成绩摘要",
+        "tags": [
+          "grades"
+        ]
+      }
+    },
+    "/api/grades/term-list": {
+      "get": {
+        "description": "## 业务说明\n获取完整的学年学期列表，包含更详细的学期信息。\n\n## 使用场景\n- 学期选择器\n- 学期信息展示\n- 学期相关的数据查询\n\n## 与 available-terms 的区别\n- `available-terms`: 返回可用于成绩查询的学期\n- `term-list`: 返回更完整的学期列表和详细信息\n\n## 返回数据\n学期列表，每个学期包含：\n- 学年学期代码\n- 学期名称\n- 开始结束时间\n- 当前状态等\n\n## 注意事项\n- 需要先登录认证",
+        "operationId": "get_term_list_api_grades_term_list_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Get Term List Api Grades Term List Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "查询学年学期列表",
+        "tags": [
+          "grades"
+        ]
+      }
+    },
+    "/api/grades/user-info": {
+      "get": {
+        "description": "## 业务说明\n获取当前用户的完整信息，包含角色、权限等扩展信息。\n\n## 使用场景\n- 需要完整用户信息的场景\n- 权限验证\n- 用户配置页面\n\n## 与 student-info 的区别\n- `student-info`: 仅返回学生基本信息\n- `user-info`: 返回完整的用户信息，包括系统角色、权限等\n\n## 注意事项\n- 需要先登录认证\n- 返回的数据结构可能比 student-info 更复杂",
+        "operationId": "get_user_info_api_grades_user_info_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get User Info Api Grades User Info Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "获取用户完整信息",
+        "tags": [
+          "grades"
+        ]
+      }
+    },
+    "/api/health": {
+      "get": {
+        "description": "## 业务说明\n检查API服务是否正常运行。\n\n## 使用场景\n- 服务监控\n- 负载均衡健康检查\n- 部署验证\n\n## 返回数据\n返回服务状态信息。\n\n## 注意事项\n- 此接口不需要认证\n- 始终返回200状态码（除非服务完全不可用）",
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "健康检查",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/me": {
+      "get": {
+        "operationId": "me_api_me_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfile"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "获取当前学生信息",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/notices": {
+      "get": {
+        "operationId": "notices_api_notices_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoticePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "查询通知公告",
+        "tags": [
+          "notices"
+        ]
+      }
+    },
+    "/api/schedule": {
+      "get": {
+        "operationId": "query_schedule_api_schedule_get",
+        "parameters": [
+          {
+            "description": "学年学期，如 2025-2026-2；默认按今天识别",
+            "in": "query",
+            "name": "term",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^\\d{4}-\\d{4}-[123]$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "学年学期，如 2025-2026-2；默认按今天识别",
+              "title": "Term"
+            }
+          },
+          {
+            "in": "query",
+            "name": "week",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 99,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Week"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "查询课表",
+        "tags": [
+          "schedule"
+        ]
+      }
+    },
+    "/api/schedule/current-term": {
+      "get": {
+        "description": "## 业务说明\n获取当前学年学期信息。\n\n## 返回数据\n- XN: 学年，如 \"2025-2026\"\n- XQ: 学期，如 \"1\"\n- XNXQ: 学年学期，如 \"2025-2026-1\"",
+        "operationId": "get_current_term_api_schedule_current_term_get",
+        "parameters": [
+          {
+            "description": "查询日期，默认今天",
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "查询日期，默认今天",
+              "title": "Date"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Current Term Api Schedule Current Term Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "获取当前学年学期",
+        "tags": [
+          "schedule"
+        ]
+      }
+    },
+    "/api/schedule/exams": {
+      "get": {
+        "description": "## 业务说明\n获取学生的考试安排列表。\n\n## 返回数据\n考试列表，每项包含：\n- course_code: 课程代码\n- course_name: 课程名称\n- exam_type: 考试类型（期末/期中）\n- exam_date: 考试日期\n- exam_time: 考试时间\n- weekday: 星期几\n- week_number: 第几周\n- building: 教学楼\n- room: 教室\n- campus: 校区",
+        "operationId": "get_exam_schedule_api_schedule_exams_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Get Exam Schedule Api Schedule Exams Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "获取考试安排",
+        "tags": [
+          "schedule"
+        ]
+      }
+    },
+    "/api/schedule/full": {
+      "get": {
+        "description": "## 业务说明\n获取指定学期的总课表（包含所有周次的课程）。\n\n## 使用场景\n- 查看整学期的课程安排\n- 导出课表\n\n## 返回数据\n- schedule: 课程列表，包含课程名、教师、地点、时间等\n- term: 学期信息",
+        "operationId": "get_full_schedule_api_schedule_full_get",
+        "parameters": [
+          {
+            "description": "学年，如2025-2026",
+            "in": "query",
+            "name": "xn",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "学年，如2025-2026",
+              "title": "Xn"
+            }
+          },
+          {
+            "description": "学期，1/2/3",
+            "in": "query",
+            "name": "xq",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "学期，1/2/3",
+              "title": "Xq"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "获取总课表",
+        "tags": [
+          "schedule"
+        ]
+      }
+    },
+    "/api/schedule/term-list": {
+      "get": {
+        "description": "## 业务说明\n获取所有可用的学期列表。\n\n## 返回数据\n学期列表，每项包含：\n- dm: 学期代码，如 \"2025-2026-1\"\n- mc: 学期名称，如 \"2025-2026学年第一学期\"\n- kssj: 开始时间\n- jssj: 结束时间",
+        "operationId": "get_term_list_api_schedule_term_list_get",
+        "parameters": [
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Get Term List Api Schedule Term List Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "获取学期列表",
+        "tags": [
+          "schedule"
+        ]
+      }
+    },
+    "/api/schedule/week": {
+      "get": {
+        "description": "## 业务说明\n获取指定周的课表。\n\n## 使用场景\n- 查看某一周的课程安排\n- 周视图课表展示\n\n## 返回数据\n- schedule: 该周的课程列表\n- dates: 该周每天的日期，如 {1: \"2025-09-01\", 2: \"2025-09-02\", ...}\n- week: 当前查询的周次\n- term: 学期信息",
+        "operationId": "get_week_schedule_api_schedule_week_get",
+        "parameters": [
+          {
+            "description": "学年，如2025-2026",
+            "in": "query",
+            "name": "xn",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "学年，如2025-2026",
+              "title": "Xn"
+            }
+          },
+          {
+            "description": "学期，1/2/3",
+            "in": "query",
+            "name": "xq",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "学期，1/2/3",
+              "title": "Xq"
+            }
+          },
+          {
+            "description": "周次，1-99",
+            "in": "query",
+            "name": "week",
+            "required": true,
+            "schema": {
+              "description": "周次，1-99",
+              "maximum": 99,
+              "minimum": 1,
+              "title": "Week",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "获取周课表",
+        "tags": [
+          "schedule"
+        ]
+      }
+    },
+    "/api/schedule/week-list": {
+      "get": {
+        "description": "## 业务说明\n获取指定学期的周次列表。\n\n## 返回数据\n周次列表，每项包含 ZC（周次编号）",
+        "operationId": "get_week_list_api_schedule_week_list_get",
+        "parameters": [
+          {
+            "description": "学年，如2025-2026",
+            "in": "query",
+            "name": "xn",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "学年，如2025-2026",
+              "title": "Xn"
+            }
+          },
+          {
+            "description": "学期，1/2/3",
+            "in": "query",
+            "name": "xq",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "学期，1/2/3",
+              "title": "Xq"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ustb_sid",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ustb Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Get Week List Api Schedule Week List Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "获取周次列表",
+        "tags": [
+          "schedule"
+        ]
+      }
+    },
+    "/api/wifi/bills": {
+      "get": {
+        "description": "获取历史账单\n\nArgs:\n    year: 年份（可选，默认当前年份，范围2000-2100）\n\nReturns:\n    {\n        \"year\": 查询年份,\n        \"summary\": {\n            \"total_time\": 总使用时长(分钟),\n            \"total_flow\": 总使用流量(MB),\n            \"base_fee\": 基本月租(元),\n            \"usage_fee\": 时长/流量计费(元)\n        },\n        \"bills\": [{\n            \"start_time\": 账单开始时间,\n            \"end_time\": 账单结束时间,\n            \"package\": 套餐,\n            \"base_fee\": 基本月租,\n            \"usage_fee\": 时长/流量计费,\n            \"duration_minutes\": 使用时长,\n            \"used_flow_mb\": 使用流量,\n            \"bill_time\": 出账时间\n        }]\n    }",
+        "operationId": "get_bills_api_wifi_bills_get",
+        "parameters": [
+          {
+            "description": "年份",
+            "in": "query",
+            "name": "year",
+            "required": false,
+            "schema": {
+              "description": "年份",
+              "maximum": 2100,
+              "minimum": 2000,
+              "title": "Year",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Bills",
+        "tags": [
+          "校园网管理"
+        ]
+      }
+    },
+    "/api/wifi/devices": {
+      "get": {
+        "description": "获取绑定设备列表（我的设备）\n\nReturns:\n    {\n        \"total\": 设备总数,\n        \"devices\": [\n            {\n                \"online\": 是否在线,\n                \"mac_address\": MAC地址,\n                \"terminal_info\": 终端信息,\n                \"last_login_time\": 最近登录时间,\n                \"last_login_ip\": 最近登录IP,\n                \"is_dumb_terminal\": 是否哑终端,\n                \"terminal_name\": 终端名称\n            }\n        ]\n    }",
+        "operationId": "get_devices_api_wifi_devices_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Devices",
+        "tags": [
+          "校园网管理"
+        ]
+      }
+    },
+    "/api/wifi/flow": {
+      "get": {
+        "description": "获取流量信息（包含账户信息、在线设备、历史记录）\n\nReturns:\n    {\n        \"account\": 账号,\n        \"balance\": 余额(元),\n        \"used_flow\": 已用流量(MB),\n        \"available_flow\": 可用流量(MB),\n        \"status\": 状态,\n        \"package\": 套餐,\n        \"expire_date\": 到期日期,\n        \"online_devices\": 在线设备列表,\n        \"recent_history\": 最近上网记录,\n        \"update_time\": 更新时间\n    }",
+        "operationId": "get_flow_api_wifi_flow_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Flow",
+        "tags": [
+          "校园网管理"
+        ]
+      }
+    },
+    "/api/wifi/login": {
+      "post": {
+        "description": "登录校园网（使用学号 + 校园网密码）\n\n学号从教务系统 session 获取，只需要提供密码",
+        "operationId": "wifi_login_api_wifi_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WifiLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Wifi Login",
+        "tags": [
+          "校园网管理"
+        ]
+      }
+    },
+    "/api/wifi/login/challenge": {
+      "post": {
+        "description": "获取校园网验证码挑战。",
+        "operationId": "wifi_login_challenge_api_wifi_login_challenge_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/WifiLoginChallengeRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Wifi Login Challenge",
+        "tags": [
+          "校园网管理"
+        ]
+      }
+    },
+    "/api/wifi/logout": {
+      "post": {
+        "description": "登出校园网（清除保存的凭据）",
+        "operationId": "wifi_logout_api_wifi_logout_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Wifi Logout",
+        "tags": [
+          "校园网管理"
+        ]
+      }
+    },
+    "/api/wifi/mac-vendor": {
+      "get": {
+        "description": "查询MAC地址厂商（离线数据库）\n\n使用IEEE OUI数据库（约38000条记录）查询MAC地址对应的设备厂商。\n自动识别随机MAC地址（iOS/Android隐私保护功能生成的本地管理地址）。\n\nArgs:\n    mac: MAC地址，支持多种格式（XX-XX-XX-XX-XX-XX 或 XX:XX:XX:XX:XX:XX 或 XXXXXXXXXXXX）\n\nReturns:\n    {\n        \"vendor\": 厂商名称（随机MAC返回\"随机MAC\"）,\n        \"is_random\": 是否为随机MAC地址\n    }",
+        "operationId": "get_mac_vendor_api_wifi_mac_vendor_get",
+        "parameters": [
+          {
+            "description": "MAC地址",
+            "in": "query",
+            "name": "mac",
+            "required": true,
+            "schema": {
+              "description": "MAC地址",
+              "title": "Mac",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Mac Vendor",
+        "tags": [
+          "校园网管理"
+        ]
+      }
+    },
+    "/api/wifi/payments": {
+      "get": {
+        "description": "获取充值明细\n\nArgs:\n    start_date: 开始日期（可选，默认一年前，格式 YYYY-MM-DD）\n    end_date: 结束日期（可选，默认今天，格式 YYYY-MM-DD）\n\nReturns:\n    {\n        \"start_date\": 开始日期,\n        \"end_date\": 结束日期,\n        \"total_amount\": 充值总金额(元),\n        \"payments\": [{\n            \"pay_time\": 交费时间,\n            \"amount\": 金额,\n            \"pay_type\": 交费类型,\n            \"terminal\": 受理终端,\n            \"remark\": 备注\n        }]\n    }",
+        "operationId": "get_payment_records_api_wifi_payments_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "start_date",
+            "required": false,
+            "schema": {
+              "title": "Start Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end_date",
+            "required": false,
+            "schema": {
+              "title": "End Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Payment Records",
+        "tags": [
+          "校园网管理"
+        ]
+      }
+    },
+    "/api/wifi/standalone-login": {
+      "post": {
+        "description": "独立登录校园网（不需要教务系统登录）\n\n需要提供学号和密码，登录成功后设置 wifi_student_id cookie",
+        "operationId": "wifi_standalone_login_api_wifi_standalone_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WifiStandaloneLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Wifi Standalone Login",
+        "tags": [
+          "校园网管理"
+        ]
+      }
+    },
+    "/api/wifi/standalone-status": {
+      "get": {
+        "description": "获取独立模式校园网登录状态（不需要教务系统登录）\n\nReturns:\n    {\n        \"logged_in\": 是否已登录,\n        \"student_id\": 学号（如果已登录）,\n        \"has_credential\": 是否有保存的凭据\n    }",
+        "operationId": "get_standalone_status_api_wifi_standalone_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Standalone Status",
+        "tags": [
+          "校园网管理"
+        ]
+      }
+    },
+    "/api/wifi/status": {
+      "get": {
+        "description": "获取校园网登录状态\n\nReturns:\n    {\n        \"logged_in\": 是否已登录,\n        \"has_credential\": 是否有保存的凭据\n    }",
+        "operationId": "get_wifi_status_api_wifi_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Wifi Status",
+        "tags": [
+          "校园网管理"
+        ]
+      }
+    },
+    "/api/wifi/unbind-mac": {
+      "post": {
+        "description": "解绑指定的MAC地址\n\nArgs:\n    mac_address: 要解绑的MAC地址（格式：XX-XX-XX-XX-XX-XX 或 XXXXXXXXXXXX）\n\nReturns:\n    {\n        \"success\": 是否成功,\n        \"message\": 消息\n    }",
+        "operationId": "unbind_mac_address_api_wifi_unbind_mac_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnbindMacRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unbind Mac Address",
+        "tags": [
+          "校园网管理"
+        ]
+      }
+    }
+  },
+  "tags": [
+    {
+      "description": "**认证相关接口** - 用户登录、登出、会话管理等功能。支持三种登录方式：二维码、短信验证码、Cookie。",
+      "name": "auth"
+    },
+    {
+      "description": "**个人信息接口** - 查询当前学生的规范化档案与角色。",
+      "name": "me"
+    },
+    {
+      "description": "**成绩管理接口** - 成绩查询、GPA计算、学生信息、培养方案、学业进度等功能。提供丰富的筛选和统计功能。",
+      "name": "grades"
+    },
+    {
+      "description": "**课表查询接口** - 查询总课表和周课表，支持按学期和周次查询。",
+      "name": "schedule"
+    },
+    {
+      "description": "**考试查询接口** - 分页查询学生考试安排。",
+      "name": "exams"
+    },
+    {
+      "description": "**校园网管理接口** - 校园网登录、流量查询、月度账单、MAC地址管理等功能。",
+      "name": "wifi"
+    },
+    {
+      "description": "**选课管理接口** - 查询已选课程、开课学期、学院列表、课程类别等选课相关功能。",
+      "name": "courses"
+    },
+    {
+      "description": "**通知公告接口** - 分页查询教务系统通知公告。",
+      "name": "notices"
+    }
+  ]
+}
