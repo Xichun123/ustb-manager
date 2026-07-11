@@ -22,13 +22,13 @@
           <text class="exam-name">{{item.course_name}}</text>
           <view class="exam-meta">
             <text class="tag {{item.exam_type === '期末' ? 'tag-red' : 'tag-blue'}}">{{item.exam_type || '考试'}}</text>
-            <text class="exam-date">{{item.exam_date}} {{item.weekday}}</text>
+            <text class="exam-date">{{item.date}} {{item.weekday_name}}</text>
           </view>
-          <text class="exam-time">{{item.exam_time}}</text>
+          <text class="exam-time">{{item.time}}</text>
         </view>
         <view class="exam-right">
           <text class="exam-location">{{item.building}}{{item.room}}</text>
-          <text class="exam-campus">{{item.campus}}</text>
+          <text class="exam-campus">{{item.seat_number ? '座位 ' + item.seat_number : ''}}</text>
         </view>
       </view>
     </view>

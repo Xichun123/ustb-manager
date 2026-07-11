@@ -1,9 +1,13 @@
 import { get } from '../../services/api'
+import type { components } from '../../services/openapi'
 import { getExamsPageState, setExamsPageState } from '../../utils/storage'
 
 const app = getApp<IAppOption>()
 
 const EXAMS_REFRESH_TTL = 10 * 60 * 1000
+type ExamRecord = components['schemas']['ExamRecord']
+type ExamPage = components['schemas']['ExamPage']
+type DisplayExam = ExamRecord & { isPast: boolean; isToday: boolean }
 
 function buildInitialData() {
   const persisted = getExamsPageState()
@@ -11,7 +15,7 @@ function buildInitialData() {
   return {
     loading: !persisted,
     refreshing: false,
-    exams: persisted && Array.isArray(persisted.exams) ? persisted.exams : ([] as any[]),
+    exams: persisted && Array.isArray(persisted.exams) ? persisted.exams : ([] as DisplayExam[]),
   }
 }
 
@@ -68,13 +72,13 @@ Page({
       this.setData({ refreshing: true })
     }
     try {
-      const res = await get('/api/schedule/exams')
+      const res = await get<ExamPage>('/api/exams', { page_size: 100 })
       const now = new Date()
       const today = now.toISOString().split('T')[0]
 
-      const exams = (Array.isArray(res) ? res : []).map((exam: any) => {
-        const isPast = exam.exam_date < today
-        const isToday = exam.exam_date === today
+      const exams = (res.items || []).map((exam): DisplayExam => {
+        const isPast = exam.date < today
+        const isToday = exam.date === today
         return { ...exam, isPast, isToday }
       })
 
@@ -102,11 +106,11 @@ Page({
       title: exam.course_name,
       content: [
         `类型: ${exam.exam_type || '--'}`,
-        `日期: ${exam.exam_date || '--'} ${exam.weekday || ''}`,
-        `时间: ${exam.exam_time || '--'}`,
+        `日期: ${exam.date || '--'} ${exam.weekday_name || ''}`,
+        `时间: ${exam.time || '--'}`,
         `地点: ${exam.building || ''}${exam.room || ''}`,
-        `校区: ${exam.campus || '--'}`,
-        `周次: 第${exam.week_number || '--'}周`,
+        `座位: ${exam.seat_number || '--'}`,
+        `周次: 第${exam.week || '--'}周`,
         exam.remark ? `备注: ${exam.remark}` : '',
       ].filter(Boolean).join('\n'),
       showCancel: false,
