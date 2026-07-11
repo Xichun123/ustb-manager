@@ -1,8 +1,13 @@
 import { get } from '../../services/api'
+import type { components } from '../../services/openapi'
 import { getGradesPageState, setGradesPageState } from '../../utils/storage'
 
 const app = getApp<IAppOption>()
 const GRADES_REFRESH_TTL = 5 * 60 * 1000
+type GradeRecord = components['schemas']['GradeRecord']
+type GradePage = components['schemas']['GradePage']
+type GradeSummary = components['schemas']['GradeSummary']
+type DisplayGrade = GradeRecord & { scoreColor: string }
 
 function buildInitialData() {
   const persisted = getGradesPageState()
@@ -10,7 +15,7 @@ function buildInitialData() {
   return {
     loading: !persisted,
     refreshing: false,
-    grades: persisted && Array.isArray(persisted.grades) ? persisted.grades : ([] as any[]),
+    grades: persisted && Array.isArray(persisted.grades) ? persisted.grades : ([] as DisplayGrade[]),
     gpaStats: persisted && persisted.gpaStats ? persisted.gpaStats : {
       gpa: 0,
       total_credits: 0,
@@ -85,18 +90,26 @@ Component({
         this.setData({ refreshing: true })
       }
       try {
-        const res = await get('/api/grades/list', { page_size: 200 })
-        const grades = (res.grades || []).map((g: any) => ({
-          ...g,
-          scoreColor: this.getScoreColor(g.xscj || g.score || ''),
+        const [page, summary] = await Promise.all([
+          get<GradePage>('/api/grades', { page_size: 100 }),
+          get<GradeSummary>('/api/grades/summary'),
+        ])
+        const grades = (page.items || []).map((grade): DisplayGrade => ({
+          ...grade,
+          scoreColor: this.getScoreColor(grade.score),
         }))
         this.setData({
           grades,
-          gpaStats: res.gpa_stats || this.data.gpaStats,
+          gpaStats: {
+            gpa: summary.official_gpa || 0,
+            total_credits: summary.earned_credits,
+            passed_credits: summary.passed_courses,
+            failed_count: summary.failed_courses,
+          },
         })
         ;(this as any)._gradesLoaded = true
         this.persistState()
-      } catch (err: any) {
+      } catch (_error) {
         if (showLoading) {
           wx.showToast({ title: '加载失败', icon: 'none' })
         }
@@ -123,15 +136,14 @@ Component({
       const grade = this.data.grades[idx]
       if (!grade) return
       wx.showModal({
-        title: grade.kcmc || grade.course_name || '',
+        title: grade.course_name || '',
         content: [
-          `成绩: ${grade.xscj || grade.score || '--'}`,
-          `学分: ${grade.xf || grade.credit || '--'}`,
-          `学时: ${grade.xs || '--'}`,
-          `性质: ${grade.kcxzmc || '--'}`,
-          `类别: ${grade.kclbmc || '--'}`,
-          `教师: ${grade.jsxm || '--'}`,
-          `开课单位: ${grade.kkdw || '--'}`,
+          `成绩: ${grade.score || '--'}`,
+          `学分: ${grade.credit || '--'}`,
+          `学时: ${grade.hours || '--'}`,
+          `性质: ${grade.course_nature || '--'}`,
+          `类别: ${grade.course_category || '--'}`,
+          `开课单位: ${grade.college || '--'}`,
         ].join('\n'),
         showCancel: false,
       })

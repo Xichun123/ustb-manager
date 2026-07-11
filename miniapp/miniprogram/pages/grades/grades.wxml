@@ -31,14 +31,14 @@
         bindtap="onGradeClick"
       >
         <view class="grade-left">
-          <text class="grade-name">{{item.kcmc || item.course_name}}</text>
+          <text class="grade-name">{{item.course_name}}</text>
           <view class="grade-meta">
-            <text class="tag tag-blue">{{item.xf || item.credit}}学分</text>
-            <text class="grade-type">{{item.kcxzmc || ''}}</text>
+            <text class="tag tag-blue">{{item.credit}}学分</text>
+            <text class="grade-type">{{item.course_nature || ''}}</text>
           </view>
         </view>
         <view class="grade-right">
-          <text class="grade-score {{item.scoreColor}}">{{item.xscj || item.score || '--'}}</text>
+          <text class="grade-score {{item.scoreColor}}">{{item.score || '--'}}</text>
         </view>
       </view>
     </view>

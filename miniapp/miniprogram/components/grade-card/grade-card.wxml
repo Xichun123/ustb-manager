@@ -6,11 +6,11 @@
     </view>
     <view class="stat-item">
       <text class="stat-value">{{totalCredits || '--'}}</text>
-      <text class="stat-label">总学分</text>
+      <text class="stat-label">已获学分</text>
     </view>
     <view class="stat-item">
       <text class="stat-value passed">{{passedCredits || '--'}}</text>
-      <text class="stat-label">已修学分</text>
+      <text class="stat-label">通过课程</text>
     </view>
     <view class="stat-item">
       <text class="stat-value {{failedCount > 0 ? 'failed' : ''}}">{{failedCount}}</text>
