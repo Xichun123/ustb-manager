@@ -37,6 +37,3 @@ Dockerfile
 # Claude
 .claude/
 CLAUDE.md
-
-# 锁文件（可选，uv 会重新解析依赖）
-uv.lock

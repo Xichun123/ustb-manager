@@ -27,6 +27,7 @@ jobs:
 
       - name: Validate Compose configuration
         env:
+          IMAGE_TAG: ci
           SESSION_ENCRYPTION_KEY: ci-placeholder
         run: docker compose config --quiet
 

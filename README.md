@@ -8,9 +8,10 @@
 - 成绩查询与 GPA 计算
 - 课表查询（周课表/总课表）
 - 考试安排查询
-- 选课查询
+- 选课查询与安全写操作
+- 通知公告与校历
 - 校园网管理
-- 学业进度查询
+- 学业进度与学业警示
 
 ## 部署
 
@@ -38,15 +39,18 @@ docker compose logs -f
 
 当前 `docker-compose.yml` 的行为：
 
-- `backend` 使用镜像 `xichun/ustb-manager-backend:${IMAGE_TAG:-latest}`
-- `frontend` 使用镜像 `xichun/ustb-manager-frontend:${IMAGE_TAG:-latest}`
+- `backend` 使用镜像 `xichun/ustb-manager-backend:${IMAGE_TAG}`
+- `frontend` 使用镜像 `xichun/ustb-manager-frontend:${IMAGE_TAG}`
+- `IMAGE_TAG` 必须是不可变发布标签，不允许依赖 `latest`
 - 前端只监听 `127.0.0.1:${APP_PORT:-8032}`，默认不会直接暴露到公网
 - 后端不单独映射端口，只在 Docker 网络内提供给前端访问
 - 后端会话保存到 Docker volume `backend-data` 中的 SQLite 数据库
 - 上游 Cookie 使用 Fernet 加密，Session Token 仅保存 SHA-256 哈希
 - 缺少 `SESSION_ENCRYPTION_KEY` 时后端拒绝启动；更换密钥会使已有登录失效
 - 升级到 SQLite 存储时会直接删除旧 `cookies.json` / `session_map.json`，用户需重新登录
-- `frontend` 依赖 `backend` 的健康检查结果再启动
+- `frontend` 依赖 `backend` 的 readiness 检查结果再启动
+
+完整发布、升级和回滚步骤见 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)。
 
 ### 反代（推荐）
 
@@ -73,7 +77,8 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 **前端：**
 ```bash
 cd frontend
-npm install
+npm ci
+npm run generate:api
 npm run dev
 ```
 
@@ -81,11 +86,27 @@ npm run dev
 - 后端 API: http://localhost:8000
 - API 文档: http://localhost:8000/docs
 
+**小程序类型检查：**
+```bash
+cd miniapp
+npm ci
+npx tsc --noEmit
+```
+
+**后端门禁：**
+```bash
+cd backend
+uv sync --frozen --group dev
+uv run ruff check app tests scripts
+uv run pytest -q
+uv run python scripts/export_openapi.py --check
+```
+
 ## 环境变量
 
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
-| IMAGE_TAG | Docker 镜像标签 | latest |
+| IMAGE_TAG | 后端与前端共用的不可变镜像标签 | 必填 |
 | APP_PORT | 前端绑定到本机的端口 | 8032 |
 | COOKIE_SECURE | Cookie 仅 HTTPS 传输 | true |
 | SESSION_TTL | 会话空闲有效期（秒） | 31536000 |
