@@ -1,0 +1,20 @@
+<view class="page-container">
+  <view class="card toolbar">
+    <text>{{term}}</text>
+    <picker mode="selector" range="{{months}}" value="{{month - 1}}" bindchange="onMonthChange">
+      <text class="month">{{month}}月 ›</text>
+    </picker>
+  </view>
+  <view class="loading-container" wx:if="{{loading}}">
+    <text class="loading-text">加载中...</text>
+  </view>
+  <block wx:else>
+    <view class="card week" wx:for="{{weeks}}" wx:key="key">
+      <text class="week-title">{{item.label}}</text>
+      <view class="dates">
+        <text class="date" wx:for="{{item.dates}}" wx:for-item="date" wx:key="*this">{{date}}</text>
+      </view>
+    </view>
+    <empty-state wx:if="{{weeks.length === 0}}" message="该月暂无校历" icon="📅" />
+  </block>
+</view>

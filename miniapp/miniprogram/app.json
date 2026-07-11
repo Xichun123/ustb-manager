@@ -8,7 +8,9 @@
     "pages/login/login",
     "pages/exams/exams",
     "pages/courses/courses",
-    "pages/progress/progress"
+    "pages/progress/progress",
+    "pages/notices/notices",
+    "pages/calendar/calendar"
   ],
   "window": {
     "navigationBarTextStyle": "white",

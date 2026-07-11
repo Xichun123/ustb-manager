@@ -129,6 +129,12 @@ Component({
     goToProgress() {
       wx.navigateTo({ url: '/pages/progress/progress' })
     },
+    goToCalendar() {
+      wx.navigateTo({ url: '/pages/calendar/calendar' })
+    },
+    goToNotices() {
+      wx.navigateTo({ url: '/pages/notices/notices' })
+    },
 
     // Logout
     async doLogout() {

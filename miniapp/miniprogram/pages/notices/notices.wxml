@@ -1,0 +1,16 @@
+<view class="page-container">
+  <view class="loading-container" wx:if="{{loading}}">
+    <text class="loading-text">加载中...</text>
+  </view>
+  <block wx:else>
+    <view class="card notice" wx:for="{{notices}}" wx:key="id" data-index="{{index}}" bindtap="openNotice">
+      <view class="notice-title">
+        <text wx:if="{{item.is_pinned}}" class="pin">置顶</text>
+        <text>{{item.title}}</text>
+      </view>
+      <text class="notice-meta">{{item.sender || '教务系统'}} · {{item.sent_at || '--'}}</text>
+      <text class="notice-content">{{item.content || '点击查看详情'}}</text>
+    </view>
+    <empty-state wx:if="{{notices.length === 0}}" message="暂无通知" icon="🔔" />
+  </block>
+</view>
