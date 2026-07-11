@@ -112,6 +112,51 @@ async def test_request_json_classifies_network_timeouts_as_unavailable():
 
 
 @pytest.mark.asyncio
+async def test_request_json_retries_only_when_an_idempotent_query_opts_in():
+    request_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+        if request_count == 1:
+            raise httpx.ReadTimeout("timed out", request=request)
+        return httpx.Response(200, json={"value": "ok"})
+
+    session, http_client = _session_with_transport(handler)
+    try:
+        result = await BYYTClient(session).request_json(
+            "POST",
+            "/component/queryXnxq",
+            retry_attempts=2,
+            retry_delay=0,
+        )
+    finally:
+        http_client.close()
+
+    assert result == {"value": "ok"}
+    assert request_count == 2
+
+
+@pytest.mark.asyncio
+async def test_request_json_does_not_retry_by_default():
+    request_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+        raise httpx.ReadTimeout("timed out", request=request)
+
+    session, http_client = _session_with_transport(handler)
+    try:
+        with pytest.raises(BYYTUnavailable):
+            await BYYTClient(session).request_json("POST", "/Xsxk/addGouwuche")
+    finally:
+        http_client.close()
+
+    assert request_count == 1
+
+
+@pytest.mark.asyncio
 async def test_request_json_classifies_5xx_as_unavailable():
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(503, text="maintenance")

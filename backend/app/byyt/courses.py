@@ -29,6 +29,7 @@ async def query_available_courses(session: Session, form: dict[str, Any]) -> dic
         data=form,
         single_flight_key=f"queryKxrw:{fingerprint}",
         cache_ttl=2,
+        retry_attempts=2,
     )
     return result if isinstance(result, dict) else {}
 

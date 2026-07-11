@@ -67,6 +67,8 @@ class BYYTClient:
         unwrap_content: bool = False,
         single_flight_key: str | None = None,
         cache_ttl: float = 0,
+        retry_attempts: int = 1,
+        retry_delay: float = 0.2,
         **kwargs: Any,
     ) -> Any:
         async def request_once() -> Any:
@@ -80,8 +82,21 @@ class BYYTClient:
                     **kwargs,
                 )
 
+        if retry_attempts < 1 or retry_attempts > 3:
+            raise ValueError("retry_attempts must be between 1 and 3")
+
+        async def request_with_retries() -> Any:
+            for attempt in range(retry_attempts):
+                try:
+                    return await request_once()
+                except BYYTUnavailable:
+                    if attempt + 1 >= retry_attempts:
+                        raise
+                    await asyncio.sleep(retry_delay * (attempt + 1))
+            raise AssertionError("unreachable")
+
         if not single_flight_key:
-            return await request_once()
+            return await request_with_retries()
 
         loop = asyncio.get_running_loop()
         async with self._session.singleflight_lock:
@@ -93,7 +108,7 @@ class BYYTClient:
 
             task = self._session.inflight_queries.get(single_flight_key)
             if task is None:
-                task = asyncio.create_task(request_once())
+                task = asyncio.create_task(request_with_retries())
                 self._session.inflight_queries[single_flight_key] = task
 
         try:
