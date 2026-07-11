@@ -11,6 +11,7 @@ type CoursePage =
   | components['schemas']['SelectedCoursePage']
 type CourseWriteResponse = components['schemas']['CourseWriteResponse']
 type PreflightResponse = components['schemas']['CoursePreflightResponse']
+type CourseAnnouncement = components['schemas']['CourseAnnouncement']
 
 function idempotencyKey() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
@@ -59,7 +60,7 @@ function buildInitialData() {
       : (buildDefaultCategoryOptions() as Array<{ value: string; label: string }>),
     selectedCategoryIdx: persisted ? persisted.selectedCategoryIdx : 0,
     searchText: persisted ? persisted.searchText : '',
-    announcements: persisted && Array.isArray(persisted.announcements) ? persisted.announcements : ([] as any[]),
+    announcements: persisted && Array.isArray(persisted.announcements) ? persisted.announcements : ([] as CourseAnnouncement[]),
     showAnnouncements: persisted ? persisted.showAnnouncements : false,
     selectingCourseId: '',
     droppingCourseId: '',
@@ -180,7 +181,7 @@ Page({
 
       await Promise.all([
         this.loadCourses({ showLoading: false }),
-        this.loadAnnouncements(currentXn, currentXq),
+        this.loadAnnouncements(),
       ])
       ;(this as any)._coursesLoaded = true
       this.persistState()
@@ -229,7 +230,7 @@ Page({
     let displayCourses = source.slice()
 
     if (viewMode === 'available') {
-      displayCourses = displayCourses.filter((item: any) => !item.is_selected)
+      displayCourses = displayCourses.filter((item: CourseSelectionRecord) => !item.is_selected)
     }
 
     if (searchText) {
@@ -345,10 +346,9 @@ Page({
     }
   },
 
-  async loadAnnouncements(xn: string, xq: string) {
+  async loadAnnouncements() {
     try {
-      const res = await get('/api/courses/announcements', { xn, xq })
-      const announcements = Array.isArray(res) ? res : []
+      const announcements = await get<CourseAnnouncement[]>('/api/course-selection/announcements')
       this.setData({
         announcements,
         showAnnouncements: announcements.length > 0,
@@ -403,7 +403,7 @@ Page({
       () => {
         this.persistState()
         this.loadCourses({ showLoading: true })
-        this.loadAnnouncements(currentXn, currentXq)
+        this.loadAnnouncements()
       }
     )
   },
@@ -557,8 +557,8 @@ Page({
       } else {
         wx.showToast({ title: res.message || '选课失败', icon: 'none' })
       }
-    } catch (err: any) {
-      wx.showToast({ title: err.message || '选课失败', icon: 'none' })
+    } catch (error) {
+      wx.showToast({ title: error instanceof Error ? error.message : '选课失败', icon: 'none' })
     } finally {
       this.setData({ selectingCourseId: '' })
     }
@@ -594,8 +594,8 @@ Page({
       } else {
         wx.showToast({ title: res.message || '退课失败', icon: 'none' })
       }
-    } catch (err: any) {
-      wx.showToast({ title: err.message || '退课失败', icon: 'none' })
+    } catch (error) {
+      wx.showToast({ title: error instanceof Error ? error.message : '退课失败', icon: 'none' })
     } finally {
       this.setData({ droppingCourseId: '' })
     }

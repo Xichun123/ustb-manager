@@ -7,8 +7,8 @@
       <text class="announcement-arrow">{{showAnnouncements ? '收起' : '展开'}}</text>
     </view>
     <view class="announcement-list" wx:if="{{showAnnouncements}}">
-      <view class="announcement-item" wx:for="{{announcements}}" wx:key="index">
-        <text class="announcement-text">{{item.ggmc || item.ggbt || item.title || item.mc || item.content || item}}</text>
+      <view class="announcement-item" wx:for="{{announcements}}" wx:key="id">
+        <text class="announcement-text">{{item.title}}{{item.content ? '：' + item.content : ''}}</text>
       </view>
     </view>
   </view>
