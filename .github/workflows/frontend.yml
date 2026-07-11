@@ -41,6 +41,9 @@ jobs:
           npm run generate:api
           git diff --exit-code -- src/services/openapi.d.ts ../miniapp/miniprogram/services/openapi.d.ts
 
+      - name: Unit tests
+        run: npm test
+
       - name: Production build and typecheck
         run: npm run build
 

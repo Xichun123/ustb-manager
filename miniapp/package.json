@@ -2,12 +2,15 @@
   "name": "miniprogram-ts-quickstart",
   "version": "1.0.0",
   "description": "",
-  "scripts": {},
+  "scripts": {
+    "test": "vitest run"
+  },
   "keywords": [],
   "author": "",
   "license": "",
   "devDependencies": {
     "miniprogram-api-typings": "^5.2.1",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
   }
 }

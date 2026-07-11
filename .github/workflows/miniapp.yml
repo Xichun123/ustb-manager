@@ -35,6 +35,9 @@ jobs:
       - name: Check generated API type sync
         run: cmp miniprogram/services/openapi.d.ts ../frontend/src/services/openapi.d.ts
 
+      - name: Service tests
+        run: npm test
+
       - name: Typecheck
         run: npx tsc --noEmit
 

@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "generate:api": "openapi-typescript ../backend/openapi.json -o src/services/openapi.d.ts && openapi-typescript ../backend/openapi.json -o ../miniapp/miniprogram/services/openapi.d.ts",
+    "test": "vitest run",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -24,6 +25,7 @@
     "@vitejs/plugin-react": "^6.0.3",
     "openapi-typescript": "^7.13.0",
     "typescript": "^5.9.3",
-    "vite": "^8.1.4"
+    "vite": "^8.1.4",
+    "vitest": "^4.1.10"
   }
 }
