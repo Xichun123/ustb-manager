@@ -1,6 +1,6 @@
 import { useState, ReactNode } from 'react'
 import { Layout, Menu, Button, message, Tag } from 'antd'
-import { LogoutOutlined, BookOutlined, UserOutlined, BarChartOutlined, IdcardOutlined, CalendarOutlined, FileTextOutlined, WifiOutlined, LoginOutlined, AppstoreOutlined } from '@ant-design/icons'
+import { LogoutOutlined, BookOutlined, UserOutlined, BarChartOutlined, IdcardOutlined, CalendarOutlined, FileTextOutlined, WifiOutlined, LoginOutlined, AppstoreOutlined, NotificationOutlined, ScheduleOutlined } from '@ant-design/icons'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { api } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
@@ -49,6 +49,8 @@ export default function AppLayout({ children, standaloneMode = false }: AppLayou
     if (path === '/progress') return 'progress'
     if (path === '/exams') return 'exams'
     if (path === '/courses') return 'courses'
+    if (path === '/calendar') return 'calendar'
+    if (path === '/notices') return 'notices'
     if (path === '/wifi') return 'wifi'
     return 'dashboard'
   }
@@ -72,6 +74,8 @@ export default function AppLayout({ children, standaloneMode = false }: AppLayou
       <Menu.Item key="progress" icon={<BarChartOutlined />} onClick={() => navigate('/progress')}>
         学业进度 <Tag color="blue" style={{ marginLeft: 4, fontSize: 10 }}>Beta</Tag>
       </Menu.Item>
+      <Menu.Item key="calendar" icon={<ScheduleOutlined />} onClick={() => navigate('/calendar')}>校历</Menu.Item>
+      <Menu.Item key="notices" icon={<NotificationOutlined />} onClick={() => navigate('/notices')}>通知公告</Menu.Item>
       <Menu.Item key="wifi" icon={<WifiOutlined />} onClick={() => navigate('/wifi')}>校园网</Menu.Item>
     </Menu>
   )

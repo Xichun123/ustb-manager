@@ -15,6 +15,8 @@ import ExamsPage from './pages/Exams'
 import WifiPage from './pages/Wifi'
 import WifiStandalonePage from './pages/WifiStandalone'
 import CoursesPage from './pages/Courses'
+import CalendarPage from './pages/Calendar'
+import NoticesPage from './pages/Notices'
 
 export function App() {
   return (
@@ -32,6 +34,8 @@ export function App() {
               <Route path="/progress" element={<ProtectedRoute><ProgressPage /></ProtectedRoute>} />
               <Route path="/exams" element={<ProtectedRoute><ExamsPage /></ProtectedRoute>} />
               <Route path="/courses" element={<ProtectedRoute><CoursesPage /></ProtectedRoute>} />
+              <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
+              <Route path="/notices" element={<ProtectedRoute><NoticesPage /></ProtectedRoute>} />
               <Route path="/wifi" element={<WifiRoute><WifiPage /></WifiRoute>} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
