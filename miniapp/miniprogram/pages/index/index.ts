@@ -1,4 +1,5 @@
 import { get } from '../../services/api'
+import type { components } from '../../services/openapi'
 import {
   getDashboardPageState,
   getScheduleHideWeekend,
@@ -6,10 +7,15 @@ import {
   setDashboardPageState,
   setUserInfo,
 } from '../../utils/storage'
-import { calculateCurrentWeekFromDates, extractWeekNumbers, formatFlow, formatMoney } from '../../utils/util'
+import { formatFlow, formatMoney } from '../../utils/util'
 
 const app = getApp<IAppOption>()
 const DASHBOARD_REFRESH_TTL = 60 * 1000
+type UserProfile = components['schemas']['UserProfile']
+type AcademicContext = components['schemas']['AcademicContextResponse']
+type ScheduleCourse = components['schemas']['ScheduleCourse']
+type ScheduleView = components['schemas']['ScheduleView']
+type DisplayCourse = Omit<ScheduleCourse, 'weeks'> & { weeks: string }
 
 function buildInitialData() {
   const persisted = getDashboardPageState()
@@ -18,7 +24,7 @@ function buildInitialData() {
     loading: !persisted,
     refreshing: false,
     studentInfo: persisted ? persisted.studentInfo : getUserInfo(),
-    schedule: persisted && Array.isArray(persisted.schedule) ? persisted.schedule : ([] as any[]),
+    schedule: persisted && Array.isArray(persisted.schedule) ? persisted.schedule : ([] as DisplayCourse[]),
     scheduleDates: persisted && persisted.scheduleDates ? persisted.scheduleDates : ({} as Record<string, string>),
     currentWeek: persisted ? persisted.currentWeek : 0,
     hideWeekend: getScheduleHideWeekend(),
@@ -96,17 +102,17 @@ Component({
         app.globalData.userInfo = cached
       }
 
-      const studentInfoRes = await get('/api/grades/student-info').catch(() => null)
-      if (!studentInfoRes) {
+      const profile = await get<UserProfile>('/api/me').catch(() => null)
+      if (!profile) {
         return
       }
 
       const info = {
-        name: studentInfoRes.XM || '',
-        student_id: studentInfoRes.XH || '',
-        dept: studentInfoRes.YXMC || '',
-        major: studentInfoRes.ZYMC || '',
-        class_name: studentInfoRes.BJMC || '',
+        name: profile.name,
+        student_id: profile.student_id,
+        dept: profile.college,
+        major: profile.major,
+        class_name: profile.class_name,
       }
       this.setData({ studentInfo: info })
       setUserInfo(info)
@@ -114,35 +120,23 @@ Component({
     },
 
     async loadScheduleSummary() {
-      const termRes = await get('/api/schedule/current-term').catch(() => null)
-      if (!termRes) {
-        return
-      }
+      const context = await get<AcademicContext>('/api/academic/context').catch(() => null)
+      if (!context) return
 
-      const xn = termRes.XN
-      const xq = termRes.XQ
-      const weekList = await get('/api/schedule/week-list', { xn, xq }).catch(() => [])
-      const weeks = extractWeekNumbers(weekList)
-      let currentWeek = weeks[0] || 1
-
-      if (weeks.length > 0) {
-        const firstWeekRes = await get('/api/schedule/week', { xn, xq, week: weeks[0] }).catch(() => null)
-        if (firstWeekRes && firstWeekRes.dates) {
-          const calculatedWeek = calculateCurrentWeekFromDates(firstWeekRes.dates, weeks)
-          currentWeek = calculatedWeek || weeks[0]
-        }
-      }
-
-      this.setData({ currentWeek })
-
-      const scheduleRes = await get('/api/schedule/week', { xn, xq, week: currentWeek }).catch(() => null)
-      if (!scheduleRes) {
-        return
-      }
+      const currentWeek = context.week || 1
+      this.setData({ currentWeek: context.week || 0 })
+      const schedule = await get<ScheduleView>('/api/schedule', {
+        term: context.teaching_term.code,
+        week: currentWeek,
+      }).catch(() => null)
+      if (!schedule) return
 
       this.setData({
-        schedule: scheduleRes.schedule || [],
-        scheduleDates: scheduleRes.dates || {},
+        schedule: (schedule.items || []).map((item): DisplayCourse => ({
+          ...item,
+          weeks: item.week_text,
+        })),
+        scheduleDates: schedule.dates || {},
       })
     },
 
