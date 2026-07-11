@@ -39,7 +39,10 @@ jobs:
         run: uv run ruff check app tests scripts
 
       - name: Check formatting for the new boundary
-        run: uv run ruff format --check app/byyt app/models app/api app/services/session_store.py app/services/cookie_store.py tests scripts
+        run: uv run ruff format --check app/byyt app/models app/api app/services/course_selection_service.py app/services/session_store.py app/services/cookie_store.py tests scripts
+
+      - name: Check dependency lock
+        run: uv lock --check
 
       - name: Check OpenAPI snapshot
         run: uv run python scripts/export_openapi.py --check
