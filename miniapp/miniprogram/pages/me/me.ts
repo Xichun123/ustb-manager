@@ -1,9 +1,11 @@
 import { get } from '../../services/api'
 import { logout } from '../../services/auth'
+import type { components } from '../../services/openapi'
 import { getMePageState, getUserInfo, setMePageState, setUserInfo } from '../../utils/storage'
 
 const app = getApp<IAppOption>()
 const ME_REFRESH_TTL = 5 * 60 * 1000
+type UserProfile = components['schemas']['UserProfile']
 
 function buildInitialData() {
   const persisted = getMePageState()
@@ -91,29 +93,19 @@ Component({
       }
 
       try {
-        const [userRes, studentRes] = await Promise.all([
-          get('/api/grades/user-info').catch(() => null),
-          get('/api/grades/student-info').catch(() => null),
-        ])
-
-        if (userRes) {
-          this.setData({ userInfo: userRes })
+        const profile = await get<UserProfile>('/api/me')
+        const info = {
+          name: profile.name,
+          student_id: profile.student_id,
+          dept: profile.college,
+          major: profile.major,
+          class_name: profile.class_name,
+          grade: profile.grade,
+          gender: '',
         }
-
-        if (studentRes) {
-          const info = {
-            name: studentRes.XM || '',
-            student_id: studentRes.XH || '',
-            dept: studentRes.YXMC || '',
-            major: studentRes.ZYMC || '',
-            class_name: studentRes.BJMC || '',
-            grade: studentRes.NJMC || '',
-            gender: studentRes.XB || '',
-          }
-          this.setData({ studentInfo: info })
-          setUserInfo(info)
-          app.globalData.userInfo = info
-        }
+        this.setData({ userInfo: profile, studentInfo: info })
+        setUserInfo(info)
+        app.globalData.userInfo = info
         ;(this as any)._meLoaded = true
         this.persistState()
       } catch (_e) {
