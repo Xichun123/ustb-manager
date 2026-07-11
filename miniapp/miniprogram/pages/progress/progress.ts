@@ -1,9 +1,23 @@
 import { get } from '../../services/api'
+import type { components } from '../../services/openapi'
 import { getProgressPageState, setProgressPageState } from '../../utils/storage'
 
 const app = getApp<IAppOption>()
 
 const PROGRESS_REFRESH_TTL = 10 * 60 * 1000
+type ProgressSummary = components['schemas']['AcademicProgress']
+type ProgressCourses = components['schemas']['AcademicProgressCourses']
+type ProgressModules = components['schemas']['AcademicProgressModules']
+type ProgressModule = components['schemas']['AcademicProgressModule']
+
+interface CreditCategory {
+  code: string
+  name: string
+  required: number
+  completed: number
+  remaining: number
+  percentage: number
+}
 
 function buildInitialData() {
   const persisted = getProgressPageState()
@@ -12,9 +26,9 @@ function buildInitialData() {
     loading: !persisted,
     refreshing: false,
     activeTab: persisted && persisted.activeTab ? persisted.activeTab : ('credits' as 'credits' | 'required' | 'plan'),
-    creditCategories: persisted && Array.isArray(persisted.creditCategories) ? persisted.creditCategories : ([] as any[]),
+    creditCategories: persisted && Array.isArray(persisted.creditCategories) ? persisted.creditCategories : ([] as CreditCategory[]),
     requiredStats: persisted ? persisted.requiredStats : null,
-    planData: persisted && Array.isArray(persisted.planData) ? persisted.planData : ([] as any[]),
+    planData: persisted && Array.isArray(persisted.planData) ? persisted.planData : ([] as ProgressModule[]),
   }
 }
 
@@ -133,40 +147,21 @@ Page({
       this.setData({ refreshing: true })
     }
     try {
-      const res = await get('/api/grades/credit-completion-status')
-      // res is a dict with category info
-      const categories: any[] = []
-      if (res && typeof res === 'object') {
-        // Parse the response - structure varies, try common patterns
-        if (Array.isArray(res)) {
-          res.forEach((item: any) => {
-            categories.push({
-              name: item.category_name || item.kclb || '--',
-              required: item.required_credits || item.yqxf || 0,
-              completed: item.completed_credits || item.yxxf || 0,
-              remaining: item.remaining_credits || 0,
-              percentage: item.required_credits > 0
-                ? Math.min(100, Math.round((item.completed_credits / item.required_credits) * 100))
-                : 0,
-            })
-          })
-        } else {
-          // Handle dict format
-          Object.entries(res).forEach(([key, val]: [string, any]) => {
-            if (val && typeof val === 'object') {
-              const required = val.yqxf || val.required_credits || 0
-              const completed = val.yxxf || val.completed_credits || 0
-              categories.push({
-                name: val.kclb || val.category_name || key,
-                required,
-                completed,
-                remaining: Math.max(0, required - completed),
-                percentage: required > 0 ? Math.min(100, Math.round((completed / required) * 100)) : 0,
-              })
-            }
-          })
+      const res = await get<ProgressCourses>('/api/academic/progress/courses')
+      const categories = (res.categories || []).map((item): CreditCategory => {
+        const required = item.required_credits || 0
+        const completed = item.completed_credits || 0
+        return {
+          code: item.code,
+          name: item.name,
+          required,
+          completed,
+          remaining: item.remaining_credits ?? Math.max(0, required - completed),
+          percentage: required > 0
+            ? Math.min(100, Math.round((completed / required) * 100))
+            : 0,
         }
-      }
+      })
       this.setData({ creditCategories: categories })
       ;(this as any)._progressLoaded = true
       this.markTabUpdated('credits')
@@ -199,7 +194,7 @@ Page({
       this.setData({ refreshing: true })
     }
     try {
-      const res = await get('/api/grades/required-course-status')
+      const res = await get<ProgressSummary>('/api/academic/progress')
       this.setData({ requiredStats: res })
       ;(this as any)._progressLoaded = true
       this.markTabUpdated('required')
@@ -232,8 +227,8 @@ Page({
       this.setData({ refreshing: true })
     }
     try {
-      const res = await get('/api/grades/student-plan')
-      this.setData({ planData: Array.isArray(res) ? res : [res] })
+      const res = await get<ProgressModules>('/api/academic/progress/modules')
+      this.setData({ planData: res.items || [] })
       ;(this as any)._progressLoaded = true
       this.markTabUpdated('plan')
       this.persistState()

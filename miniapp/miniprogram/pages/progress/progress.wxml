@@ -51,27 +51,27 @@
         <view class="card-title">必修课进度</view>
         <view class="stat-grid">
           <view class="stat-item">
-            <text class="stat-value">{{requiredStats.yqmsxf.YQXF || '--'}}</text>
+            <text class="stat-value">{{requiredStats.required_credits || '--'}}</text>
             <text class="stat-label">要求学分</text>
           </view>
           <view class="stat-item">
-            <text class="stat-value" style="color: #52c41a;">{{requiredStats.ywcxf || '--'}}</text>
+            <text class="stat-value" style="color: #52c41a;">{{requiredStats.completed_credits || '--'}}</text>
             <text class="stat-label">已完成学分</text>
           </view>
           <view class="stat-item">
-            <text class="stat-value" style="color: #faad14;">{{requiredStats.wwcxf || '--'}}</text>
+            <text class="stat-value" style="color: #faad14;">{{requiredStats.remaining_credits || '--'}}</text>
             <text class="stat-label">未完成学分</text>
           </view>
           <view class="stat-item">
-            <text class="stat-value">{{requiredStats.yqmsxf.YQMS || '--'}}</text>
+            <text class="stat-value">{{requiredStats.required_courses || '--'}}</text>
             <text class="stat-label">要求门数</text>
           </view>
           <view class="stat-item">
-            <text class="stat-value" style="color: #52c41a;">{{requiredStats.ywcms || '--'}}</text>
+            <text class="stat-value" style="color: #52c41a;">{{requiredStats.completed_courses || '--'}}</text>
             <text class="stat-label">已完成门数</text>
           </view>
           <view class="stat-item">
-            <text class="stat-value" style="color: #faad14;">{{requiredStats.wwcms || '--'}}</text>
+            <text class="stat-value" style="color: #faad14;">{{requiredStats.remaining_courses || '--'}}</text>
             <text class="stat-label">未完成门数</text>
           </view>
         </view>
@@ -81,15 +81,20 @@
 
     <!-- Student Plan -->
     <block wx:if="{{activeTab === 'plan'}}">
-      <view class="card" wx:for="{{planData}}" wx:key="index">
-        <view class="card-title">{{item.zymc || '培养方案'}}</view>
-        <view class="plan-info" wx:if="{{item.nj}}">
-          <text class="plan-label">年级: {{item.nj}}</text>
-        </view>
-        <view wx:if="{{item.kclb_list}}" class="plan-categories">
-          <view class="plan-cat" wx:for="{{item.kclb_list}}" wx:for-item="cat" wx:key="index">
-            <text class="plan-cat-name">{{cat.kclb || cat.name || '--'}}</text>
-            <text class="plan-cat-credit">{{cat.xf || cat.credits || '--'}}学分</text>
+      <view class="card" wx:for="{{planData}}" wx:key="id">
+        <view class="card-title">{{item.name || '培养模块'}}</view>
+        <view class="category-stats">
+          <view class="cat-stat">
+            <text class="cat-stat-label">要求学分</text>
+            <text class="cat-stat-value">{{item.required_credits || '--'}}</text>
+          </view>
+          <view class="cat-stat">
+            <text class="cat-stat-label">完成学分</text>
+            <text class="cat-stat-value text-success">{{item.completed_credits || '--'}}</text>
+          </view>
+          <view class="cat-stat">
+            <text class="cat-stat-label">完成课程</text>
+            <text class="cat-stat-value">{{item.completed_courses || '--'}}</text>
           </view>
         </view>
       </view>
