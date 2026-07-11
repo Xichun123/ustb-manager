@@ -3,44 +3,14 @@ import { Card, Tabs, Select, Spin, Modal, Descriptions, Tag, Tooltip, Button, me
 import type { MenuProps } from 'antd'
 import { DownloadOutlined, FileImageOutlined, CalendarOutlined } from '@ant-design/icons'
 import html2canvas from 'html2canvas'
-import { api } from '../services/api'
+import { api, getApiErrorMessage } from '../services/api'
+import type { components } from '../services/openapi'
 import AppLayout from '../components/AppLayout'
 
-interface CourseItem {
-  key: string
-  weekday: number
-  period: number
-  start_period: number
-  end_period: number
-  course_name: string
-  teacher: string
-  weeks: string
-  location: string
-  task_code: string
-}
-
-interface ScheduleData {
-  schedule: CourseItem[]
-  dates: Record<string, string>
-  week: number | null
-  term: string
-}
-
-interface TermInfo {
-  XNXQ: string
-  XN: string
-  XQ: string
-}
-
-interface TermListItem {
-  dm: string
-  mc: string
-}
-
-interface WeekItem {
-  ZC: number
-  ZCMC: string
-}
+type CourseItem = components['schemas']['ScheduleCourse']
+type ScheduleData = components['schemas']['ScheduleView']
+type AcademicContext = components['schemas']['AcademicContextResponse']
+type TermListItem = components['schemas']['AcademicTermOption']
 
 const PERIOD_TIMES = [
   { label: '1-2节', time: '08:00-09:35' },
@@ -61,10 +31,10 @@ const COURSE_COLORS = [
 export default function SchedulePage() {
   const [loading, setLoading] = useState(true)
   const [scheduleData, setScheduleData] = useState<ScheduleData | null>(null)
-  const [currentTerm, setCurrentTerm] = useState<TermInfo | null>(null)
+  const [currentTerm, setCurrentTerm] = useState<string | null>(null)
   const [selectedTerm, setSelectedTerm] = useState<string | null>(null)
   const [termList, setTermList] = useState<TermListItem[]>([])
-  const [weekList, setWeekList] = useState<WeekItem[]>([])
+  const [weekList, setWeekList] = useState<number[]>([])
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null)
   const [currentWeek, setCurrentWeek] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<'week' | 'full'>('week')
@@ -76,7 +46,7 @@ export default function SchedulePage() {
   const courseColorMap = useMemo(() => {
     const map: Record<string, string> = {}
     const courseNames = new Set<string>()
-    scheduleData?.schedule.forEach(c => courseNames.add(c.course_name))
+    scheduleData?.items?.forEach(c => courseNames.add(c.course_name))
     Array.from(courseNames).forEach((name, idx) => {
       map[name] = COURSE_COLORS[idx % COURSE_COLORS.length]
     })
@@ -85,11 +55,11 @@ export default function SchedulePage() {
 
   // 课程网格数据
   const scheduleGrid = useMemo(() => {
-    if (!scheduleData?.schedule) return []
+    if (!scheduleData?.items) return []
     const grid: CourseItem[][][] = PERIOD_TIMES.map(() =>
       WEEKDAYS.map(() => [])
     )
-    scheduleData.schedule.forEach(course => {
+    scheduleData.items.forEach(course => {
       const periodIdx = Math.floor((course.start_period - 1) / 2)
       const weekdayIdx = course.weekday - 1
       if (periodIdx >= 0 && periodIdx < PERIOD_TIMES.length && weekdayIdx >= 0 && weekdayIdx < WEEKDAYS.length) {
@@ -105,115 +75,56 @@ export default function SchedulePage() {
     setModalVisible(true)
   }
 
-  // 初始化：获取当前学期和学期列表
+  // 初始化：按今天获取教学学期与当前周
   useEffect(() => {
     const init = async () => {
       try {
-        const [termRes, termListRes] = await Promise.all([
-          api.get('/schedule/current-term'),
-          api.get('/schedule/term-list'),
+        const [contextRes, termsRes] = await Promise.all([
+          api.get<AcademicContext>('/academic/context'),
+          api.get<TermListItem[]>('/academic/terms'),
         ])
-        setCurrentTerm(termRes.data)
-        setTermList(termListRes.data)
-        setSelectedTerm(termRes.data.XNXQ)
-      } catch (err) {
-        console.error('Failed to init schedule:', err)
-        message.error('获取学期信息失败')
+        const term = contextRes.data.teaching_term.code
+        const week = contextRes.data.week || 1
+        setCurrentTerm(term)
+        setCurrentWeek(week)
+        setSelectedTerm(term)
+        setSelectedWeek(week)
+        setTermList(termsRes.data)
+        setWeekList(Array.from({ length: Math.max(24, week) }, (_, index) => index + 1))
+      } catch (error: unknown) {
+        message.error(getApiErrorMessage(error, '获取学期信息失败'))
       }
     }
     init()
   }, [])
 
-  // 当选择的学期变化时，获取周次列表
+  // 加载统一课表数据；week 为空即总课表
   useEffect(() => {
     if (!selectedTerm) return
-
-    const fetchWeekList = async () => {
-      try {
-        const [xn, xq] = parseTermCode(selectedTerm)
-        const weekRes = await api.get(`/schedule/week-list?xn=${xn}&xq=${xq}`)
-        const weeks = weekRes.data.filter((w: WeekItem) => w.ZC !== 99)
-        setWeekList(weeks)
-
-        // 如果是当前学期，计算当前周
-        if (selectedTerm === currentTerm?.XNXQ && weeks.length > 0) {
-          try {
-            const datesRes = await api.get(`/schedule/week?xn=${xn}&xq=${xq}&week=1`)
-            const firstWeekDates = datesRes.data.dates
-            if (firstWeekDates && firstWeekDates['1']) {
-              const firstDate = new Date(firstWeekDates['1'])
-              const today = new Date()
-              const diffDays = Math.floor((today.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24))
-              const calculatedWeek = Math.floor(diffDays / 7) + 1
-              const validWeek = Math.max(1, Math.min(calculatedWeek, weeks[weeks.length - 1].ZC))
-              setCurrentWeek(validWeek)
-              setSelectedWeek(validWeek)
-            } else {
-              setSelectedWeek(weeks[0]?.ZC || 1)
-            }
-          } catch {
-            setSelectedWeek(weeks[0]?.ZC || 1)
-          }
-        } else if (weeks.length > 0) {
-          setCurrentWeek(null)
-          setSelectedWeek(weeks[0].ZC)
-        }
-      } catch (err) {
-        console.error('Failed to fetch week list:', err)
-        message.error('获取周次列表失败')
-      }
-    }
-    fetchWeekList()
-  }, [selectedTerm, currentTerm])
-
-  // 解析学期代码为学年和学期
-  // 支持两种格式: "2025-2026-1" 或 "2025-20261"
-  const parseTermCode = (termCode: string): [string, string] => {
-    const parts = termCode.split('-')
-    if (parts.length >= 3) {
-      // 格式: "2025-2026-1"
-      return [`${parts[0]}-${parts[1]}`, parts[2]]
-    } else if (parts.length === 2 && parts[1].length === 5) {
-      // 格式: "2025-20261" (第二部分是4位年份+1位学期)
-      return [`${parts[0]}-${parts[1].slice(0, 4)}`, parts[1].slice(4)]
-    }
-    return ['', '']
-  }
-
-  // 加载课表数据
-  useEffect(() => {
-    if (!selectedTerm) return
+    if (viewMode === 'week' && !selectedWeek) return
 
     const fetchSchedule = async () => {
       setLoading(true)
       try {
-        const [xn, xq] = parseTermCode(selectedTerm)
-        const params = new URLSearchParams({ xn, xq })
-
-        let url = viewMode === 'full'
-          ? `/schedule/full?${params}`
-          : `/schedule/week?${params}&week=${selectedWeek}`
-
-        const res = await api.get(url)
+        const res = await api.get<ScheduleData>('/schedule', {
+          params: {
+            term: selectedTerm,
+            week: viewMode === 'week' ? selectedWeek : undefined,
+          },
+        })
         setScheduleData(res.data)
-      } catch (err) {
-        console.error('Failed to fetch schedule:', err)
-        message.error('获取课表失败')
+      } catch (error: unknown) {
+        message.error(getApiErrorMessage(error, '获取课表失败'))
       } finally {
         setLoading(false)
       }
     }
-
-    if (viewMode === 'week' && selectedWeek) {
-      fetchSchedule()
-    } else if (viewMode === 'full') {
-      fetchSchedule()
-    }
+    fetchSchedule()
   }, [selectedTerm, selectedWeek, viewMode])
 
   // 导出课表为ICS格式
   const handleExport = () => {
-    if (!scheduleData || scheduleData.schedule.length === 0) {
+    if (!scheduleData || !scheduleData.items?.length) {
       message.warning('没有课程数据可导出')
       return
     }
@@ -251,9 +162,10 @@ export default function SchedulePage() {
     }
 
     // 如果是周课表且有日期信息
-    if (viewMode === 'week' && scheduleData.dates && Object.keys(scheduleData.dates).length > 0) {
-      scheduleData.schedule.forEach((course, idx) => {
-        const dateStr = scheduleData.dates[course.weekday]
+    const dates = scheduleData.dates
+    if (viewMode === 'week' && dates && Object.keys(dates).length > 0) {
+      scheduleData.items?.forEach((course, idx) => {
+        const dateStr = dates[course.weekday]
         if (!dateStr) return
 
         const baseDate = new Date(dateStr)
@@ -267,7 +179,7 @@ export default function SchedulePage() {
           `DTSTART:${formatDate(baseDate, startTime)}`,
           `DTEND:${formatDate(baseDate, endTime)}`,
           `SUMMARY:${course.course_name}`,
-          `DESCRIPTION:教师: ${course.teacher}\\n周次: ${course.weeks}`,
+          `DESCRIPTION:教师: ${course.teacher}\\n周次: ${course.week_text}`,
           `LOCATION:${course.location}`,
           'END:VEVENT'
         )
@@ -314,7 +226,7 @@ export default function SchedulePage() {
       const url = canvas.toDataURL('image/png')
       const a = document.createElement('a')
       a.href = url
-      const termName = termList.find(t => t.dm === selectedTerm)?.mc || selectedTerm
+      const termName = termList.find(t => t.code === selectedTerm)?.name || selectedTerm
       a.download = viewMode === 'week'
         ? `课表_${termName}_第${selectedWeek}周.png`
         : `课表_${termName}_总课表.png`
@@ -373,7 +285,7 @@ export default function SchedulePage() {
         {courses.map((course, idx) => (
           <Tooltip
             key={`${periodIdx}-${weekdayIdx}-${idx}`}
-            title={`${course.course_name} - ${course.teacher} - ${course.weeks}`}
+            title={`${course.course_name} - ${course.teacher} - ${course.week_text}`}
           >
             <div
               onClick={() => handleCourseClick(course)}
@@ -399,7 +311,7 @@ export default function SchedulePage() {
               </div>
               <div style={{ color: '#666', fontSize: 10 }}>{course.teacher}</div>
               <div style={{ color: '#1890ff', fontSize: 9, fontWeight: 500 }}>
-                {course.weeks}
+                {course.week_text}
               </div>
               <div style={{ color: '#999', fontSize: 9 }}>
                 {course.location.replace('【校本部】', '')}
@@ -428,8 +340,8 @@ export default function SchedulePage() {
           style={{ width: 180 }}
           placeholder="选择学期"
           options={termList.map(t => ({
-            value: t.dm,
-            label: t.mc + (t.dm === currentTerm?.XNXQ ? ' (当前)' : ''),
+            value: t.code,
+            label: (t.name || t.code) + (t.code === currentTerm ? ' (当前)' : ''),
           }))}
         />
         {viewMode === 'week' && (
@@ -439,8 +351,8 @@ export default function SchedulePage() {
               onChange={setSelectedWeek}
               style={{ width: 140 }}
               options={weekList.map(w => ({
-                value: w.ZC,
-                label: w.ZC === currentWeek ? `第${w.ZC}周 (当前)` : `第${w.ZC}周`,
+                value: w,
+                label: w === currentWeek ? `第${w}周 (当前)` : `第${w}周`,
               }))}
             />
             {currentWeek && selectedWeek !== currentWeek && (
@@ -533,7 +445,7 @@ export default function SchedulePage() {
             <Descriptions.Item label="课程名称">{selectedCourse.course_name}</Descriptions.Item>
             <Descriptions.Item label="教师">{selectedCourse.teacher}</Descriptions.Item>
             <Descriptions.Item label="上课周次">
-              <Tag color="blue">{selectedCourse.weeks}</Tag>
+              <Tag color="blue">{selectedCourse.week_text}</Tag>
             </Descriptions.Item>
             <Descriptions.Item label="上课地点">{selectedCourse.location}</Descriptions.Item>
             <Descriptions.Item label="节次">
