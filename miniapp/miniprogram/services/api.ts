@@ -22,6 +22,37 @@ interface ApiResponse<T = any> {
   header: Record<string, string>
 }
 
+interface ErrorEnvelope {
+  error?: {
+    code?: string
+    message?: string
+    retryable?: boolean
+    request_id?: string
+  }
+  detail?: string
+}
+
+export class ApiError extends Error {
+  code: string
+  retryable: boolean
+  requestId: string
+  statusCode: number
+
+  constructor(statusCode: number, data: ErrorEnvelope) {
+    super(data.error?.message || data.detail || `请求失败: ${statusCode}`)
+    this.name = 'ApiError'
+    this.code = data.error?.code || 'REQUEST_ERROR'
+    this.retryable = !!data.error?.retryable
+    this.requestId = data.error?.request_id || ''
+    this.statusCode = statusCode
+  }
+}
+
+function apiError(statusCode: number, data: unknown): ApiError {
+  const envelope = data && typeof data === 'object' ? data as ErrorEnvelope : {}
+  return new ApiError(statusCode, envelope)
+}
+
 function extractCookieValue(header: Record<string, string>, name: string): string | null {
   const setCookie = header['Set-Cookie'] || header['set-cookie'] || ''
   const cookies = Array.isArray(setCookie) ? setCookie : [setCookie]
@@ -133,7 +164,7 @@ export function get<T = any>(url: string, params?: Record<string, any>, options?
     if (res.statusCode >= 200 && res.statusCode < 300) {
       return res.data
     }
-    throw new Error(`请求失败: ${res.statusCode}`)
+    throw apiError(res.statusCode, res.data)
   })
 }
 
@@ -143,7 +174,7 @@ export function post<T = any>(url: string, data?: any, options?: Partial<Request
     if (res.statusCode >= 200 && res.statusCode < 300) {
       return res.data
     }
-    throw new Error(`请求失败: ${res.statusCode}`)
+    throw apiError(res.statusCode, res.data)
   })
 }
 
@@ -153,6 +184,6 @@ export function del<T = any>(url: string, data?: any, options?: Partial<RequestO
     if (res.statusCode >= 200 && res.statusCode < 300) {
       return res.data
     }
-    throw new Error(`请求失败: ${res.statusCode}`)
+    throw apiError(res.statusCode, res.data)
   })
 }

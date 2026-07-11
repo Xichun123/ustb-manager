@@ -4,18 +4,26 @@ import { clearAll, setSessionId, setUserInfo } from '../utils/storage'
 const app = getApp<IAppOption>()
 let authFlowVersion = 0
 
-function getErrorMessage(data: any, fallback: string): string {
-  if (!data) {
-    return fallback
-  }
+function getErrorMessage(data: unknown, fallback: string): string {
   if (typeof data === 'string' && data) {
     return data
   }
-  if (typeof data.detail === 'string' && data.detail) {
-    return data.detail
+  if (!data || typeof data !== 'object') {
+    return fallback
   }
-  if (typeof data.message === 'string' && data.message) {
-    return data.message
+  const response = data as {
+    detail?: unknown
+    message?: unknown
+    error?: { message?: unknown }
+  }
+  if (typeof response.error?.message === 'string' && response.error.message) {
+    return response.error.message
+  }
+  if (typeof response.detail === 'string' && response.detail) {
+    return response.detail
+  }
+  if (typeof response.message === 'string' && response.message) {
+    return response.message
   }
   return fallback
 }

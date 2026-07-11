@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react'
-import { api } from '../services/api'
+import { api, AUTH_REQUIRED_EVENT } from '../services/api'
 
 interface AuthContextType {
   isAuthenticated: boolean
@@ -35,6 +35,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     checkAuth()
   }, [checkAuth])
+
+  useEffect(() => {
+    const handleAuthRequired = () => setAuthenticated(false)
+    window.addEventListener(AUTH_REQUIRED_EVENT, handleAuthRequired)
+    return () => window.removeEventListener(AUTH_REQUIRED_EVENT, handleAuthRequired)
+  }, [setAuthenticated])
 
   return (
     <AuthContext.Provider value={{ isAuthenticated, isLoading, checkAuth, setAuthenticated }}>

@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react'
 import { Card, Table, Select, Spin, Tag, Statistic, Row, Col, Modal, Descriptions, Input, Tooltip, message, Tabs, Alert, Button, Space } from 'antd'
 import { BookOutlined, ClockCircleOutlined, TeamOutlined, BankOutlined, CheckCircleOutlined, NotificationOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
-import { api } from '../services/api'
+import { api, getApiErrorMessage } from '../services/api'
 import type { components } from '../services/openapi'
 import AppLayout from '../components/AppLayout'
 
@@ -12,6 +12,14 @@ type CoursePage = components['schemas']['CourseSelectionPage']
 type SelectedCoursePage = components['schemas']['SelectedCoursePage']
 type PreflightResponse = components['schemas']['CoursePreflightResponse']
 type WriteResponse = components['schemas']['CourseWriteResponse']
+
+interface Announcement {
+  ggmc?: string
+  ggbt?: string
+  title?: string
+  mc?: string
+  content?: string
+}
 
 interface TermListItem {
   dm: string
@@ -63,7 +71,7 @@ export default function CoursesPage() {
   const [filterCampus, setFilterCampus] = useState<string | undefined>()
 
   // 公告
-  const [announcements, setAnnouncements] = useState<any[]>([])
+  const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [showAnnouncements, setShowAnnouncements] = useState(true)
 
   // 冲突检测
@@ -238,8 +246,8 @@ export default function CoursesPage() {
       setCourses(prev => prev.map(c =>
         c.course_id === course.course_id ? { ...c, is_selected: true } : c
       ))
-    } catch (err: any) {
-      message.error(err.response?.data?.error?.message || '选课失败')
+    } catch (err: unknown) {
+      message.error(getApiErrorMessage(err, '选课失败'))
     } finally {
       setSelectingCourse(null)
     }
@@ -263,8 +271,8 @@ export default function CoursesPage() {
           )
           message.success(res.data.message || `"${course.course_name}" 退课成功`)
           setCourses(prev => prev.filter(c => c.course_id !== course.course_id))
-        } catch (err: any) {
-          message.error(err.response?.data?.error?.message || '退课失败')
+        } catch (err: unknown) {
+          message.error(getApiErrorMessage(err, '退课失败'))
         } finally {
           setDroppingCourse(null)
         }
