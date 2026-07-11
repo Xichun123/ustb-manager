@@ -4,6 +4,7 @@ from pathlib import Path
 
 import httpx
 from fastapi.testclient import TestClient
+from urllib.parse import parse_qs
 
 from app.cache import reference_data_cache
 from app.dependencies import get_authenticated_session
@@ -55,6 +56,7 @@ def test_grades_query_uses_the_current_json_endpoint_and_returns_stable_fields()
         "items": [
             {
                 "id": "grade-1",
+                "task_id": "task-1",
                 "term": "2025-2026-2",
                 "course_code": "MATH001",
                 "course_name": "高等数学",
@@ -70,9 +72,11 @@ def test_grades_query_uses_the_current_json_endpoint_and_returns_stable_fields()
                 "exam_attempt": "正考",
                 "passed": True,
                 "rank": 3,
+                "rank_total": 67,
             },
             {
                 "id": "grade-2",
+                "task_id": "task-2",
                 "term": "2025-2026-2",
                 "course_code": "PE001",
                 "course_name": "体育",
@@ -88,12 +92,54 @@ def test_grades_query_uses_the_current_json_endpoint_and_returns_stable_fields()
                 "exam_attempt": "正考",
                 "passed": True,
                 "rank": None,
+                "rank_total": None,
             },
         ],
         "page": 1,
         "page_size": 20,
         "total": 2,
     }
+
+
+def test_grade_components_query_returns_normalized_breakdown():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/cjgl/grcjcx/seeFx"
+        assert parse_qs(request.content.decode()) == {
+            "rwid": ["task-1"],
+            "cjid": ["grade-1"],
+        }
+        return httpx.Response(
+            200,
+            json=[
+                {"FXMC": "平时成绩", "DF": "90", "MF": "100", "LJFXBZ": "30"},
+                {"FXMC": "期末考试", "DF": "82", "MF": "100", "LJFXBZ": "70"},
+            ],
+        )
+
+    upstream = httpx.Client(transport=httpx.MockTransport(handler))
+    session = Session(
+        client=upstream,
+        state=AuthState.ACTIVE,
+        authenticated=True,
+        lock=asyncio.Lock(),
+    )
+    app.dependency_overrides[get_authenticated_session] = lambda: session
+
+    try:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get(
+                "/api/grades/grade-1/components",
+                params={"task_id": "task-1"},
+            )
+    finally:
+        app.dependency_overrides.clear()
+        upstream.close()
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {"name": "平时成绩", "score": 90.0, "max_score": 100.0, "weight": 30.0},
+        {"name": "期末考试", "score": 82.0, "max_score": 100.0, "weight": 70.0},
+    ]
 
 
 def test_grade_summary_combines_official_and_estimated_values():

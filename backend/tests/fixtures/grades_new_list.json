@@ -7,6 +7,7 @@
     "list": [
       {
         "id": "grade-1",
+        "rwid": "task-1",
         "xnxq": "2025-2026-2",
         "kcdm": "MATH001",
         "kcmc": "高等数学",
@@ -24,10 +25,12 @@
         "bkcx": "正考",
         "bkcx_en": "Regular",
         "sfjg": "1",
-        "pm": "3"
+        "pm": "3",
+        "zrs": "67"
       },
       {
         "id": "grade-2",
+        "rwid": "task-2",
         "xnxq": "2025-2026-2",
         "kcdm": "PE001",
         "kcmc": "体育",
@@ -45,7 +48,8 @@
         "bkcx": "正考",
         "bkcx_en": "Regular",
         "sfjg": "1",
-        "pm": null
+        "pm": null,
+        "zrs": null
       }
     ]
   },

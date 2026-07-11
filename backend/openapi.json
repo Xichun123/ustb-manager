@@ -1771,6 +1771,52 @@
         "title": "GPAStats",
         "type": "object"
       },
+      "GradeComponent": {
+        "properties": {
+          "max_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Score"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "weight": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "GradeComponent",
+        "type": "object"
+      },
       "GradePage": {
         "properties": {
           "items": {
@@ -1877,6 +1923,17 @@
             ],
             "title": "Rank"
           },
+          "rank_total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank Total"
+          },
           "score": {
             "title": "Score",
             "type": "string"
@@ -1896,6 +1953,11 @@
               }
             ],
             "title": "Score Numeric"
+          },
+          "task_id": {
+            "default": "",
+            "title": "Task Id",
+            "type": "string"
           },
           "term": {
             "title": "Term",
@@ -5963,6 +6025,72 @@
           }
         ],
         "summary": "获取用户完整信息",
+        "tags": [
+          "grades"
+        ]
+      }
+    },
+    "/api/grades/{grade_id}/components": {
+      "get": {
+        "operationId": "get_grade_components_api_grades__grade_id__components_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grade_id",
+            "required": true,
+            "schema": {
+              "title": "Grade Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "课程任务 ID",
+            "in": "query",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "description": "课程任务 ID",
+              "minLength": 1,
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GradeComponent"
+                  },
+                  "title": "Response Get Grade Components Api Grades  Grade Id  Components Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "查询成绩分项明细",
         "tags": [
           "grades"
         ]

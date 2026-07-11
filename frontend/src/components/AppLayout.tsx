@@ -87,6 +87,7 @@ export default function AppLayout({ children, standaloneMode = false }: AppLayou
     <Layout style={{ minHeight: '100vh' }}>
       <Sider
         collapsible
+        breakpoint="lg"
         collapsed={collapsed}
         onCollapse={handleCollapse}
         style={{

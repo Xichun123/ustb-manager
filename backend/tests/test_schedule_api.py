@@ -73,6 +73,45 @@ def test_schedule_query_uses_the_detailed_endpoint_and_normalizes_time_slots():
     assert len(body["items"]) == 3
 
 
+def test_schedule_query_deduplicates_cross_period_cells():
+    duplicate_course = {
+        "key": "xq1_jc5",
+        "ksjc": "9",
+        "jsjc": "12",
+        "kbxx": "数据科学前沿\n李新\n1-2周\n【校本部】管理楼512\n第9-12节",
+        "kbxx_en": "Advanced Data Science",
+    }
+    fixture = [
+        duplicate_course,
+        {**duplicate_course, "key": "xq1_jc6"},
+    ]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=fixture)
+
+    upstream = httpx.Client(transport=httpx.MockTransport(handler))
+    session = Session(
+        client=upstream,
+        state=AuthState.ACTIVE,
+        authenticated=True,
+        lock=asyncio.Lock(),
+    )
+    app.dependency_overrides[get_authenticated_session] = lambda: session
+
+    try:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get("/api/schedule", params={"term": "2025-2026-3"})
+    finally:
+        app.dependency_overrides.clear()
+        upstream.close()
+
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert len(items) == 1
+    assert items[0]["start_period"] == 9
+    assert items[0]["end_period"] == 12
+
+
 def test_schedule_week_filters_courses_and_includes_dates():
     fixture = json.loads((FIXTURES / "schedule_new_list.json").read_text())
 

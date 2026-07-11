@@ -342,7 +342,12 @@ async def get_flow(request: Request):
     try:
         result = await get_flow_info(session.client, session.cookie, session.mode)
         if not result:
-            raise HTTPException(status_code=500, detail="获取流量信息失败")
+            wifi_store.delete(student_id)
+            try:
+                await session.client.aclose()
+            except Exception:
+                pass
+            raise HTTPException(status_code=401, detail="校园网会话已过期，请重新登录")
 
         import time
 

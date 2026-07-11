@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 class GradeRecord(BaseModel):
     id: str
+    task_id: str = ""
     term: str
     course_code: str
     course_name: str
@@ -20,6 +21,14 @@ class GradeRecord(BaseModel):
     exam_attempt: str = ""
     passed: Optional[bool] = None
     rank: Optional[int] = None
+    rank_total: Optional[int] = None
+
+
+class GradeComponent(BaseModel):
+    name: str
+    score: Optional[float] = None
+    max_score: Optional[float] = None
+    weight: Optional[float] = None
 
 
 class GradePage(BaseModel):

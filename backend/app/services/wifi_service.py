@@ -214,6 +214,20 @@ def _extract_verify_url(html: str, base_url: str) -> Optional[str]:
     return urljoin(base_url, match.group(1))
 
 
+def _extract_dashboard_user(html: str) -> Optional[dict]:
+    """提取 dashboard 中传给 window.user 初始化函数的 JSON 对象。"""
+    start_marker = '})('
+    start_idx = html.find(start_marker)
+    if start_idx == -1:
+        return None
+
+    try:
+        user, _ = json.JSONDecoder().raw_decode(html, start_idx + len(start_marker))
+    except json.JSONDecodeError:
+        return None
+    return user if isinstance(user, dict) else None
+
+
 async def get_portal_flow_breakdown(
     client: httpx.AsyncClient,
     account: str,
@@ -584,55 +598,31 @@ async def get_account_info_from_dashboard(
 
         # 方法1：从JavaScript变量 window.user 中提取数据（最可靠）
         # 页面中有: (function (user) { window.user = user || {}; })({JSON数据});
-        import json
+        user_data = _extract_dashboard_user(html)
+        if user_data is not None:
+            print(f"[DEBUG] Extracted user data from window.user")
+            print(f"[DEBUG] leftFlow: {user_data.get('leftFlow')}, useFlow: {user_data.get('useFlow')}")
 
-        # 使用更精确的方式提取 JSON：找到 })({ 后的内容直到 });
-        start_marker = '})({'
-        end_marker = '});'
-        start_idx = html.find(start_marker)
-        if start_idx != -1:
-            json_start = start_idx + len(start_marker) - 1  # 包含 {
-            # 找到匹配的结束 });
-            brace_count = 0
-            json_end = json_start
-            for i in range(json_start, len(html)):
-                if html[i] == '{':
-                    brace_count += 1
-                elif html[i] == '}':
-                    brace_count -= 1
-                    if brace_count == 0:
-                        json_end = i + 1
-                        break
+            # 从user对象提取数据
+            result["account"] = user_data.get("userName", "")
+            result["balance"] = float(user_data.get("leftMoney", 0))
+            result["used_flow"] = float(user_data.get("useFlow", 0))
+            result["available_flow"] = float(user_data.get("leftFlow", 0))
 
-            if json_end > json_start:
-                try:
-                    user_json = html[json_start:json_end]
-                    user_data = json.loads(user_json)
-                    print(f"[DEBUG] Extracted user data from window.user")
-                    print(f"[DEBUG] leftFlow: {user_data.get('leftFlow')}, useFlow: {user_data.get('useFlow')}")
+            # 提取状态
+            use_flag = user_data.get("useFlag", 0)
+            result["status"] = "正常" if use_flag == 1 else "异常"
 
-                    # 从user对象提取数据
-                    result["account"] = user_data.get("userName", "")
-                    result["balance"] = float(user_data.get("leftMoney", 0))
-                    result["used_flow"] = float(user_data.get("useFlow", 0))
-                    result["available_flow"] = float(user_data.get("leftFlow", 0))
+            # 提取套餐
+            service_default = user_data.get("serviceDefault", {})
+            result["package"] = service_default.get("defaultName", "")
 
-                    # 提取状态
-                    use_flag = user_data.get("useFlag", 0)
-                    result["status"] = "正常" if use_flag == 1 else "异常"
+            # 提取到期日期
+            invalid_date = user_data.get("invalidDate")
+            if invalid_date:
+                result["expire_date"] = time.strftime("%Y-%m-%d", time.localtime(invalid_date / 1000))
 
-                    # 提取套餐
-                    service_default = user_data.get("serviceDefault", {})
-                    result["package"] = service_default.get("defaultName", "")
-
-                    # 提取到期日期
-                    invalid_date = user_data.get("invalidDate")
-                    if invalid_date:
-                        result["expire_date"] = time.strftime("%Y-%m-%d", time.localtime(invalid_date / 1000))
-
-                    return result
-                except json.JSONDecodeError as e:
-                    print(f"[DEBUG] Failed to parse user JSON: {e}")
+            return result
 
         # 方法2：回退到正则表达式提取（如果JavaScript变量不可用）
         print("[DEBUG] Falling back to regex extraction")

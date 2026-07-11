@@ -209,6 +209,10 @@ def _normalize_category(item: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _is_course_row(item: dict[str, Any]) -> bool:
+    return bool(str(item.get("kcdm") or "").strip() or str(item.get("kcmc") or "").strip())
+
+
 def _normalize_course(item: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": str(_first_value(item, "id", "kcid", "kcdm") or ""),
@@ -268,5 +272,9 @@ async def query_academic_progress_courses(session: Session) -> dict[str, Any]:
         "categories": [
             _normalize_category(item) for item in raw_categories if isinstance(item, dict)
         ],
-        "courses": [_normalize_course(item) for item in raw_courses if isinstance(item, dict)],
+        "courses": [
+            _normalize_course(item)
+            for item in raw_courses
+            if isinstance(item, dict) and _is_course_row(item)
+        ],
     }

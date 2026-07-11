@@ -70,18 +70,6 @@ async def get_academic_calendar(
         {},
     )
 
-    raw_dates = result.get("xlList", [])
-    raw_dates = raw_dates if isinstance(raw_dates, list) else []
-    dates = []
-    for item in raw_dates:
-        if not isinstance(item, dict) or not item.get("RQ"):
-            continue
-        try:
-            week = int(item["ZC"]) if item.get("ZC") not in (None, "") else None
-        except (TypeError, ValueError):
-            week = None
-        dates.append({"date": str(item["RQ"]), "week": week})
-
     try:
         calendar_year = int(month_metadata["yy"])
     except (KeyError, TypeError, ValueError):
@@ -90,6 +78,26 @@ async def get_academic_calendar(
         days_in_month = int(month_metadata["dayInMonth"])
     except (KeyError, TypeError, ValueError):
         days_in_month = None
+
+    raw_dates = result.get("xlList", [])
+    raw_dates = raw_dates if isinstance(raw_dates, list) else []
+    dates = []
+    for item in raw_dates:
+        if not isinstance(item, dict) or not item.get("RQ"):
+            continue
+        try:
+            item_date = date.fromisoformat(str(item["RQ"]))
+        except ValueError:
+            continue
+        if item_date.month != month or (
+            calendar_year is not None and item_date.year != calendar_year
+        ):
+            continue
+        try:
+            week = int(item["ZC"]) if item.get("ZC") not in (None, "") else None
+        except (TypeError, ValueError):
+            week = None
+        dates.append({"date": item_date.isoformat(), "week": week})
 
     return {
         "term": term,

@@ -116,7 +116,25 @@ async def query_schedule(
         },
     )
     raw_items = raw_items if isinstance(raw_items, list) else []
-    items = [course for item in raw_items if isinstance(item, dict) if (course := _course(item))]
+    parsed_items = [
+        course for item in raw_items if isinstance(item, dict) if (course := _course(item))
+    ]
+    items = list(
+        {
+            (
+                course["course_code"],
+                course["course_name"],
+                course["teacher"],
+                course["weekday"],
+                course["start_period"],
+                course["end_period"],
+                course["week_text"],
+                course["location"],
+            ): course
+            for course in reversed(parsed_items)
+        }.values()
+    )
+    items.reverse()
     if week is not None:
         items = [course for course in items if not course["weeks"] or week in course["weeks"]]
 

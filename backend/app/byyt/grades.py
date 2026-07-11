@@ -60,6 +60,7 @@ def _grade(item: dict[str, Any]) -> dict[str, Any]:
     score = str(item.get("xscj") or "")
     return {
         "id": str(item.get("id") or ""),
+        "task_id": str(item.get("rwid") or ""),
         "term": str(item.get("xnxq") or item.get("xnxqmc") or ""),
         "course_code": str(item.get("kcdm") or ""),
         "course_name": str(item.get("kcmc") or ""),
@@ -75,6 +76,7 @@ def _grade(item: dict[str, Any]) -> dict[str, Any]:
         "exam_attempt": str(item.get("bkcx") or ""),
         "passed": _passed(item.get("sfjg")),
         "rank": _int_or_none(item.get("pm")),
+        "rank_total": _int_or_none(item.get("zrs")),
     }
 
 
@@ -112,6 +114,30 @@ async def query_grades(
         "page_size": int(content.get("pageSize") or page_size),
         "total": int(content.get("total") or 0),
     }
+
+
+async def query_grade_components(
+    session: Session,
+    *,
+    task_id: str,
+    grade_id: str,
+) -> list[dict[str, Any]]:
+    result = await BYYTClient(session).request_json(
+        "POST",
+        "/cjgl/grcjcx/seeFx",
+        data={"rwid": task_id, "cjid": grade_id},
+    )
+    result = result if isinstance(result, list) else []
+    return [
+        {
+            "name": str(item.get("FXMC") or ""),
+            "score": _float_or_none(item.get("DF")),
+            "max_score": _float_or_none(item.get("MF")),
+            "weight": _float_or_none(item.get("LJFXBZ")),
+        }
+        for item in result
+        if isinstance(item, dict)
+    ]
 
 
 async def query_available_grade_terms(session: Session) -> dict[str, Any]:

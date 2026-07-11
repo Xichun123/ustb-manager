@@ -6,9 +6,9 @@ import { api } from '../services/api'
 import type { components } from '../services/openapi'
 import AppLayout from '../components/AppLayout'
 import WifiLoginModal from '../components/WifiLoginModal'
+import { buildScheduleGrid } from '../services/scheduleGrid'
 
 type StudentInfo = components['schemas']['UserProfile']
-type CourseItem = components['schemas']['ScheduleCourse']
 type ScheduleData = components['schemas']['ScheduleView']
 type AcademicContext = components['schemas']['AcademicContextResponse']
 
@@ -65,24 +65,11 @@ export function Dashboard() {
     return map
   }, [scheduleData])
 
-  // 构建课表网格数据
-  const scheduleGrid = useMemo(() => {
-    if (!scheduleData) return []
-
-    const grid: CourseItem[][][] = Array(6).fill(null).map(() =>
-      Array(7).fill(null).map(() => [])
-    )
-
-    scheduleData.items?.forEach(course => {
-      const periodIdx = Math.floor((course.start_period - 1) / 2)
-      const weekdayIdx = course.weekday - 1
-      if (periodIdx >= 0 && periodIdx < 6 && weekdayIdx >= 0 && weekdayIdx < 7) {
-        grid[periodIdx][weekdayIdx].push(course)
-      }
-    })
-
-    return grid
-  }, [scheduleData])
+  // 构建课表网格数据；跨双节时段的课程需要出现在覆盖的每一行
+  const scheduleGrid = useMemo(
+    () => buildScheduleGrid(scheduleData?.items || [], PERIOD_TIMES.length, WEEKDAYS.length),
+    [scheduleData]
+  )
 
   // 加载校园网状态和流量信息
   const fetchWifiData = async () => {
@@ -161,14 +148,14 @@ export function Dashboard() {
               style={{ height: '100%' }}
             >
               {studentInfo && (
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 24 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 24 }}>
                   <Avatar
                     size={80}
                     src={studentInfo.photo_url}
                     icon={<UserOutlined />}
                     style={{ backgroundColor: '#003366', flexShrink: 0 }}
                   />
-                  <Descriptions column={1} size="small">
+                  <Descriptions column={1} size="small" style={{ flex: '1 1 240px', minWidth: 0 }}>
                     <Descriptions.Item label="姓名">
                       <strong style={{ fontSize: 16 }}>{studentInfo.name || '-'}</strong>
                     </Descriptions.Item>

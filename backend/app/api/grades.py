@@ -1,8 +1,12 @@
 from fastapi import APIRouter, Depends, Query
 from typing import Optional, List
 from pydantic import BaseModel, ConfigDict, Field
-from app.byyt.grades import query_grade_summary, query_grades as query_current_grades
-from app.models.grades import GradePage, GradeSummary
+from app.byyt.grades import (
+    query_grade_components,
+    query_grade_summary,
+    query_grades as query_current_grades,
+)
+from app.models.grades import GradeComponent, GradePage, GradeSummary
 from app.services import grades_service
 from app.services.session_store import Session
 from app.dependencies import get_authenticated_session
@@ -99,6 +103,19 @@ async def query_grades(
 @router.get("/summary", response_model=GradeSummary, summary="获取成绩摘要")
 async def get_grade_summary(session: Session = Depends(get_authenticated_session)):
     return await query_grade_summary(session)
+
+
+@router.get(
+    "/{grade_id}/components",
+    response_model=list[GradeComponent],
+    summary="查询成绩分项明细",
+)
+async def get_grade_components(
+    grade_id: str,
+    task_id: str = Query(..., min_length=1, description="课程任务 ID"),
+    session: Session = Depends(get_authenticated_session),
+):
+    return await query_grade_components(session, task_id=task_id, grade_id=grade_id)
 
 
 @router.get("/list", response_model=GradesListResponse, summary="获取成绩列表")

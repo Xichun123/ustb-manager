@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Card, Col, Row, Statistic, Table, message } from 'antd'
+import { Alert, Button, Card, Col, Modal, Row, Statistic, Table, message } from 'antd'
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table'
 import AppLayout from '../components/AppLayout'
 import { api, getApiErrorMessage } from '../services/api'
@@ -8,6 +8,7 @@ import type { components } from '../services/openapi'
 type Grade = components['schemas']['GradeRecord']
 type GradePage = components['schemas']['GradePage']
 type GradeSummary = components['schemas']['GradeSummary']
+type GradeComponent = components['schemas']['GradeComponent']
 
 const PAGE_SIZE = 50
 
@@ -17,6 +18,11 @@ export default function Grades() {
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
+  const [selectedGrade, setSelectedGrade] = useState<Grade | null>(null)
+  const [gradeComponents, setGradeComponents] = useState<GradeComponent[]>([])
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [detailError, setDetailError] = useState<string | null>(null)
+  const [detailOpen, setDetailOpen] = useState(false)
 
   const fetchGrades = useCallback(async (nextPage: number) => {
     try {
@@ -41,6 +47,30 @@ export default function Grades() {
 
   const handleTableChange = (pagination: TablePaginationConfig) => {
     setPage(pagination.current || 1)
+  }
+
+  const handleScoreClick = async (grade: Grade) => {
+    setSelectedGrade(grade)
+    setGradeComponents([])
+    setDetailError(null)
+    setDetailOpen(true)
+
+    if (!grade.task_id) return
+
+    try {
+      setDetailLoading(true)
+      const { data } = await api.get<GradeComponent[]>(
+        `/grades/${encodeURIComponent(grade.id)}/components`,
+        { params: { task_id: grade.task_id } }
+      )
+      setGradeComponents(data)
+    } catch (error: unknown) {
+      const errorMessage = getApiErrorMessage(error, '获取成绩明细失败')
+      setDetailError(errorMessage)
+      message.error(errorMessage)
+    } finally {
+      setDetailLoading(false)
+    }
   }
 
   const columns: ColumnsType<Grade> = [
@@ -73,7 +103,26 @@ export default function Grades() {
           else if (numeric >= 60) color = '#ff7a45'
           else color = '#f5222d'
         }
-        return <span style={{ color, fontWeight: 'bold' }}>{score}</span>
+        return (
+          <Button
+            type="link"
+            size="small"
+            style={{ color, fontWeight: 'bold', padding: 0 }}
+            onClick={() => handleScoreClick(record)}
+          >
+            {score}
+          </Button>
+        )
+      },
+    },
+    {
+      title: '排名',
+      dataIndex: 'rank',
+      key: 'rank',
+      width: 90,
+      render: (value, record) => {
+        if (value === null || value === undefined) return '-'
+        return record.rank_total ? `${value}/${record.rank_total}` : value
       },
     },
     { title: '学分', dataIndex: 'credit', key: 'credit', width: 80 },
@@ -122,7 +171,7 @@ export default function Grades() {
           dataSource={grades}
           rowKey="id"
           loading={loading}
-          scroll={{ x: 1200 }}
+          scroll={{ x: 1280 }}
           onChange={handleTableChange}
           pagination={{
             current: page,
@@ -133,6 +182,44 @@ export default function Grades() {
           }}
         />
       </Card>
+
+      <Modal
+        title={selectedGrade ? `${selectedGrade.course_name} · 成绩明细` : '成绩明细'}
+        open={detailOpen}
+        onCancel={() => setDetailOpen(false)}
+        footer={null}
+        width={640}
+      >
+        {detailError ? (
+          <Alert
+            type="warning"
+            showIcon
+            message="暂时无法获取成绩明细"
+            description={detailError}
+          />
+        ) : (
+          <Table<GradeComponent>
+            rowKey={(item, index) => `${item.name}-${index}`}
+            loading={detailLoading}
+            dataSource={gradeComponents}
+            pagination={false}
+            size="small"
+            locale={{ emptyText: selectedGrade?.task_id ? '暂无成绩明细' : '该课程不支持成绩明细查询' }}
+            columns={[
+              { title: '分项', dataIndex: 'name', key: 'name' },
+              { title: '得分', dataIndex: 'score', key: 'score', width: 100, render: value => value ?? '-' },
+              { title: '满分', dataIndex: 'max_score', key: 'max_score', width: 100, render: value => value ?? '-' },
+              {
+                title: '比重',
+                dataIndex: 'weight',
+                key: 'weight',
+                width: 100,
+                render: value => value === null || value === undefined ? '-' : `${value}%`,
+              },
+            ]}
+          />
+        )}
+      </Modal>
     </AppLayout>
   )
 }

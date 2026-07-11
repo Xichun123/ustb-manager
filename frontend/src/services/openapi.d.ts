@@ -1506,6 +1506,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/grades/{grade_id}/components": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 查询成绩分项明细 */
+        get: operations["get_grade_components_api_grades__grade_id__components_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -3036,6 +3053,17 @@ export interface components {
              */
             total_credits: number;
         };
+        /** GradeComponent */
+        GradeComponent: {
+            /** Max Score */
+            max_score?: number | null;
+            /** Name */
+            name: string;
+            /** Score */
+            score?: number | null;
+            /** Weight */
+            weight?: number | null;
+        };
         /** GradePage */
         GradePage: {
             /** Items */
@@ -3088,6 +3116,8 @@ export interface components {
             passed?: boolean | null;
             /** Rank */
             rank?: number | null;
+            /** Rank Total */
+            rank_total?: number | null;
             /** Score */
             score: string;
             /**
@@ -3097,6 +3127,11 @@ export interface components {
             score_en: string;
             /** Score Numeric */
             score_numeric?: number | null;
+            /**
+             * Task Id
+             * @default
+             */
+            task_id: string;
             /** Term */
             term: string;
         };
@@ -5182,6 +5217,40 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    get_grade_components_api_grades__grade_id__components_get: {
+        parameters: {
+            query: {
+                /** @description 课程任务 ID */
+                task_id: string;
+            };
+            header?: never;
+            path: {
+                grade_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GradeComponent"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -6,6 +6,8 @@ import html2canvas from 'html2canvas'
 import { api, getApiErrorMessage } from '../services/api'
 import type { components } from '../services/openapi'
 import AppLayout from '../components/AppLayout'
+import { buildScheduleGrid } from '../services/scheduleGrid'
+import { formatAcademicTermLabel } from '../services/academicTerms'
 
 type CourseItem = components['schemas']['ScheduleCourse']
 type ScheduleData = components['schemas']['ScheduleView']
@@ -53,21 +55,11 @@ export default function SchedulePage() {
     return map
   }, [scheduleData])
 
-  // 课程网格数据
-  const scheduleGrid = useMemo(() => {
-    if (!scheduleData?.items) return []
-    const grid: CourseItem[][][] = PERIOD_TIMES.map(() =>
-      WEEKDAYS.map(() => [])
-    )
-    scheduleData.items.forEach(course => {
-      const periodIdx = Math.floor((course.start_period - 1) / 2)
-      const weekdayIdx = course.weekday - 1
-      if (periodIdx >= 0 && periodIdx < PERIOD_TIMES.length && weekdayIdx >= 0 && weekdayIdx < WEEKDAYS.length) {
-        grid[periodIdx][weekdayIdx].push(course)
-      }
-    })
-    return grid
-  }, [scheduleData])
+  // 课程网格数据；跨双节时段的课程需要出现在覆盖的每一行
+  const scheduleGrid = useMemo(
+    () => buildScheduleGrid(scheduleData?.items || [], PERIOD_TIMES.length, WEEKDAYS.length),
+    [scheduleData]
+  )
 
   // 点击课程显示详情
   const handleCourseClick = (course: CourseItem) => {
@@ -226,7 +218,10 @@ export default function SchedulePage() {
       const url = canvas.toDataURL('image/png')
       const a = document.createElement('a')
       a.href = url
-      const termName = termList.find(t => t.code === selectedTerm)?.name || selectedTerm
+      const selectedTermOption = termList.find(t => t.code === selectedTerm)
+      const termName = selectedTermOption
+        ? formatAcademicTermLabel(selectedTermOption)
+        : selectedTerm
       a.download = viewMode === 'week'
         ? `课表_${termName}_第${selectedWeek}周.png`
         : `课表_${termName}_总课表.png`
@@ -333,15 +328,15 @@ export default function SchedulePage() {
           { key: 'full', label: '总课表' },
         ]}
       />
-      <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 16 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', marginBottom: 16 }}>
         <Select
           value={selectedTerm}
           onChange={setSelectedTerm}
-          style={{ width: 180 }}
+          style={{ width: 280, maxWidth: '100%' }}
           placeholder="选择学期"
           options={termList.map(t => ({
             value: t.code,
-            label: (t.name || t.code) + (t.code === currentTerm ? ' (当前)' : ''),
+            label: formatAcademicTermLabel(t) + (t.code === currentTerm ? ' (当前)' : ''),
           }))}
         />
         {viewMode === 'week' && (
