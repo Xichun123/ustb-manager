@@ -63,7 +63,7 @@ interface PageCacheEnvelope<T> {
 
 function cacheOwner(): string {
   const user = getStoredData<UserInfo>(STORAGE_KEYS.USER_INFO)
-  return user?.student_id || getWifiStudentId() || 'anonymous'
+  return (user && user.student_id) || getWifiStudentId() || 'anonymous'
 }
 
 function getPageCache<T>(key: string): T | null {

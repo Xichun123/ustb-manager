@@ -18,7 +18,7 @@ function getErrorMessage(data: unknown, fallback: string): string {
     message?: unknown
     error?: { message?: unknown }
   }
-  if (typeof response.error?.message === 'string' && response.error.message) {
+  if (response.error && typeof response.error.message === 'string' && response.error.message) {
     return response.error.message
   }
   if (typeof response.detail === 'string' && response.detail) {

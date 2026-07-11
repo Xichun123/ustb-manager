@@ -156,7 +156,9 @@ Page({
           name: item.name,
           required,
           completed,
-          remaining: item.remaining_credits ?? Math.max(0, required - completed),
+          remaining: item.remaining_credits === undefined || item.remaining_credits === null
+            ? Math.max(0, required - completed)
+            : item.remaining_credits,
           percentage: required > 0
             ? Math.min(100, Math.round((completed / required) * 100))
             : 0,

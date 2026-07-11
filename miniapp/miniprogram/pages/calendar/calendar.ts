@@ -38,7 +38,7 @@ Page({
       })
       const groups = new Map<number | null, string[]>()
       for (const item of calendar.dates || []) {
-        const week = item.week ?? null
+        const week = item.week === undefined || item.week === null ? null : item.week
         groups.set(week, [...(groups.get(week) || []), item.date])
       }
       const weeks = Array.from(groups.entries()).map(([week, dates]): CalendarWeek => ({

@@ -35,6 +35,15 @@ Page({
     const index = Number(event.currentTarget.dataset.index)
     const notice = this.data.notices[index]
     if (!notice) return
+
+    const externalUrl = String(notice.external_url || '').trim()
+    if (/^https?:\/\//i.test(externalUrl)) {
+      wx.navigateTo({
+        url: `/pages/notice-web/notice-web?url=${encodeURIComponent(externalUrl)}`,
+      })
+      return
+    }
+
     wx.showModal({
       title: notice.title,
       content: [notice.sender, notice.sent_at, notice.content].filter(Boolean).join('\n\n'),

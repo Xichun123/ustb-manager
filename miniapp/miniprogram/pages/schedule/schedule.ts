@@ -1,4 +1,5 @@
 import { get } from '../../services/api'
+import { formatAcademicTermCodeLabel, formatAcademicTermLabel } from '../../services/academic-terms'
 import type { components } from '../../services/openapi'
 import {
   getScheduleHideWeekend,
@@ -47,7 +48,12 @@ function displayCourses(items?: ScheduleCourse[]): DisplayCourse[] {
 
 function buildInitialData() {
   const persisted = getSchedulePageState()
-  const termList = persisted && Array.isArray(persisted.termList) ? persisted.termList : []
+  const termList = persisted && Array.isArray(persisted.termList)
+    ? persisted.termList.map(term => ({
+      ...term,
+      name: formatAcademicTermCodeLabel(term.code, term.name),
+    }))
+    : []
   const weekList = persisted && Array.isArray(persisted.weekList) ? persisted.weekList : []
   const selectedTermCode = persisted ? persisted.selectedTermCode : ''
   const selectedWeek = persisted ? persisted.selectedWeek : 0
@@ -214,7 +220,7 @@ Component({
         ])
         const terms: TermOption[] = termRecords.map(term => ({
           code: term.code,
-          name: term.name || term.code,
+          name: formatAcademicTermLabel(term),
         }))
 
         const currentTermCode = context.teaching_term.code

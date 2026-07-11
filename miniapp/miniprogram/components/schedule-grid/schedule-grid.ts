@@ -1,3 +1,5 @@
+import { coveredPeriodIndexes } from './schedule-grid-layout'
+
 const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
 Component({
@@ -91,18 +93,22 @@ Component({
       // Build 6×7 grid first, then slice visible weekdays.
       const fullGrid: any[][][] = Array.from({ length: 6 }, () => Array.from({ length: 7 }, () => []))
       schedule.forEach((item: any) => {
-        const periodIdx = Math.floor((item.start_period - 1) / 2)
         const dayIdx = item.weekday - 1
-        if (periodIdx >= 0 && periodIdx < 6 && dayIdx >= 0 && dayIdx < 7) {
-          fullGrid[periodIdx][dayIdx].push({
-            ...item,
-            location_short: String(item.location || '')
-              .replace(/【[^】]+】/g, '')
-              .replace(/\s+/g, ' ')
-              .trim(),
-            color: colorMap[item.course_name],
-          })
+        if (dayIdx < 0 || dayIdx >= 7) {
+          return
         }
+
+        const course = {
+          ...item,
+          location_short: String(item.location || '')
+            .replace(/【[^】]+】/g, '')
+            .replace(/\s+/g, ' ')
+            .trim(),
+          color: colorMap[item.course_name],
+        }
+        coveredPeriodIndexes(item.start_period, item.end_period).forEach((periodIdx) => {
+          fullGrid[periodIdx][dayIdx].push(course)
+        })
       })
 
       const visibleDayIndexes = this.getVisibleDayIndexes()

@@ -27,22 +27,52 @@
         class="grade-item"
         wx:for="{{grades}}"
         wx:key="index"
-        data-index="{{index}}"
-        bindtap="onGradeClick"
       >
         <view class="grade-left">
           <text class="grade-name">{{item.course_name}}</text>
           <view class="grade-meta">
             <text class="tag tag-blue">{{item.credit}}学分</text>
             <text class="grade-type">{{item.course_nature || ''}}</text>
+            <text class="grade-rank" wx:if="{{item.rankText}}">排名 {{item.rankText}}</text>
           </view>
         </view>
-        <view class="grade-right">
+        <view class="grade-right" data-index="{{index}}" catchtap="onScoreClick">
           <text class="grade-score {{item.scoreColor}}">{{item.score || '--'}}</text>
+          <text class="score-detail-hint">详情</text>
         </view>
       </view>
     </view>
 
     <empty-state wx:if="{{grades.length === 0}}" message="暂无成绩数据" icon="📊" />
   </block>
+
+  <view class="modal-mask" wx:if="{{showDetail}}" bindtap="closeDetail">
+    <view class="modal-content grade-detail-modal" catchtap="noop">
+      <view class="modal-title">{{selectedGrade.course_name}} · 成绩明细</view>
+      <view class="grade-detail-summary">
+        <text>总评成绩</text>
+        <text class="detail-total-score {{selectedGrade.scoreColor}}">{{selectedGrade.score || '--'}}</text>
+      </view>
+
+      <view class="detail-loading" wx:if="{{detailLoading}}">正在加载成绩明细...</view>
+      <view class="detail-error" wx:elif="{{detailError}}">{{detailError}}</view>
+      <view class="component-list" wx:elif="{{gradeComponents.length > 0}}">
+        <view class="component-header">
+          <text class="component-name">分项</text>
+          <text>得分</text>
+          <text>满分</text>
+          <text>权重</text>
+        </view>
+        <view class="component-row" wx:for="{{gradeComponents}}" wx:key="index">
+          <text class="component-name">{{item.name}}</text>
+          <text>{{item.score !== null && item.score !== undefined ? item.score : '--'}}</text>
+          <text>{{item.max_score !== null && item.max_score !== undefined ? item.max_score : '--'}}</text>
+          <text>{{item.weight !== null && item.weight !== undefined ? item.weight + '%' : '--'}}</text>
+        </view>
+      </view>
+      <view class="detail-empty" wx:else>暂无成绩明细</view>
+
+      <view class="modal-close" bindtap="closeDetail">关闭</view>
+    </view>
+  </view>
 </view>

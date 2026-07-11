@@ -7,7 +7,8 @@ const GRADES_REFRESH_TTL = 5 * 60 * 1000
 type GradeRecord = components['schemas']['GradeRecord']
 type GradePage = components['schemas']['GradePage']
 type GradeSummary = components['schemas']['GradeSummary']
-type DisplayGrade = GradeRecord & { scoreColor: string }
+type GradeComponent = components['schemas']['GradeComponent']
+type DisplayGrade = GradeRecord & { scoreColor: string; rankText: string }
 
 function buildInitialData() {
   const persisted = getGradesPageState()
@@ -15,14 +16,41 @@ function buildInitialData() {
   return {
     loading: !persisted,
     refreshing: false,
-    grades: persisted && Array.isArray(persisted.grades) ? persisted.grades : ([] as DisplayGrade[]),
+    grades: persisted && Array.isArray(persisted.grades)
+      ? persisted.grades.map(grade => ({
+        ...grade,
+        scoreColor: getScoreColor(grade.score, grade.score_numeric),
+        rankText: formatRank(grade.rank, grade.rank_total),
+      }))
+      : ([] as DisplayGrade[]),
     gpaStats: persisted && persisted.gpaStats ? persisted.gpaStats : {
       gpa: 0,
       total_credits: 0,
       passed_credits: 0,
       failed_count: 0,
     },
+    selectedGrade: null as DisplayGrade | null,
+    gradeComponents: [] as GradeComponent[],
+    detailLoading: false,
+    detailError: '',
+    showDetail: false,
   }
+}
+
+function getScoreColor(score: string, scoreNumeric?: number | null): string {
+  const num = scoreNumeric === null || scoreNumeric === undefined
+    ? parseFloat(score)
+    : scoreNumeric
+  if (isNaN(num)) return ''
+  if (num >= 90) return 'score-green'
+  if (num >= 80) return 'score-blue'
+  if (num >= 70) return 'score-orange'
+  return 'score-red'
+}
+
+function formatRank(rank?: number | null, total?: number | null): string {
+  if (rank === null || rank === undefined) return ''
+  return total ? `${rank}/${total}` : String(rank)
 }
 
 Component({
@@ -96,7 +124,8 @@ Component({
         ])
         const grades = (page.items || []).map((grade): DisplayGrade => ({
           ...grade,
-          scoreColor: this.getScoreColor(grade.score),
+          scoreColor: getScoreColor(grade.score, grade.score_numeric),
+          rankText: formatRank(grade.rank, grade.rank_total),
         }))
         this.setData({
           grades,
@@ -122,31 +151,41 @@ Component({
       }
     },
 
-    getScoreColor(score: string): string {
-      const num = parseFloat(score)
-      if (isNaN(num)) return ''
-      if (num >= 90) return 'score-green'
-      if (num >= 80) return 'score-blue'
-      if (num >= 70) return 'score-orange'
-      return 'score-red'
-    },
-
-    onGradeClick(e: any) {
-      const idx = e.currentTarget.dataset.index
+    async onScoreClick(e: any) {
+      const idx = Number(e.currentTarget.dataset.index)
       const grade = this.data.grades[idx]
       if (!grade) return
-      wx.showModal({
-        title: grade.course_name || '',
-        content: [
-          `成绩: ${grade.score || '--'}`,
-          `学分: ${grade.credit || '--'}`,
-          `学时: ${grade.hours || '--'}`,
-          `性质: ${grade.course_nature || '--'}`,
-          `类别: ${grade.course_category || '--'}`,
-          `开课单位: ${grade.college || '--'}`,
-        ].join('\n'),
-        showCancel: false,
+
+      this.setData({
+        selectedGrade: grade,
+        gradeComponents: [],
+        detailError: '',
+        detailLoading: !!grade.task_id,
+        showDetail: true,
       })
+
+      if (!grade.task_id) {
+        this.setData({ detailError: '该课程不支持成绩明细查询' })
+        return
+      }
+
+      try {
+        const components = await get<GradeComponent[]>(
+          `/api/grades/${encodeURIComponent(grade.id)}/components`,
+          { task_id: grade.task_id },
+        )
+        this.setData({ gradeComponents: components || [] })
+      } catch (error: any) {
+        this.setData({ detailError: error && error.message ? error.message : '获取成绩明细失败' })
+      } finally {
+        this.setData({ detailLoading: false })
+      }
     },
+
+    closeDetail() {
+      this.setData({ showDetail: false })
+    },
+
+    noop() {},
   },
 })

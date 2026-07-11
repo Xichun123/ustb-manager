@@ -79,11 +79,21 @@
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" bindtap="goToCalendar">
-        <view class="menu-left"><text class="menu-text">📅 校历</text></view>
+        <view class="menu-left">
+          <view class="menu-icon-wrap">
+            <image class="menu-icon" src="/assets/feature/calendar.png" mode="aspectFit" />
+          </view>
+          <text class="menu-text">校历</text>
+        </view>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" bindtap="goToNotices">
-        <view class="menu-left"><text class="menu-text">🔔 通知公告</text></view>
+        <view class="menu-left">
+          <view class="menu-icon-wrap">
+            <image class="menu-icon" src="/assets/feature/notices.png" mode="aspectFit" />
+          </view>
+          <text class="menu-text">通知公告</text>
+        </view>
         <text class="menu-arrow">›</text>
       </view>
     </view>

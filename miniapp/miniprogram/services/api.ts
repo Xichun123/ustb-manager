@@ -39,11 +39,11 @@ export class ApiError extends Error {
   statusCode: number
 
   constructor(statusCode: number, data: ErrorEnvelope) {
-    super(data.error?.message || data.detail || `请求失败: ${statusCode}`)
+    super((data.error && data.error.message) || data.detail || `请求失败: ${statusCode}`)
     this.name = 'ApiError'
-    this.code = data.error?.code || 'REQUEST_ERROR'
-    this.retryable = !!data.error?.retryable
-    this.requestId = data.error?.request_id || ''
+    this.code = (data.error && data.error.code) || 'REQUEST_ERROR'
+    this.retryable = !!(data.error && data.error.retryable)
+    this.requestId = (data.error && data.error.request_id) || ''
     this.statusCode = statusCode
   }
 }
