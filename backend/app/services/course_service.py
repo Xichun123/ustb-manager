@@ -644,9 +644,15 @@ async def get_announcements(
     )
 
 
+def _reference_cache_key(session: Session, name: str) -> str:
+    session_key = session.session_id or f"memory-{id(session)}"
+    return f"{name}:{session_key}"
+
+
 async def get_colleges(session: Session) -> List[Dict]:
-    """获取开课学院列表（带缓存）"""
-    cached = reference_data_cache.get("colleges")
+    """获取开课学院列表（按会话缓存）"""
+    cache_key = _reference_cache_key(session, "colleges")
+    cached = reference_data_cache.get(cache_key)
     if cached is not None:
         return cached
 
@@ -661,13 +667,14 @@ async def get_colleges(session: Session) -> List[Dict]:
                     "name": item.get("YXMC", "") or item.get("MC", ""),
                 }
             )
-    reference_data_cache.set("colleges", colleges)
+    reference_data_cache.set(cache_key, colleges)
     return colleges
 
 
 async def get_course_categories(session: Session) -> List[Dict]:
-    """获取课程类别列表（带缓存）。"""
-    cached = reference_data_cache.get("categories")
+    """获取课程类别列表（按会话缓存）。"""
+    cache_key = _reference_cache_key(session, "categories")
+    cached = reference_data_cache.get(cache_key)
     if cached is not None:
         return cached
 
@@ -682,13 +689,14 @@ async def get_course_categories(session: Session) -> List[Dict]:
                     "name": item.get("mc", "") or item.get("MC", ""),
                 }
             )
-    reference_data_cache.set("categories", categories)
+    reference_data_cache.set(cache_key, categories)
     return categories
 
 
 async def get_campuses(session: Session) -> List[Dict]:
-    """获取校区列表（带缓存）"""
-    cached = reference_data_cache.get("campuses")
+    """获取校区列表（按会话缓存）"""
+    cache_key = _reference_cache_key(session, "campuses")
+    cached = reference_data_cache.get(cache_key)
     if cached is not None:
         return cached
 
@@ -703,5 +711,5 @@ async def get_campuses(session: Session) -> List[Dict]:
                 "name": item.get("mc", "") or item.get("MC", ""),
             }
         )
-    reference_data_cache.set("campuses", campuses)
+    reference_data_cache.set(cache_key, campuses)
     return campuses

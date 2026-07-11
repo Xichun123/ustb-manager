@@ -4,14 +4,42 @@ from pathlib import Path
 from urllib.parse import parse_qs
 
 import httpx
+import pytest
 from fastapi.testclient import TestClient
 
 from app.cache import reference_data_cache
 from app.dependencies import get_authenticated_session
 from app.main import app
+from app.services import course_service
 from app.services.session_store import AuthState, Session
 
 FIXTURES = Path(__file__).parent / "fixtures"
+
+
+@pytest.mark.asyncio
+async def test_reference_data_cache_does_not_leak_between_sessions():
+    reference_data_cache.clear()
+
+    def first_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=[{"YXDM": "01", "YXMC": "学院一"}])
+
+    def second_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=[{"YXDM": "02", "YXMC": "学院二"}])
+
+    first_client = httpx.Client(transport=httpx.MockTransport(first_handler))
+    second_client = httpx.Client(transport=httpx.MockTransport(second_handler))
+    first_session = Session(client=first_client, session_id="session-one")
+    second_session = Session(client=second_client, session_id="session-two")
+    try:
+        first = await course_service.get_colleges(first_session)
+        second = await course_service.get_colleges(second_session)
+    finally:
+        reference_data_cache.clear()
+        first_client.close()
+        second_client.close()
+
+    assert first == [{"code": "01", "name": "学院一"}]
+    assert second == [{"code": "02", "name": "学院二"}]
 
 
 def test_categories_use_the_current_byyt_endpoint_and_normalize_items():
