@@ -12,14 +12,7 @@ type CoursePage = components['schemas']['CourseSelectionPage']
 type SelectedCoursePage = components['schemas']['SelectedCoursePage']
 type PreflightResponse = components['schemas']['CoursePreflightResponse']
 type WriteResponse = components['schemas']['CourseWriteResponse']
-
-interface Announcement {
-  ggmc?: string
-  ggbt?: string
-  title?: string
-  mc?: string
-  content?: string
-}
+type Announcement = components['schemas']['CourseAnnouncement']
 
 interface TermListItem {
   dm: string
@@ -140,9 +133,9 @@ export default function CoursesPage() {
         setSelectedTerm(context.term.code)
 
         try {
-          const announcementsRes = await api.get('/courses/announcements', {
-            params: { xn: context.term.year, xq: context.term.semester },
-          })
+          const announcementsRes = await api.get<Announcement[]>(
+            '/course-selection/announcements',
+          )
           setAnnouncements(Array.isArray(announcementsRes.data) ? announcementsRes.data : [])
         } catch {
           // 公告加载失败不影响主功能
@@ -442,7 +435,7 @@ export default function CoursesPage() {
             <ul style={{ margin: '8px 0 0', paddingLeft: 20 }}>
               {announcements.map((item, idx) => (
                 <li key={idx} style={{ marginBottom: 4 }}>
-                  {item.ggmc || item.ggbt || item.title || item.mc || item.content || JSON.stringify(item)}
+                  {item.title}{item.content ? `：${item.content}` : ''}
                 </li>
               ))}
             </ul>

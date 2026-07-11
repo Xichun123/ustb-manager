@@ -98,6 +98,13 @@ class CourseWriteResponse(BaseModel):
     message: str = ""
 
 
+class CourseAnnouncement(BaseModel):
+    id: str
+    title: str
+    content: str = ""
+    published_at: str = ""
+
+
 class CourseSelectionLog(BaseModel):
     id: str
     course_code: str = ""

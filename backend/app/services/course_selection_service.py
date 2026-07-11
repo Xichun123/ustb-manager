@@ -343,6 +343,25 @@ def _require_clear_preflight(result: dict[str, Any]) -> None:
     raise CourseOperationBlocked(result["message"])
 
 
+async def query_announcements(session: Session) -> list[dict[str, Any]]:
+    params = await _term_params(session)
+    items = await course_service.get_announcements(
+        session,
+        xn=params["xn"],
+        xq=params["xq"],
+    )
+    return [
+        {
+            "id": str(item.get("id") or item.get("ggid") or ""),
+            "title": str(item.get("ggbt") or item.get("ggmc") or item.get("title") or ""),
+            "content": str(item.get("ggnr") or item.get("content") or ""),
+            "published_at": str(item.get("fbsj") or item.get("cjsj") or ""),
+        }
+        for item in items
+        if isinstance(item, dict)
+    ]
+
+
 async def query_logs(session: Session) -> list[dict[str, Any]]:
     params = await _term_params(session)
     items = await course_service.get_selection_log(session, **params)

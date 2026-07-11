@@ -1088,6 +1088,34 @@
         "title": "CookieLoginResponse",
         "type": "object"
       },
+      "CourseAnnouncement": {
+        "properties": {
+          "content": {
+            "default": "",
+            "title": "Content",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "published_at": {
+            "default": "",
+            "title": "Published At",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "CourseAnnouncement",
+        "type": "object"
+      },
       "CourseOperationRequest": {
         "properties": {
           "course_id": {
@@ -3605,6 +3633,39 @@
         "summary": "检查认证状态",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/course-selection/announcements": {
+      "get": {
+        "operationId": "announcements_api_course_selection_announcements_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CourseAnnouncement"
+                  },
+                  "title": "Response Announcements Api Course Selection Announcements Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "查询选课公告",
+        "tags": [
+          "course-selection"
         ]
       }
     },

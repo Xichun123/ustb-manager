@@ -464,6 +464,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/course-selection/announcements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 查询选课公告 */
+        get: operations["announcements_api_course_selection_announcements_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/course-selection/cart": {
         parameters: {
             query?: never;
@@ -2608,6 +2625,23 @@ export interface components {
              */
             student_name?: string | null;
         };
+        /** CourseAnnouncement */
+        CourseAnnouncement: {
+            /**
+             * Content
+             * @default
+             */
+            content: string;
+            /** Id */
+            id: string;
+            /**
+             * Published At
+             * @default
+             */
+            published_at: string;
+            /** Title */
+            title: string;
+        };
         /** CourseOperationRequest */
         CourseOperationRequest: {
             /**
@@ -3995,6 +4029,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StatusResponse"];
+                };
+            };
+        };
+    };
+    announcements_api_course_selection_announcements_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseAnnouncement"][];
                 };
             };
         };

@@ -320,6 +320,38 @@ def test_course_selection_write_conflict_has_a_stable_business_error():
     assert response.json()["error"]["request_id"]
 
 
+def test_course_selection_announcements_do_not_expose_raw_fields():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/Xsxk/queryXkdqXnxq":
+            return httpx.Response(200, json=TERM_INFO)
+        assert request.url.path == "/Xsxk/queryXkggZx"
+        return httpx.Response(
+            200,
+            json=[
+                {
+                    "id": "notice-1",
+                    "ggbt": "选课通知",
+                    "ggnr": "请按时选课",
+                    "fbsj": "2026-07-10",
+                    "raw_secret": "must-not-leak",
+                }
+            ],
+        )
+
+    response = _request("/api/course-selection/announcements", handler)
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {
+            "id": "notice-1",
+            "title": "选课通知",
+            "content": "请按时选课",
+            "published_at": "2026-07-10",
+        }
+    ]
+    assert "raw_secret" not in response.text
+
+
 def test_course_selection_logs_do_not_expose_raw_upstream_fields():
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/Xsxk/queryXkdqXnxq":

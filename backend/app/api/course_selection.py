@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Header, Query, Request
 
 from app.dependencies import get_authenticated_session, require_trusted_write_origin
 from app.models.courses import (
+    CourseAnnouncement,
     CoursePreflightRequest,
     CoursePreflightResponse,
     CourseSelectionContext,
@@ -91,6 +92,11 @@ async def cart(
 @router.get("/logs", response_model=list[CourseSelectionLog], summary="查询选课日志")
 async def logs(session: Session = Depends(get_authenticated_session)):
     return await course_selection_service.query_logs(session)
+
+
+@router.get("/announcements", response_model=list[CourseAnnouncement], summary="查询选课公告")
+async def announcements(session: Session = Depends(get_authenticated_session)):
+    return await course_selection_service.query_announcements(session)
 
 
 @router.post(
