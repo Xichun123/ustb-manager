@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check generated API type sync
+        run: cmp miniprogram/services/openapi.d.ts ../frontend/src/services/openapi.d.ts
+
       - name: Typecheck
         run: npx tsc --noEmit
 

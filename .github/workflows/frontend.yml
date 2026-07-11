@@ -5,11 +5,13 @@ on:
     paths:
       - "frontend/**"
       - "backend/openapi.json"
+      - "miniapp/miniprogram/services/openapi.d.ts"
       - ".github/workflows/frontend.yml"
   pull_request:
     paths:
       - "frontend/**"
       - "backend/openapi.json"
+      - "miniapp/miniprogram/services/openapi.d.ts"
       - ".github/workflows/frontend.yml"
 
 permissions:
@@ -37,7 +39,7 @@ jobs:
       - name: Check generated OpenAPI types
         run: |
           npm run generate:api
-          git diff --exit-code -- src/services/openapi.d.ts
+          git diff --exit-code -- src/services/openapi.d.ts ../miniapp/miniprogram/services/openapi.d.ts
 
       - name: Production build and typecheck
         run: npm run build

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "generate:api": "openapi-typescript ../backend/openapi.json -o src/services/openapi.d.ts",
+    "generate:api": "openapi-typescript ../backend/openapi.json -o src/services/openapi.d.ts && openapi-typescript ../backend/openapi.json -o ../miniapp/miniprogram/services/openapi.d.ts",
     "preview": "vite preview"
   },
   "dependencies": {

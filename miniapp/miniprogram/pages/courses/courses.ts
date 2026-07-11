@@ -1,52 +1,16 @@
 import { del, get, post } from '../../services/api'
+import type { components } from '../../services/openapi'
 import { getCoursesPageState, setCoursesPageState } from '../../utils/storage'
 
 const app = getApp<IAppOption>()
 
-interface CourseSelectionRecord {
-  course_id: string
-  selection_id?: string | null
-  course_code: string
-  course_name: string
-  course_name_en: string
-  course_nature: string
-  course_category: string
-  credits: number
-  hours?: number | null
-  method: string
-  college: string
-  campus: string
-  capacity?: number | null
-  selected_count?: number | null
-  teacher: string
-  schedule_time: string
-  schedule_location: string
-  selection_status: string
-  is_selected: boolean
-}
-
-interface CourseSelectionContext {
-  term: { year: string; semester: string; code: string }
-  methods: Array<{ code: string; name: string }>
-  colleges: Array<{ code: string; name: string }>
-  categories: Array<{ code: string; name: string }>
-  campuses: Array<{ code: string; name: string }>
-}
-
-interface CoursePage {
-  items?: CourseSelectionRecord[]
-}
-
-interface CourseWriteResponse {
-  success: boolean
-  message: string
-}
-
-interface PreflightResponse {
-  allowed: boolean
-  status: 'clear' | 'conflict' | 'blocked' | 'unknown'
-  message: string
-}
+type CourseSelectionRecord = components['schemas']['CourseSelectionRecord']
+type CourseSelectionContext = components['schemas']['app__models__courses__CourseSelectionContext']
+type CoursePage =
+  | components['schemas']['CourseSelectionPage']
+  | components['schemas']['SelectedCoursePage']
+type CourseWriteResponse = components['schemas']['CourseWriteResponse']
+type PreflightResponse = components['schemas']['CoursePreflightResponse']
 
 function idempotencyKey() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
@@ -187,15 +151,15 @@ Page({
         value: context.term.code,
         label: `${context.term.year} 第${context.term.semester}学期 (选课)`,
       }]
-      const methods = context.methods.map(item => ({ value: item.code, label: item.name }))
+      const methods = (context.methods || []).map(item => ({ value: item.code, label: item.name }))
       const colleges = [{ value: '', label: '全部学院' }].concat(
-        context.colleges.map(item => ({ value: item.code, label: item.name }))
+        (context.colleges || []).map(item => ({ value: item.code, label: item.name }))
       )
       const campuses = [{ value: '', label: '全部校区' }].concat(
-        context.campuses.map(item => ({ value: item.code, label: item.name }))
+        (context.campuses || []).map(item => ({ value: item.code, label: item.name }))
       )
       const categoryOptions = buildDefaultCategoryOptions().concat(
-        context.categories.map(item => ({ value: item.code, label: item.name }))
+        (context.categories || []).map(item => ({ value: item.code, label: item.name }))
       )
 
       await new Promise<void>((resolve) => {
