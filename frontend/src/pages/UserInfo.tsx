@@ -1,54 +1,54 @@
 import { useEffect, useState } from 'react'
-import { Card, Descriptions, Spin, message, Avatar } from 'antd'
+import { Avatar, Card, Descriptions, Spin, message } from 'antd'
 import { UserOutlined } from '@ant-design/icons'
-import { api } from '../services/api'
 import AppLayout from '../components/AppLayout'
+import { api, getApiErrorMessage } from '../services/api'
+import type { components } from '../services/openapi'
+
+type UserProfile = components['schemas']['UserProfile']
 
 export default function UserInfo() {
   const [loading, setLoading] = useState(true)
-  const [userInfo, setUserInfo] = useState<any>({})
-  const [studentInfo, setStudentInfo] = useState<any>({})
+  const [profile, setProfile] = useState<UserProfile | null>(null)
 
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+        const { data } = await api.get<UserProfile>('/me')
+        setProfile(data)
+      } catch (error: unknown) {
+        message.error(getApiErrorMessage(error, '获取用户信息失败'))
+      } finally {
+        setLoading(false)
+      }
+    }
     fetchData()
   }, [])
-
-  const fetchData = async () => {
-    try {
-      setLoading(true)
-      const [userRes, studentRes] = await Promise.all([
-        api.get('/grades/user-info'),
-        api.get('/grades/student-info')
-      ])
-      setUserInfo(userRes.data || {})
-      setStudentInfo(studentRes.data || {})
-    } catch (error) {
-      message.error('获取用户信息失败')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   return (
     <AppLayout>
       <Spin spinning={loading}>
         <Card style={{ marginBottom: 24 }}>
           <Card.Meta
-            avatar={<Avatar size={64} icon={<UserOutlined />} />}
-            title={studentInfo.XM || userInfo.name || '未命名'}
-            description={studentInfo.XH || userInfo.username}
+            avatar={<Avatar size={64} src={profile?.photo_url} icon={<UserOutlined />} />}
+            title={profile?.name || '未命名'}
+            description={profile?.student_id}
           />
         </Card>
 
         <Card title="基本信息">
           <Descriptions bordered column={2}>
-            <Descriptions.Item label="姓名">{studentInfo.XM}</Descriptions.Item>
-            <Descriptions.Item label="学号">{studentInfo.XH}</Descriptions.Item>
-            <Descriptions.Item label="年级">{studentInfo.NJMC}</Descriptions.Item>
-            <Descriptions.Item label="院系">{studentInfo.YXMC}</Descriptions.Item>
-            <Descriptions.Item label="专业">{studentInfo.ZYMC}</Descriptions.Item>
-            <Descriptions.Item label="班级">{studentInfo.BJMC}</Descriptions.Item>
-            <Descriptions.Item label="角色">{userInfo.role?.[0]?.jsmc || '学生'}</Descriptions.Item>
+            <Descriptions.Item label="姓名">{profile?.name || '-'}</Descriptions.Item>
+            <Descriptions.Item label="学号">{profile?.student_id || '-'}</Descriptions.Item>
+            <Descriptions.Item label="年级">{profile?.grade || '-'}</Descriptions.Item>
+            <Descriptions.Item label="院系">{profile?.college || '-'}</Descriptions.Item>
+            <Descriptions.Item label="专业">{profile?.major || '-'}</Descriptions.Item>
+            <Descriptions.Item label="班级">{profile?.class_name || '-'}</Descriptions.Item>
+            <Descriptions.Item label="邮箱">{profile?.email || '-'}</Descriptions.Item>
+            <Descriptions.Item label="角色">
+              {profile?.roles?.map(role => role.name).join('、') || '学生'}
+            </Descriptions.Item>
           </Descriptions>
         </Card>
       </Spin>
