@@ -1496,24 +1496,42 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * 健康检查
-         * @description ## 业务说明
-         *     检查API服务是否正常运行。
-         *
-         *     ## 使用场景
-         *     - 服务监控
-         *     - 负载均衡健康检查
-         *     - 部署验证
-         *
-         *     ## 返回数据
-         *     返回服务状态信息。
-         *
-         *     ## 注意事项
-         *     - 此接口不需要认证
-         *     - 始终返回200状态码（除非服务完全不可用）
-         */
-        get: operations["health_api_health_get"];
+        /** 兼容健康检查 */
+        get: operations["health_live_api_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/health/live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 存活检查 */
+        get: operations["health_live_api_health_live_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/health/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 就绪检查 */
+        get: operations["health_ready_api_health_ready_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5114,7 +5132,47 @@ export interface operations {
             };
         };
     };
-    health_api_health_get: {
+    health_live_api_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    health_live_api_health_live_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    health_ready_api_health_ready_get: {
         parameters: {
             query?: never;
             header?: never;

@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from .byyt.errors import BYYTRateLimited, BYYTUnavailable, BYYTUpstreamError
 from .config import CORS_ORIGINS
@@ -175,22 +176,16 @@ app.include_router(course_selection.router, prefix="/api")
 app.include_router(courses.router, prefix="/api")
 
 
-@app.get("/api/health", tags=["system"], summary="健康检查")
-async def health():
-    """
-    ## 业务说明
-    检查API服务是否正常运行。
-
-    ## 使用场景
-    - 服务监控
-    - 负载均衡健康检查
-    - 部署验证
-
-    ## 返回数据
-    返回服务状态信息。
-
-    ## 注意事项
-    - 此接口不需要认证
-    - 始终返回200状态码（除非服务完全不可用）
-    """
+@app.get("/api/health", tags=["system"], summary="兼容健康检查")
+@app.get("/api/health/live", tags=["system"], summary="存活检查")
+async def health_live():
     return {"status": "ok"}
+
+
+@app.get("/api/health/ready", tags=["system"], summary="就绪检查")
+async def health_ready():
+    try:
+        store.check_persistence()
+    except Exception:
+        return JSONResponse(status_code=503, content={"status": "unavailable"})
+    return {"status": "ready"}

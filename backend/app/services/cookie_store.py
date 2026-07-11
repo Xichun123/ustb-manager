@@ -72,6 +72,10 @@ class SessionDatabase:
             )
         os.chmod(self._database_path, 0o600)
 
+    def healthcheck(self) -> None:
+        with self._connect() as connection:
+            connection.execute("SELECT 1").fetchone()
+
     def save(
         self,
         session_token: str,

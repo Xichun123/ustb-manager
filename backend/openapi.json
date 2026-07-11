@@ -5909,8 +5909,7 @@
     },
     "/api/health": {
       "get": {
-        "description": "## 业务说明\n检查API服务是否正常运行。\n\n## 使用场景\n- 服务监控\n- 负载均衡健康检查\n- 部署验证\n\n## 返回数据\n返回服务状态信息。\n\n## 注意事项\n- 此接口不需要认证\n- 始终返回200状态码（除非服务完全不可用）",
-        "operationId": "health_api_health_get",
+        "operationId": "health_live_api_health_get",
         "responses": {
           "200": {
             "content": {
@@ -5921,7 +5920,45 @@
             "description": "Successful Response"
           }
         },
-        "summary": "健康检查",
+        "summary": "兼容健康检查",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/health/live": {
+      "get": {
+        "operationId": "health_live_api_health_live_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "存活检查",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/health/ready": {
+      "get": {
+        "operationId": "health_ready_api_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "就绪检查",
         "tags": [
           "system"
         ]

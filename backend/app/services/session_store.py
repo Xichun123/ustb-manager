@@ -87,6 +87,9 @@ class SessionStore:
             raise RuntimeError("Session persistence is not configured")
         return self._persistence
 
+    def check_persistence(self) -> None:
+        self._require_persistence().healthcheck()
+
     def _is_expired(self, session: Session, now: float) -> bool:
         return now - session.last_seen >= self._ttl or now - session.created_at >= self._max_age
 
