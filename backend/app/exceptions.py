@@ -2,12 +2,17 @@
 
 import logging
 
-from fastapi import Request
+from fastapi import HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.byyt.errors import BYYTRateLimited, BYYTUnavailable, BYYTUpstreamError
 
 logger = logging.getLogger(__name__)
+
+
+class AuthenticationRequired(Exception):
+    """请求缺少有效的项目会话。"""
 
 
 class BYYTSessionExpired(Exception):
@@ -48,6 +53,47 @@ def _error_response(
                 "request_id": _request_id(request),
             }
         },
+    )
+
+
+async def authentication_required_handler(request: Request, exc: AuthenticationRequired):
+    return _error_response(
+        request,
+        status_code=401,
+        code="AUTH_REQUIRED",
+        message="请先登录",
+        retryable=False,
+    )
+
+
+async def http_exception_handler(request: Request, exc: HTTPException):
+    codes = {
+        400: "BAD_REQUEST",
+        401: "AUTH_FAILED",
+        403: "FORBIDDEN",
+        404: "NOT_FOUND",
+        409: "CONFLICT",
+        429: "REQUEST_RATE_LIMITED",
+        502: "UPSTREAM_BAD_RESPONSE",
+        503: "UPSTREAM_UNAVAILABLE",
+    }
+    message = exc.detail if isinstance(exc.detail, str) else "请求失败"
+    return _error_response(
+        request,
+        status_code=exc.status_code,
+        code=codes.get(exc.status_code, "REQUEST_ERROR"),
+        message=message,
+        retryable=exc.status_code in {429, 502, 503},
+    )
+
+
+async def validation_error_handler(request: Request, exc: RequestValidationError):
+    return _error_response(
+        request,
+        status_code=422,
+        code="VALIDATION_ERROR",
+        message="请求参数无效",
+        retryable=False,
     )
 
 

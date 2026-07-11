@@ -7,6 +7,7 @@ from fastapi import Depends, HTTPException, Request, Security
 from fastapi.security import APIKeyCookie, HTTPAuthorizationCredentials, HTTPBearer
 
 from .config import COOKIE_NAME, CORS_ORIGINS
+from .exceptions import AuthenticationRequired
 from .services.session_store import Session, store
 
 _bearer_scheme = HTTPBearer(auto_error=False)
@@ -45,13 +46,10 @@ def get_authenticated_session(
 ) -> Session:
     """获取已认证的 Cookie/Bearer 共用会话。"""
     if not session_token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        raise AuthenticationRequired
 
     session = store.get(session_token)
-    if not session:
-        raise HTTPException(status_code=401, detail="Session not found")
-
-    if not session.authenticated:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+    if not session or not session.authenticated:
+        raise AuthenticationRequired
 
     return session

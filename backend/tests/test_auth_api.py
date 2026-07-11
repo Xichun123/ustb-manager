@@ -17,6 +17,14 @@ from app.services.session_store import AuthState, SessionStore
 SECRET_UPSTREAM_DETAIL = "SECRET_UPSTREAM_DETAIL"
 
 
+def assert_error(response, code: str, message: str):
+    error = response.json()["error"]
+    assert error["code"] == code
+    assert error["message"] == message
+    assert error["request_id"]
+    assert response.headers["X-Request-ID"] == error["request_id"]
+
+
 class CapturingSessionStore(SessionStore):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -98,7 +106,7 @@ def test_qr_init_hides_upstream_error_and_removes_the_new_session(monkeypatch):
         response = client.post("/api/auth/qr/init")
 
     assert response.status_code == 502
-    assert response.json() == {"detail": "二维码登录初始化失败，请稍后重试"}
+    assert_error(response, "UPSTREAM_BAD_RESPONSE", "二维码登录初始化失败，请稍后重试")
     assert SECRET_UPSTREAM_DETAIL not in response.text
     assert session_store.get(session_store.created_session_id) is None
     assert session_store.created_session.client.is_closed
@@ -117,7 +125,7 @@ def test_sms_init_hides_upstream_error_and_removes_the_new_session(monkeypatch):
         response = client.post("/api/auth/sms/init")
 
     assert response.status_code == 502
-    assert response.json() == {"detail": "短信登录初始化失败，请稍后重试"}
+    assert_error(response, "UPSTREAM_BAD_RESPONSE", "短信登录初始化失败，请稍后重试")
     assert SECRET_UPSTREAM_DETAIL not in response.text
     assert session_store.get(session_store.created_session_id) is None
     assert session_store.created_session.client.is_closed
@@ -140,7 +148,7 @@ def test_sms_send_masks_upstream_rate_limit_detail(monkeypatch):
         response = client.post("/api/auth/sms/send", json={"phone": "13800138000"})
 
     assert response.status_code == 429
-    assert response.json() == {"detail": "短信发送过于频繁，请稍后重试"}
+    assert_error(response, "REQUEST_RATE_LIMITED", "短信发送过于频繁，请稍后重试")
     assert SECRET_UPSTREAM_DETAIL not in response.text
 
 
@@ -162,7 +170,7 @@ def test_sms_send_hides_non_rate_limit_failures(monkeypatch, exception_type):
         response = client.post("/api/auth/sms/send", json={"phone": "13800138000"})
 
     assert response.status_code == 502
-    assert response.json() == {"detail": "短信服务暂时不可用，请稍后重试"}
+    assert_error(response, "UPSTREAM_BAD_RESPONSE", "短信服务暂时不可用，请稍后重试")
     assert SECRET_UPSTREAM_DETAIL not in response.text
 
 
@@ -186,7 +194,7 @@ def test_sms_verify_hides_invalid_login_detail(monkeypatch, exception_type):
         )
 
     assert response.status_code == 401
-    assert response.json() == {"detail": "验证码无效或登录状态已失效"}
+    assert_error(response, "AUTH_FAILED", "验证码无效或登录状态已失效")
     assert SECRET_UPSTREAM_DETAIL not in response.text
 
 
@@ -210,7 +218,7 @@ def test_sms_verify_hides_unexpected_failure_and_logs_only_the_exception_type(mo
         )
 
     assert response.status_code == 502
-    assert response.json() == {"detail": "短信登录完成失败，请稍后重试"}
+    assert_error(response, "UPSTREAM_BAD_RESPONSE", "短信登录完成失败，请稍后重试")
     assert SECRET_UPSTREAM_DETAIL not in response.text
     assert SECRET_UPSTREAM_DETAIL not in caplog.text
     assert "RuntimeError" in caplog.text
@@ -290,7 +298,7 @@ def test_cookie_login_rejects_explicitly_invalid_upstream_sessions(monkeypatch, 
         response = client.post("/api/auth/cookie/login", json={"cookies": "SESSION=value"})
 
     assert response.status_code == 401
-    assert response.json() == {"detail": "Cookie无效或已过期"}
+    assert_error(response, "AUTH_FAILED", "Cookie无效或已过期")
     assert session_store.get(session_store.created_session_id) is None
     assert session_store.created_session.client.is_closed
 
@@ -312,7 +320,7 @@ def test_cookie_login_treats_html_5xx_as_a_temporary_failure(monkeypatch):
         response = client.post("/api/auth/cookie/login", json={"cookies": "SESSION=value"})
 
     assert response.status_code == 502
-    assert response.json() == {"detail": "Cookie登录失败，请稍后重试"}
+    assert_error(response, "UPSTREAM_BAD_RESPONSE", "Cookie登录失败，请稍后重试")
     assert session_store.get(session_store.created_session_id) is None
     assert session_store.created_session.client.is_closed
 
@@ -333,7 +341,7 @@ def test_cookie_login_hides_temporary_timeout_detail(monkeypatch):
         response = client.post("/api/auth/cookie/login", json={"cookies": "SESSION=value"})
 
     assert response.status_code == 502
-    assert response.json() == {"detail": "Cookie登录失败，请稍后重试"}
+    assert_error(response, "UPSTREAM_BAD_RESPONSE", "Cookie登录失败，请稍后重试")
     assert SECRET_UPSTREAM_DETAIL not in response.text
     assert "TOP_SECRET_COOKIE" not in response.text
     assert session_store.get(session_store.created_session_id) is None
@@ -367,7 +375,7 @@ def test_cookie_login_treats_malformed_upstream_data_as_a_temporary_failure(
         response = client.post("/api/auth/cookie/login", json={"cookies": "SESSION=value"})
 
     assert response.status_code == 502
-    assert response.json() == {"detail": "Cookie登录失败，请稍后重试"}
+    assert_error(response, "UPSTREAM_BAD_RESPONSE", "Cookie登录失败，请稍后重试")
     assert session_store.get(session_store.created_session_id) is None
     assert session_store.created_session.client.is_closed
 
@@ -396,7 +404,7 @@ def test_cookie_login_rejects_malformed_input_without_upstream_detail(monkeypatc
         )
 
     assert response.status_code == 400
-    assert response.json() == {"detail": "Cookie格式不正确"}
+    assert_error(response, "BAD_REQUEST", "Cookie格式不正确")
     assert SECRET_UPSTREAM_DETAIL not in response.text
 
 
@@ -424,7 +432,7 @@ def test_cookie_login_hides_unexpected_failure_and_logs_only_the_exception_type(
         response = client.post("/api/auth/cookie/login", json={"cookies": "SESSION=value"})
 
     assert response.status_code == 502
-    assert response.json() == {"detail": "Cookie登录失败，请稍后重试"}
+    assert_error(response, "UPSTREAM_BAD_RESPONSE", "Cookie登录失败，请稍后重试")
     assert SECRET_UPSTREAM_DETAIL not in response.text
     assert "TOP_SECRET_COOKIE" not in response.text
     assert SECRET_UPSTREAM_DETAIL not in caplog.text

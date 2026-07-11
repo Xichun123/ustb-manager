@@ -2,7 +2,8 @@ import logging
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -22,10 +23,12 @@ from .api import (
     wifi,
 )
 from .exceptions import (
+    AuthenticationRequired,
     BYYTSessionExpired,
     CourseConflict,
     CourseOperationBlocked,
     IdempotencyKeyReused,
+    authentication_required_handler,
     byyt_rate_limited_handler,
     byyt_session_expired_handler,
     byyt_unavailable_handler,
@@ -33,7 +36,9 @@ from .exceptions import (
     course_conflict_handler,
     course_operation_blocked_handler,
     generic_exception_handler,
+    http_exception_handler,
     idempotency_key_reused_handler,
+    validation_error_handler,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -155,6 +160,9 @@ app.add_middleware(
 )
 
 # 全局异常处理器
+app.add_exception_handler(AuthenticationRequired, authentication_required_handler)
+app.add_exception_handler(HTTPException, http_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_error_handler)
 app.add_exception_handler(BYYTSessionExpired, byyt_session_expired_handler)
 app.add_exception_handler(BYYTRateLimited, byyt_rate_limited_handler)
 app.add_exception_handler(BYYTUnavailable, byyt_unavailable_handler)
