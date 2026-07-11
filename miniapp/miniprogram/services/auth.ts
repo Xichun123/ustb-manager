@@ -1,8 +1,10 @@
 import { request, get, post } from './api'
+import type { components } from './openapi'
 import { clearAll, setSessionId, setUserInfo } from '../utils/storage'
 
 const app = getApp<IAppOption>()
 let authFlowVersion = 0
+type UserProfile = components['schemas']['UserProfile']
 
 function getErrorMessage(data: unknown, fallback: string): string {
   if (typeof data === 'string' && data) {
@@ -197,13 +199,13 @@ export async function logout(): Promise<void> {
 /** Fetch and cache user info after login */
 export async function fetchAndCacheUserInfo(): Promise<void> {
   try {
-    const info = await get<any>('/api/grades/student-info')
+    const profile = await get<UserProfile>('/api/me')
     const userInfo = {
-      name: info.XM || '',
-      student_id: info.XH || '',
-      dept: info.YXMC || '',
-      major: info.ZYMC || '',
-      class_name: info.BJMC || '',
+      name: profile.name,
+      student_id: profile.student_id,
+      dept: profile.college,
+      major: profile.major,
+      class_name: profile.class_name,
     }
     setUserInfo(userInfo)
     app.globalData.userInfo = userInfo
