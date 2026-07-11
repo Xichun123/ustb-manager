@@ -1,176 +1,115 @@
-import { useEffect, useState } from 'react'
-import { Table, Card, Statistic, Row, Col, message } from 'antd'
-import type { ColumnsType } from 'antd/es/table'
-import { api } from '../services/api'
+import { useCallback, useEffect, useState } from 'react'
+import { Card, Col, Row, Statistic, Table, message } from 'antd'
+import type { ColumnsType, TablePaginationConfig } from 'antd/es/table'
 import AppLayout from '../components/AppLayout'
+import { api, getApiErrorMessage } from '../services/api'
+import type { components } from '../services/openapi'
 
-interface Grade {
-  xnxq: string
-  kcdm: string
-  kcmc: string
-  kcmc_en: string
-  xf: string
-  xs: string
-  xscj: string
-  zpcj: string
-  kcxzmc: string
-  kclbmc: string
-  jsxm: string
-  kkdw: string
-  bkcxbj: string
-}
+type Grade = components['schemas']['GradeRecord']
+type GradePage = components['schemas']['GradePage']
+type GradeSummary = components['schemas']['GradeSummary']
 
-interface GPAStats {
-  gpa: number
-  total_credits: number
-  passed_credits: number
-  failed_count: number
-}
+const PAGE_SIZE = 50
 
 export default function Grades() {
   const [grades, setGrades] = useState<Grade[]>([])
-  const [gpaStats, setGpaStats] = useState<GPAStats | null>(null)
+  const [summary, setSummary] = useState<GradeSummary | null>(null)
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
 
-  useEffect(() => {
-    fetchGrades()
-  }, [])
-
-  const fetchGrades = async () => {
+  const fetchGrades = useCallback(async (nextPage: number) => {
     try {
       setLoading(true)
-      const { data } = await api.get('/grades/list', {
-        params: { page_size: 200 }
-      })
-      setGrades(data.grades)
-      setGpaStats(data.gpa_stats)
-      setTotal(data.total)
-    } catch (error) {
-      message.error('获取成绩失败')
+      const [gradesRes, summaryRes] = await Promise.all([
+        api.get<GradePage>('/grades', { params: { page: nextPage, page_size: PAGE_SIZE } }),
+        api.get<GradeSummary>('/grades/summary'),
+      ])
+      setGrades(gradesRes.data.items || [])
+      setTotal(gradesRes.data.total)
+      setSummary(summaryRes.data)
+    } catch (error: unknown) {
+      message.error(getApiErrorMessage(error, '获取成绩失败'))
     } finally {
       setLoading(false)
     }
+  }, [])
+
+  useEffect(() => {
+    fetchGrades(page)
+  }, [fetchGrades, page])
+
+  const handleTableChange = (pagination: TablePaginationConfig) => {
+    setPage(pagination.current || 1)
   }
 
   const columns: ColumnsType<Grade> = [
     {
       title: '学年学期',
-      dataIndex: 'xnxq',
-      key: 'xnxq',
-      width: 120,
+      dataIndex: 'term',
+      key: 'term',
+      width: 130,
       fixed: 'left',
     },
     {
       title: '课程名称',
-      dataIndex: 'kcmc',
-      key: 'kcmc',
-      width: 200,
+      dataIndex: 'course_name',
+      key: 'course_name',
+      width: 220,
       fixed: 'left',
     },
     {
       title: '成绩',
-      dataIndex: 'xscj',
-      key: 'xscj',
+      dataIndex: 'score',
+      key: 'score',
       width: 80,
-      render: (score: string) => {
-        const numScore = parseFloat(score)
+      render: (score: string, record) => {
+        const numeric = record.score_numeric
         let color = 'inherit'
-        if (!isNaN(numScore)) {
-          if (numScore >= 90) color = '#52c41a'
-          else if (numScore >= 80) color = '#1890ff'
-          else if (numScore >= 70) color = '#faad14'
-          else if (numScore >= 60) color = '#ff7a45'
+        if (numeric !== null && numeric !== undefined) {
+          if (numeric >= 90) color = '#52c41a'
+          else if (numeric >= 80) color = '#1890ff'
+          else if (numeric >= 70) color = '#faad14'
+          else if (numeric >= 60) color = '#ff7a45'
           else color = '#f5222d'
         }
         return <span style={{ color, fontWeight: 'bold' }}>{score}</span>
       },
     },
-    {
-      title: '学分',
-      dataIndex: 'xf',
-      key: 'xf',
-      width: 80,
-    },
-    {
-      title: '学时',
-      dataIndex: 'xs',
-      key: 'xs',
-      width: 80,
-    },
-    {
-      title: '课程性质',
-      dataIndex: 'kcxzmc',
-      key: 'kcxzmc',
-      width: 100,
-      render: (text: string) => text || '-',
-    },
-    {
-      title: '课程类别',
-      dataIndex: 'kclbmc',
-      key: 'kclbmc',
-      width: 120,
-      render: (text: string) => text || '-',
-    },
-    {
-      title: '教师',
-      dataIndex: 'jsxm',
-      key: 'jsxm',
-      width: 100,
-    },
-    {
-      title: '开课单位',
-      dataIndex: 'kkdw',
-      key: 'kkdw',
-      width: 180,
-    },
-    {
-      title: '标记',
-      dataIndex: 'bkcxbj',
-      key: 'bkcxbj',
-      width: 100,
-    },
+    { title: '学分', dataIndex: 'credit', key: 'credit', width: 80 },
+    { title: '学时', dataIndex: 'hours', key: 'hours', width: 80, render: value => value ?? '-' },
+    { title: '课程性质', dataIndex: 'course_nature', key: 'course_nature', width: 110, render: value => value || '-' },
+    { title: '课程类别', dataIndex: 'course_category', key: 'course_category', width: 130, render: value => value || '-' },
+    { title: '开课单位', dataIndex: 'college', key: 'college', width: 180, render: value => value || '-' },
+    { title: '考试次数', dataIndex: 'exam_attempt', key: 'exam_attempt', width: 100, render: value => value || '-' },
   ]
 
   return (
     <AppLayout>
-      {gpaStats && (
+      {summary && (
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
           <Col xs={12} sm={12} md={6}>
             <Card>
-              <Statistic
-                title="GPA"
-                value={gpaStats.gpa}
-                precision={2}
-                valueStyle={{ color: gpaStats.gpa >= 3.5 ? '#3f8600' : gpaStats.gpa >= 3.0 ? '#1890ff' : '#cf1322' }}
-              />
+              <Statistic title="官方 GPA" value={summary.official_gpa ?? '-'} precision={2} />
             </Card>
           </Col>
           <Col xs={12} sm={12} md={6}>
             <Card>
-              <Statistic
-                title="总学分"
-                value={gpaStats.total_credits}
-                precision={1}
-              />
+              <Statistic title="已获学分" value={summary.earned_credits} precision={1} />
             </Card>
           </Col>
           <Col xs={12} sm={12} md={6}>
             <Card>
-              <Statistic
-                title="已获学分"
-                value={gpaStats.passed_credits}
-                precision={1}
-                valueStyle={{ color: '#3f8600' }}
-              />
+              <Statistic title="已通过课程" value={summary.passed_courses} suffix="门" />
             </Card>
           </Col>
           <Col xs={12} sm={12} md={6}>
             <Card>
               <Statistic
                 title="不及格课程"
-                value={gpaStats.failed_count}
-                valueStyle={{ color: gpaStats.failed_count > 0 ? '#cf1322' : '#3f8600' }}
+                value={summary.failed_courses}
+                valueStyle={{ color: summary.failed_courses > 0 ? '#cf1322' : '#3f8600' }}
+                suffix="门"
               />
             </Card>
           </Col>
@@ -181,13 +120,16 @@ export default function Grades() {
         <Table
           columns={columns}
           dataSource={grades}
-          rowKey={(record) => `${record.xnxq}-${record.kcdm}-${record.bkcxbj}`}
+          rowKey="id"
           loading={loading}
-          scroll={{ x: 1400 }}
+          scroll={{ x: 1200 }}
+          onChange={handleTableChange}
           pagination={{
+            current: page,
             total,
-            pageSize: 200,
-            showTotal: (total) => `共 ${total} 条`,
+            pageSize: PAGE_SIZE,
+            showSizeChanger: false,
+            showTotal: count => `共 ${count} 条`,
           }}
         />
       </Card>
