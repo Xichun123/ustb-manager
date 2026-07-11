@@ -146,3 +146,13 @@ export function post<T = any>(url: string, data?: any, options?: Partial<Request
     throw new Error(`请求失败: ${res.statusCode}`)
   })
 }
+
+/** DELETE request */
+export function del<T = any>(url: string, data?: any, options?: Partial<RequestOptions>): Promise<T> {
+  return request<T>({ url, method: 'DELETE', data, ...options }).then(res => {
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return res.data
+    }
+    throw new Error(`请求失败: ${res.statusCode}`)
+  })
+}

@@ -1,7 +1,56 @@
-import { get, post } from '../../services/api'
+import { del, get, post } from '../../services/api'
 import { getCoursesPageState, setCoursesPageState } from '../../utils/storage'
 
 const app = getApp<IAppOption>()
+
+interface CourseSelectionRecord {
+  course_id: string
+  selection_id?: string | null
+  course_code: string
+  course_name: string
+  course_name_en: string
+  course_nature: string
+  course_category: string
+  credits: number
+  hours?: number | null
+  method: string
+  college: string
+  campus: string
+  capacity?: number | null
+  selected_count?: number | null
+  teacher: string
+  schedule_time: string
+  schedule_location: string
+  selection_status: string
+  is_selected: boolean
+}
+
+interface CourseSelectionContext {
+  term: { year: string; semester: string; code: string }
+  methods: Array<{ code: string; name: string }>
+  colleges: Array<{ code: string; name: string }>
+  categories: Array<{ code: string; name: string }>
+  campuses: Array<{ code: string; name: string }>
+}
+
+interface CoursePage {
+  items?: CourseSelectionRecord[]
+}
+
+interface CourseWriteResponse {
+  success: boolean
+  message: string
+}
+
+interface PreflightResponse {
+  allowed: boolean
+  status: 'clear' | 'conflict' | 'blocked' | 'unknown'
+  message: string
+}
+
+function idempotencyKey() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+}
 
 function buildDefaultCategoryOptions() {
   return [{ value: '', label: '全部类别' }]
@@ -16,8 +65,8 @@ function buildInitialData() {
     loading: !persisted,
     refreshing: false,
     viewMode: persisted && persisted.viewMode ? persisted.viewMode : ('selected' as 'selected' | 'available'),
-    rawCourses: persisted && Array.isArray(persisted.rawCourses) ? persisted.rawCourses : ([] as any[]),
-    displayCourses: persisted && Array.isArray(persisted.displayCourses) ? persisted.displayCourses : ([] as any[]),
+    rawCourses: persisted && Array.isArray(persisted.rawCourses) ? persisted.rawCourses : ([] as CourseSelectionRecord[]),
+    displayCourses: persisted && Array.isArray(persisted.displayCourses) ? persisted.displayCourses : ([] as CourseSelectionRecord[]),
     totalCredits: persisted ? persisted.totalCredits : 0,
     totalHours: persisted ? persisted.totalHours : 0,
     courseCount: persisted ? persisted.courseCount : 0,
@@ -131,40 +180,22 @@ Page({
       this.setData({ refreshing: true })
     }
     try {
-      const results = await Promise.all([
-        get('/api/courses/term-info'),
-        get('/api/courses/term-list'),
-        get('/api/courses/colleges').catch(() => []),
-        get('/api/courses/campuses').catch(() => []),
-      ])
-
-      const termInfo = results[0]
-      const termListRes = Array.isArray(results[1]) ? results[1] : []
-      const collegesRes = Array.isArray(results[2]) ? results[2] : []
-      const campusesRes = Array.isArray(results[3]) ? results[3] : []
-
-      const currentXn = termInfo.p_xn || termInfo.p_dqxn || ''
-      const currentXq = termInfo.p_xq || termInfo.p_dqxq || ''
-      const selectedTermValue = termInfo.p_xnxq || (termListRes[0] && termListRes[0].dm) || ''
-
-      const termList = termListRes.map((item: any) => ({
-        value: item.dm,
-        label: item.mc + (item.dm === termInfo.p_xnxq ? ' (选课)' : ''),
-      }))
-
-      let selectedTermIdx = 0
-      for (let i = 0; i < termList.length; i += 1) {
-        if (termList[i].value === selectedTermValue) {
-          selectedTermIdx = i
-          break
-        }
-      }
-
+      const context = await get<CourseSelectionContext>('/api/course-selection/context')
+      const currentXn = context.term.year
+      const currentXq = context.term.semester
+      const termList = [{
+        value: context.term.code,
+        label: `${context.term.year} 第${context.term.semester}学期 (选课)`,
+      }]
+      const methods = context.methods.map(item => ({ value: item.code, label: item.name }))
       const colleges = [{ value: '', label: '全部学院' }].concat(
-        collegesRes.map((item: any) => ({ value: item.code, label: item.name }))
+        context.colleges.map(item => ({ value: item.code, label: item.name }))
       )
       const campuses = [{ value: '', label: '全部校区' }].concat(
-        campusesRes.map((item: any) => ({ value: item.code, label: item.name }))
+        context.campuses.map(item => ({ value: item.code, label: item.name }))
+      )
+      const categoryOptions = buildDefaultCategoryOptions().concat(
+        context.categories.map(item => ({ value: item.code, label: item.name }))
       )
 
       await new Promise<void>((resolve) => {
@@ -173,9 +204,11 @@ Page({
             currentXn,
             currentXq,
             termList,
-            selectedTermIdx,
+            selectedTermIdx: 0,
+            methods,
             colleges,
             campuses,
+            categoryOptions,
           },
           () => resolve()
         )
@@ -225,24 +258,18 @@ Page({
     return category ? category.value : ''
   },
 
-  applyCourseFilters(rawCourses?: any[]) {
+  applyCourseFilters(rawCourses?: CourseSelectionRecord[]) {
     const source = rawCourses || this.data.rawCourses
     const viewMode = this.data.viewMode
     const searchText = String(this.data.searchText || '').trim().toLowerCase()
-    const selectedCategory = this.getSelectedCategoryValue()
-
     let displayCourses = source.slice()
 
     if (viewMode === 'available') {
       displayCourses = displayCourses.filter((item: any) => !item.is_selected)
     }
 
-    if (selectedCategory) {
-      displayCourses = displayCourses.filter((item: any) => item.category === selectedCategory)
-    }
-
     if (searchText) {
-      displayCourses = displayCourses.filter((item: any) => {
+      displayCourses = displayCourses.filter((item: CourseSelectionRecord) => {
         const courseName = String(item.course_name || '').toLowerCase()
         const courseCode = String(item.course_code || '').toLowerCase()
         const teacher = String(item.teacher || '').toLowerCase()
@@ -254,10 +281,10 @@ Page({
       })
     }
 
-    const totalCredits = displayCourses.reduce((sum: number, item: any) => sum + (parseFloat(item.credits || '0') || 0), 0)
-    const totalHours = displayCourses.reduce((sum: number, item: any) => sum + (parseFloat(item.hours || '0') || 0), 0)
+    const totalCredits = displayCourses.reduce((sum: number, item: CourseSelectionRecord) => sum + item.credits, 0)
+    const totalHours = displayCourses.reduce((sum: number, item: CourseSelectionRecord) => sum + (item.hours || 0), 0)
     const collegeMap: Record<string, boolean> = {}
-    displayCourses.forEach((item: any) => {
+    displayCourses.forEach((item: CourseSelectionRecord) => {
       const college = String(item.college || '').trim()
       if (college) {
         collegeMap[college] = true
@@ -278,20 +305,6 @@ Page({
     )
   },
 
-  buildCategoryOptions(rawCourses: any[]) {
-    const labels: string[] = []
-    rawCourses.forEach((item: any) => {
-      const label = String(item.category || '').trim()
-      if (label && labels.indexOf(label) === -1) {
-        labels.push(label)
-      }
-    })
-    labels.sort()
-    return buildDefaultCategoryOptions().concat(
-      labels.map(label => ({ value: label, label }))
-    )
-  },
-
   async loadCourses(options?: { showLoading?: boolean }) {
     const showLoading = !!(options && options.showLoading)
     if (showLoading) {
@@ -302,54 +315,41 @@ Page({
     const method = this.getSelectedMethodValue()
     const college = this.getSelectedCollegeValue()
     const campus = this.getSelectedCampusValue()
+    const category = this.getSelectedCategoryValue()
 
     let currentXn = this.data.currentXn
     let currentXq = this.data.currentXq
     if (selectedTermValue && selectedTermValue.length > 9) {
       currentXn = selectedTermValue.slice(0, 9)
-      currentXq = selectedTermValue.slice(9)
+      currentXq = selectedTermValue.slice(-1)
     }
 
     try {
-      let res: any
+      let res: CoursePage
       if (viewMode === 'selected') {
-        res = await get('/api/courses/selected', { xn: currentXn, xq: currentXq })
+        res = await get<CoursePage>('/api/course-selection/selected', {
+          year: currentXn,
+          semester: currentXq,
+        })
       } else {
-        res = await get('/api/courses/available', {
-          xn: currentXn,
-          xq: currentXq,
+        res = await get<CoursePage>('/api/course-selection/courses', {
+          year: currentXn,
+          semester: currentXq,
           method,
           college,
+          category,
           campus,
+          page: 1,
+          page_size: 100,
         })
       }
 
-      const rawCourses = res && Array.isArray(res.courses) ? res.courses : []
-      const categoryOptions = this.buildCategoryOptions(rawCourses)
-      let selectedCategoryIdx = this.data.selectedCategoryIdx
-      if (selectedCategoryIdx >= categoryOptions.length) {
-        selectedCategoryIdx = 0
-      }
-      const selectedCategoryValue = this.getSelectedCategoryValue()
-      let stillExists = false
-      for (let i = 0; i < categoryOptions.length; i += 1) {
-        if (categoryOptions[i].value === selectedCategoryValue) {
-          stillExists = true
-          selectedCategoryIdx = i
-          break
-        }
-      }
-      if (!stillExists) {
-        selectedCategoryIdx = 0
-      }
-
+      const rawCourses = res && Array.isArray(res.items) ? res.items : []
       this.setData(
         {
           currentXn,
           currentXq,
           rawCourses,
-          categoryOptions,
-          selectedCategoryIdx,
         },
         () => {
           this.applyCourseFilters(rawCourses)
@@ -365,8 +365,6 @@ Page({
           totalHours: 0,
           courseCount: 0,
           collegeCount: 0,
-          categoryOptions: buildDefaultCategoryOptions(),
-          selectedCategoryIdx: 0,
         })
         this.persistState()
       }
@@ -414,7 +412,6 @@ Page({
         selectedCollegeIdx: 0,
         selectedCampusIdx: 0,
         selectedCategoryIdx: 0,
-        categoryOptions: buildDefaultCategoryOptions(),
       },
       () => {
         this.persistState()
@@ -430,7 +427,7 @@ Page({
     let currentXq = this.data.currentXq
     if (term && term.value && term.value.length > 9) {
       currentXn = term.value.slice(0, 9)
-      currentXq = term.value.slice(9)
+      currentXq = term.value.slice(-1)
     }
     this.setData(
       {
@@ -438,7 +435,6 @@ Page({
         currentXn,
         currentXq,
         selectedCategoryIdx: 0,
-        categoryOptions: buildDefaultCategoryOptions(),
       },
       () => {
         this.persistState()
@@ -456,7 +452,6 @@ Page({
         selectedCollegeIdx: 0,
         selectedCampusIdx: 0,
         selectedCategoryIdx: 0,
-        categoryOptions: buildDefaultCategoryOptions(),
       },
       () => {
         this.persistState()
@@ -484,7 +479,8 @@ Page({
   onCategoryChange(e: any) {
     const selectedCategoryIdx = parseInt(e.detail.value, 10) || 0
     this.setData({ selectedCategoryIdx }, () => {
-      this.applyCourseFilters()
+      this.persistState()
+      this.loadCourses({ showLoading: true })
     })
   },
 
@@ -501,40 +497,21 @@ Page({
 
     const lines = [
       `课程代码: ${course.course_code || '--'}`,
-      `课序号: ${course.class_number || '--'}`,
-      `课程性质: ${course.course_type || '--'}`,
-      `课程类别: ${course.category || '--'}`,
+      `课程性质: ${course.course_nature || '--'}`,
+      `课程类别: ${course.course_category || '--'}`,
       `学分/学时: ${course.credits || '--'} / ${course.hours || '--'}`,
-      `选课方式: ${course.selection_method || '--'}`,
+      `选课方式: ${course.method || '--'}`,
       `教师: ${course.teacher || '--'}`,
       `学院: ${course.college || '--'}`,
       `校区: ${course.campus || '--'}`,
       `容量: ${course.selected_count || '0'}/${course.capacity || '0'}`,
     ]
 
-    if (course.selection_time) {
-      lines.push(`选课时间: ${course.selection_time}`)
-    }
-    if (course.withdraw_start || course.withdraw_end) {
-      lines.push(`退选时间: ${(course.withdraw_start || '--')} ~ ${(course.withdraw_end || '--')}`)
-    }
     if (course.schedule_time || course.schedule_location) {
       lines.push(`上课安排: ${(course.schedule_time || '--')} ${(course.schedule_location || '')}`.trim())
     }
-    if (course.task_name) {
-      lines.push(`任务名称: ${course.task_name}`)
-    }
     if (course.selection_status) {
       lines.push(`状态: ${course.selection_status}`)
-    }
-    if (course.lottery_status) {
-      lines.push(`抽签状态: ${course.lottery_status}`)
-    }
-    if (course.needs_payment) {
-      lines.push('提示: 该课程需要缴费')
-    }
-    if (course.needs_approval) {
-      lines.push('提示: 该课程需要审核')
     }
 
     wx.showModal({
@@ -555,20 +532,20 @@ Page({
     const course = this.data.displayCourses[idx]
     if (!course) return
 
-    const courseId = course.task_id
+    const courseId = course.course_id
     const method = this.getSelectedMethodValue()
 
-    this.setData({ checkingConflictId: course.task_id })
+    this.setData({ checkingConflictId: course.course_id })
     try {
-      const res = await post('/api/courses/check-conflict', {
+      const res = await post<PreflightResponse>('/api/course-selection/preflight', {
         course_id: courseId,
         method,
       })
 
-      if (res.has_conflict) {
+      if (!res.allowed) {
         wx.showModal({
-          title: '存在时间冲突',
-          content: res.message || '该课程与已选课程存在时间冲突，请重新选择。',
+          title: res.status === 'conflict' ? '存在时间冲突' : '暂不可选',
+          content: res.message || '该课程当前不可选择。',
           showCancel: false,
         })
       } else {
@@ -600,12 +577,16 @@ Page({
     })
     if (!confirmed) return
 
-    this.setData({ selectingCourseId: course.task_id })
+    this.setData({ selectingCourseId: course.course_id })
     try {
-      const res = await post('/api/courses/select', {
-        course_id: course.task_id,
-        method: this.getSelectedMethodValue(),
-      })
+      const res = await post<CourseWriteResponse>(
+        '/api/course-selection/selections',
+        {
+          course_id: course.course_id,
+          method: this.getSelectedMethodValue(),
+        },
+        { header: { 'Idempotency-Key': idempotencyKey() } }
+      )
       if (res.success) {
         wx.showToast({ title: '选课成功', icon: 'success' })
         await this.loadCourses({ showLoading: false })
@@ -635,12 +616,14 @@ Page({
     })
     if (!confirmed) return
 
-    this.setData({ droppingCourseId: course.task_id })
+    this.setData({ droppingCourseId: course.course_id })
     try {
-      const res = await post('/api/courses/drop', {
-        course_id: course.internal_id || course.task_id,
-        method: course.selection_method_code || this.getSelectedMethodValue(),
-      })
+      const selectionId = course.selection_id || course.course_id
+      const res = await del<CourseWriteResponse>(
+        `/api/course-selection/selections/${encodeURIComponent(selectionId)}`,
+        undefined,
+        { header: { 'Idempotency-Key': idempotencyKey() } }
+      )
       if (res.success) {
         wx.showToast({ title: '退课成功', icon: 'success' })
         await this.loadCourses({ showLoading: false })

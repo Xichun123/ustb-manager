@@ -94,7 +94,7 @@
       <view
         class="course-item"
         wx:for="{{displayCourses}}"
-        wx:key="task_id"
+        wx:key="course_id"
         data-index="{{index}}"
         bindtap="onCourseClick"
       >
@@ -103,7 +103,7 @@
             <text class="course-name">{{item.course_name}}</text>
             <text class="course-code">{{item.course_code}}</text>
           </view>
-          <text class="tag {{item.course_type === '必修' ? 'tag-red' : 'tag-blue'}}">{{item.course_type || '课程'}}</text>
+          <text class="tag {{item.course_nature === '必修' ? 'tag-red' : 'tag-blue'}}">{{item.course_nature || '课程'}}</text>
         </view>
 
         <view class="course-meta-row">
@@ -111,8 +111,8 @@
           <text class="capacity-tag">{{item.selected_count || 0}}/{{item.capacity || 0}}</text>
         </view>
 
-        <view class="course-meta-row secondary" wx:if="{{item.college || item.campus || item.selection_method}}">
-          <text class="course-subinfo">{{item.college || '--'}} · {{item.campus || '--'}} · {{item.selection_method || '--'}}</text>
+        <view class="course-meta-row secondary" wx:if="{{item.college || item.campus || item.method}}">
+          <text class="course-subinfo">{{item.college || '--'}} · {{item.campus || '--'}} · {{item.method || '--'}}</text>
         </view>
 
         <view class="course-meta-row secondary" wx:if="{{item.schedule_time || item.schedule_location}}">
@@ -121,19 +121,19 @@
 
         <view class="course-actions">
           <view class="action-btn action-btn-danger" wx:if="{{viewMode === 'selected'}}" catchtap="onDropCourse" data-index="{{index}}">
-            {{droppingCourseId === item.task_id ? '退课中...' : '退课'}}
+            {{droppingCourseId === item.course_id ? '退课中...' : '退课'}}
           </view>
 
           <block wx:if="{{viewMode === 'available'}}">
             <view class="action-btn action-btn-muted" catchtap="onCheckConflict" data-index="{{index}}">
-              {{checkingConflictId === item.task_id ? '检测中...' : '冲突检测'}}
+              {{checkingConflictId === item.course_id ? '检测中...' : '冲突检测'}}
             </view>
             <view
               class="action-btn {{item.is_selected ? 'action-btn-disabled' : 'action-btn-primary'}}"
               catchtap="onSelectCourse"
               data-index="{{index}}"
             >
-              {{item.is_selected ? '已选' : (selectingCourseId === item.task_id ? '选课中...' : '选课')}}
+              {{item.is_selected ? '已选' : (selectingCourseId === item.course_id ? '选课中...' : '选课')}}
             </view>
           </block>
         </view>
