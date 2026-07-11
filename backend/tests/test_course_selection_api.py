@@ -80,7 +80,7 @@ def test_course_selection_context_returns_dynamic_methods_and_references():
             "cart_query": True,
             "log_query": True,
             "preflight": True,
-            "writes_enabled": False,
+            "writes_enabled": True,
         },
     }
 
@@ -182,6 +182,142 @@ def test_course_selection_selected_and_cart_use_typed_records(route, upstream_pa
     assert response.json()["items"][0]["course_id"] == "task-1"
     assert response.json()["items"][0]["selection_id"] == "selection-1"
     assert response.json()["total_credits"] == 3.0
+
+
+def test_course_selection_preflight_returns_conflict_without_writing():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/Xsxk/queryXkdqXnxq":
+            return httpx.Response(200, json=TERM_INFO)
+        assert request.url.path == "/Xsxk/cxmtctPd"
+        return httpx.Response(200, json={"jg": "-9", "message": "课程冲突"})
+
+    upstream = httpx.Client(transport=httpx.MockTransport(handler))
+    session = Session(client=upstream, state=AuthState.ACTIVE, authenticated=True)
+    app.dependency_overrides[get_authenticated_session] = lambda: session
+    try:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.post(
+                "/api/course-selection/preflight",
+                json={"course_id": "task-1", "method": "bx-b-b"},
+            )
+    finally:
+        app.dependency_overrides.clear()
+        upstream.close()
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "allowed": False,
+        "status": "conflict",
+        "message": "课程冲突",
+    }
+
+
+def test_course_selection_cookie_write_requires_a_trusted_origin():
+    request_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+        return httpx.Response(200, json=TERM_INFO)
+
+    upstream = httpx.Client(transport=httpx.MockTransport(handler))
+    session = Session(client=upstream, state=AuthState.ACTIVE, authenticated=True)
+    app.dependency_overrides[get_authenticated_session] = lambda: session
+    try:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.post(
+                "/api/course-selection/selections",
+                headers={"Idempotency-Key": "write-key-123"},
+                json={"course_id": "task-1", "method": "bx-b-b"},
+            )
+    finally:
+        app.dependency_overrides.clear()
+        upstream.close()
+
+    assert response.status_code == 403
+    assert request_count == 0
+
+
+def test_course_selection_bearer_write_is_idempotent_and_runs_preflight_first():
+    requests = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request.url.path)
+        if request.url.path == "/Xsxk/queryXkdqXnxq":
+            return httpx.Response(200, json=TERM_INFO)
+        if request.url.path == "/Xsxk/cxmtctPd":
+            return httpx.Response(200, json={"jg": "1", "message": "无冲突"})
+        assert request.url.path == "/Xsxk/addGouwuche"
+        return httpx.Response(200, json={"jg": "1", "message": "选课成功"})
+
+    upstream = httpx.Client(transport=httpx.MockTransport(handler))
+    session = Session(client=upstream, state=AuthState.ACTIVE, authenticated=True)
+    app.dependency_overrides[get_authenticated_session] = lambda: session
+    headers = {
+        "Authorization": "Bearer test-session",
+        "Idempotency-Key": "write-key-123",
+    }
+    try:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            first = client.post(
+                "/api/course-selection/selections",
+                headers=headers,
+                json={"course_id": "task-1", "method": "bx-b-b"},
+            )
+            second = client.post(
+                "/api/course-selection/selections",
+                headers=headers,
+                json={"course_id": "task-1", "method": "bx-b-b"},
+            )
+    finally:
+        app.dependency_overrides.clear()
+        upstream.close()
+
+    assert first.status_code == second.status_code == 200
+    assert (
+        first.json()
+        == second.json()
+        == {
+            "success": True,
+            "status": "success",
+            "message": "选课成功",
+        }
+    )
+    assert requests == [
+        "/Xsxk/queryXkdqXnxq",
+        "/Xsxk/cxmtctPd",
+        "/Xsxk/addGouwuche",
+    ]
+
+
+def test_course_selection_write_conflict_has_a_stable_business_error():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/Xsxk/queryXkdqXnxq":
+            return httpx.Response(200, json=TERM_INFO)
+        assert request.url.path == "/Xsxk/cxmtctPd"
+        return httpx.Response(200, json={"jg": "-9", "message": "课程冲突"})
+
+    upstream = httpx.Client(transport=httpx.MockTransport(handler))
+    session = Session(client=upstream, state=AuthState.ACTIVE, authenticated=True)
+    app.dependency_overrides[get_authenticated_session] = lambda: session
+    try:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.post(
+                "/api/course-selection/selections",
+                headers={
+                    "Authorization": "Bearer test-session",
+                    "Idempotency-Key": "write-key-123",
+                },
+                json={"course_id": "task-1", "method": "bx-b-b"},
+            )
+    finally:
+        app.dependency_overrides.clear()
+        upstream.close()
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "COURSE_CONFLICT"
+    assert response.json()["error"]["retryable"] is False
+    assert response.json()["error"]["request_id"]
 
 
 def test_course_selection_logs_do_not_expose_raw_upstream_fields():

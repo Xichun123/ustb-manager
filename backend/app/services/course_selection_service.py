@@ -1,6 +1,8 @@
 import asyncio
+from collections.abc import Awaitable, Callable
 from typing import Any, Optional
 
+from app.exceptions import CourseConflict, CourseOperationBlocked, IdempotencyKeyReused
 from app.services import course_service
 from app.services.session_store import Session
 
@@ -83,7 +85,7 @@ async def get_context(session: Session) -> dict[str, Any]:
             "cart_query": True,
             "log_query": True,
             "preflight": True,
-            "writes_enabled": False,
+            "writes_enabled": True,
         },
     }
 
@@ -146,6 +148,199 @@ async def query_cart(session: Session, *, method: str) -> dict[str, Any]:
         "total": int(result["total"]),
         "total_credits": float(result["total_credits"]),
     }
+
+
+async def preflight(
+    session: Session,
+    *,
+    course_id: str,
+    method: str,
+) -> dict[str, Any]:
+    params = await _term_params(session)
+    result = await course_service.check_time_conflict(
+        session,
+        **params,
+        course_id=course_id,
+        xkfsdm=method,
+    )
+    return {
+        "allowed": result["allowed"],
+        "status": result["status"],
+        "message": result["message"],
+    }
+
+
+async def _execute_idempotent(
+    session: Session,
+    *,
+    operation: str,
+    key: str,
+    fingerprint: str,
+    execute: Callable[[], Awaitable[dict[str, Any]]],
+) -> dict[str, Any]:
+    cache_key = f"{operation}:{key}"
+    async with session.idempotency_lock:
+        cached = session.idempotency_results.get(cache_key)
+        if cached is not None:
+            cached_fingerprint, cached_result = cached
+            if cached_fingerprint != fingerprint:
+                raise IdempotencyKeyReused
+            return cached_result
+        result = await execute()
+        if len(session.idempotency_results) >= 100:
+            session.idempotency_results.pop(next(iter(session.idempotency_results)))
+        session.idempotency_results[cache_key] = (fingerprint, result)
+        return result
+
+
+def _successful_write(result: dict[str, Any]) -> dict[str, Any]:
+    message = str(result.get("message") or "")
+    if not result.get("success"):
+        raise CourseOperationBlocked(message)
+    return {"success": True, "status": "success", "message": message}
+
+
+async def create_selection(
+    session: Session,
+    *,
+    course_id: str,
+    method: str,
+    idempotency_key: str,
+) -> dict[str, Any]:
+    async def execute() -> dict[str, Any]:
+        params = await _term_params(session)
+        result = await course_service.check_time_conflict(
+            session, **params, course_id=course_id, xkfsdm=method
+        )
+        _require_clear_preflight(result)
+        return _successful_write(
+            await course_service.select_course(
+                session, **params, course_id=course_id, xkfsdm=method
+            )
+        )
+
+    return await _execute_idempotent(
+        session,
+        operation="select",
+        key=idempotency_key,
+        fingerprint=f"{course_id}:{method}",
+        execute=execute,
+    )
+
+
+async def delete_selection(
+    session: Session,
+    *,
+    selection_id: str,
+    idempotency_key: str,
+) -> dict[str, Any]:
+    async def execute() -> dict[str, Any]:
+        params = await _term_params(session)
+        return _successful_write(
+            await course_service.drop_course(session, **params, course_id=selection_id)
+        )
+
+    return await _execute_idempotent(
+        session,
+        operation="drop",
+        key=idempotency_key,
+        fingerprint=selection_id,
+        execute=execute,
+    )
+
+
+async def add_cart_item(
+    session: Session,
+    *,
+    course_id: str,
+    method: str,
+    idempotency_key: str,
+) -> dict[str, Any]:
+    async def execute() -> dict[str, Any]:
+        params = await _term_params(session)
+        result = await course_service.check_time_conflict(
+            session, **params, course_id=course_id, xkfsdm=method
+        )
+        _require_clear_preflight(result)
+        return _successful_write(
+            await course_service.add_to_cart(session, **params, course_id=course_id, xkfsdm=method)
+        )
+
+    return await _execute_idempotent(
+        session,
+        operation="cart-add",
+        key=idempotency_key,
+        fingerprint=f"{course_id}:{method}",
+        execute=execute,
+    )
+
+
+async def delete_cart_items(
+    session: Session,
+    *,
+    item_ids: list[str],
+    method: str,
+    idempotency_key: str,
+) -> dict[str, Any]:
+    async def execute() -> dict[str, Any]:
+        params = await _term_params(session)
+        return _successful_write(
+            await course_service.remove_from_cart(
+                session,
+                **params,
+                course_ids=item_ids,
+                xkfsdm=method,
+            )
+        )
+
+    return await _execute_idempotent(
+        session,
+        operation="cart-remove",
+        key=idempotency_key,
+        fingerprint=f"{','.join(item_ids)}:{method}",
+        execute=execute,
+    )
+
+
+async def delete_cart_item(
+    session: Session,
+    *,
+    item_id: str,
+    idempotency_key: str,
+) -> dict[str, Any]:
+    return await delete_cart_items(
+        session,
+        item_ids=[item_id],
+        method="bx-b-b",
+        idempotency_key=idempotency_key,
+    )
+
+
+async def submit_cart(
+    session: Session,
+    *,
+    method: str = "bx-b-b",
+    idempotency_key: str,
+) -> dict[str, Any]:
+    async def execute() -> dict[str, Any]:
+        params = await _term_params(session)
+        return _successful_write(await course_service.submit_cart(session, **params, xkfsdm=method))
+
+    return await _execute_idempotent(
+        session,
+        operation="cart-submit",
+        key=idempotency_key,
+        fingerprint=method,
+        execute=execute,
+    )
+
+
+def _require_clear_preflight(result: dict[str, Any]) -> None:
+    if result["allowed"]:
+        return
+    if result["status"] == "conflict":
+        raise CourseConflict(result["message"])
+    raise CourseOperationBlocked(result["message"])
 
 
 async def query_logs(session: Session) -> list[dict[str, Any]]:

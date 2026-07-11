@@ -14,6 +14,18 @@ class BYYTSessionExpired(Exception):
     """BYYT 系统会话已过期，需要重新登录。"""
 
 
+class CourseConflict(Exception):
+    """课程操作被时间冲突阻止。"""
+
+
+class CourseOperationBlocked(Exception):
+    """课程操作被教务系统业务规则阻止。"""
+
+
+class IdempotencyKeyReused(Exception):
+    """同一个幂等键被用于不同的请求。"""
+
+
 def _request_id(request: Request) -> str:
     return str(getattr(request.state, "request_id", ""))
 
@@ -104,6 +116,36 @@ async def byyt_upstream_error_handler(request: Request, exc: BYYTUpstreamError):
         code="UPSTREAM_BAD_RESPONSE",
         message="教务系统返回了无法处理的响应",
         retryable=True,
+    )
+
+
+async def course_conflict_handler(request: Request, exc: CourseConflict):
+    return _error_response(
+        request,
+        status_code=409,
+        code="COURSE_CONFLICT",
+        message=str(exc) or "课程时间冲突",
+        retryable=False,
+    )
+
+
+async def course_operation_blocked_handler(request: Request, exc: CourseOperationBlocked):
+    return _error_response(
+        request,
+        status_code=409,
+        code="COURSE_OPERATION_BLOCKED",
+        message=str(exc) or "选课操作被阻止",
+        retryable=False,
+    )
+
+
+async def idempotency_key_reused_handler(request: Request, exc: IdempotencyKeyReused):
+    return _error_response(
+        request,
+        status_code=409,
+        code="IDEMPOTENCY_KEY_REUSED",
+        message="幂等键已用于不同的选课请求",
+        retryable=False,
     )
 
 

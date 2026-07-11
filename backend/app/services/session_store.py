@@ -38,6 +38,8 @@ class Session:
     singleflight_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     inflight_queries: dict[str, asyncio.Task[Any]] = field(default_factory=dict)
     query_cache: dict[str, tuple[float, Any]] = field(default_factory=dict)
+    idempotency_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    idempotency_results: dict[str, Any] = field(default_factory=dict)
     qr_image: Optional[bytes] = None
     procedure: Optional[object] = None
     closing: bool = False

@@ -22,11 +22,17 @@ from .api import (
 )
 from .exceptions import (
     BYYTSessionExpired,
+    CourseConflict,
+    CourseOperationBlocked,
+    IdempotencyKeyReused,
     byyt_rate_limited_handler,
     byyt_session_expired_handler,
     byyt_unavailable_handler,
     byyt_upstream_error_handler,
+    course_conflict_handler,
+    course_operation_blocked_handler,
     generic_exception_handler,
+    idempotency_key_reused_handler,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -152,6 +158,9 @@ app.add_exception_handler(BYYTSessionExpired, byyt_session_expired_handler)
 app.add_exception_handler(BYYTRateLimited, byyt_rate_limited_handler)
 app.add_exception_handler(BYYTUnavailable, byyt_unavailable_handler)
 app.add_exception_handler(BYYTUpstreamError, byyt_upstream_error_handler)
+app.add_exception_handler(CourseConflict, course_conflict_handler)
+app.add_exception_handler(CourseOperationBlocked, course_operation_blocked_handler)
+app.add_exception_handler(IdempotencyKeyReused, idempotency_key_reused_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
 
 app.include_router(auth.router, prefix="/api")

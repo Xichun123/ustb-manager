@@ -1,11 +1,12 @@
 """公共依赖 - 认证、会话等。"""
 
 from typing import Optional
+from urllib.parse import urlsplit
 
-from fastapi import Depends, HTTPException, Security
+from fastapi import Depends, HTTPException, Request, Security
 from fastapi.security import APIKeyCookie, HTTPAuthorizationCredentials, HTTPBearer
 
-from .config import COOKIE_NAME
+from .config import COOKIE_NAME, CORS_ORIGINS
 from .services.session_store import Session, store
 
 _bearer_scheme = HTTPBearer(auto_error=False)
@@ -20,6 +21,23 @@ def get_optional_session_token(
     if bearer and bearer.scheme.lower() == "bearer" and bearer.credentials:
         return bearer.credentials
     return cookie_token
+
+
+def require_trusted_write_origin(request: Request) -> None:
+    """Bearer is not ambient; browser Cookie writes require a trusted Origin/Referer."""
+    authorization = request.headers.get("authorization", "")
+    if authorization.lower().startswith("bearer "):
+        return
+
+    origin = request.headers.get("origin")
+    if not origin:
+        referer = request.headers.get("referer")
+        if referer:
+            parsed = urlsplit(referer)
+            origin = f"{parsed.scheme}://{parsed.netloc}"
+    allowed = {value.strip().rstrip("/") for value in CORS_ORIGINS if value.strip()}
+    if not origin or origin.rstrip("/") not in allowed:
+        raise HTTPException(status_code=403, detail="Untrusted write origin")
 
 
 def get_authenticated_session(

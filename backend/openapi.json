@@ -1128,6 +1128,53 @@
         "title": "CourseOperationResponse",
         "type": "object"
       },
+      "CoursePreflightRequest": {
+        "properties": {
+          "course_id": {
+            "title": "Course Id",
+            "type": "string"
+          },
+          "method": {
+            "default": "bx-b-b",
+            "title": "Method",
+            "type": "string"
+          }
+        },
+        "required": [
+          "course_id"
+        ],
+        "title": "CoursePreflightRequest",
+        "type": "object"
+      },
+      "CoursePreflightResponse": {
+        "properties": {
+          "allowed": {
+            "title": "Allowed",
+            "type": "boolean"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "clear",
+              "conflict",
+              "blocked",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "allowed",
+          "status"
+        ],
+        "title": "CoursePreflightResponse",
+        "type": "object"
+      },
       "CourseReferenceOption": {
         "properties": {
           "code": {
@@ -1441,6 +1488,51 @@
           "code"
         ],
         "title": "CourseSelectionTerm",
+        "type": "object"
+      },
+      "CourseWriteRequest": {
+        "properties": {
+          "course_id": {
+            "title": "Course Id",
+            "type": "string"
+          },
+          "method": {
+            "default": "bx-b-b",
+            "title": "Method",
+            "type": "string"
+          }
+        },
+        "required": [
+          "course_id"
+        ],
+        "title": "CourseWriteRequest",
+        "type": "object"
+      },
+      "CourseWriteResponse": {
+        "properties": {
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "success",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "status"
+        ],
+        "title": "CourseWriteResponse",
         "type": "object"
       },
       "ExamPage": {
@@ -3567,6 +3659,181 @@
         ]
       }
     },
+    "/api/course-selection/cart/items": {
+      "post": {
+        "operationId": "add_cart_item_api_course_selection_cart_items_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CourseWriteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseWriteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "加入选课购物车",
+        "tags": [
+          "course-selection"
+        ]
+      }
+    },
+    "/api/course-selection/cart/items/{item_id}": {
+      "delete": {
+        "operationId": "delete_cart_item_api_course_selection_cart_items__item_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseWriteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "移出选课购物车",
+        "tags": [
+          "course-selection"
+        ]
+      }
+    },
+    "/api/course-selection/cart/submit": {
+      "post": {
+        "operationId": "submit_cart_api_course_selection_cart_submit_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseWriteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "提交选课购物车",
+        "tags": [
+          "course-selection"
+        ]
+      }
+    },
     "/api/course-selection/context": {
       "get": {
         "operationId": "context_api_course_selection_context_get",
@@ -3776,6 +4043,55 @@
         ]
       }
     },
+    "/api/course-selection/preflight": {
+      "post": {
+        "operationId": "preflight_api_course_selection_preflight_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoursePreflightRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoursePreflightResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "检查选课冲突与业务规则",
+        "tags": [
+          "course-selection"
+        ]
+      }
+    },
     "/api/course-selection/selected": {
       "get": {
         "operationId": "selected_api_course_selection_selected_get",
@@ -3845,6 +4161,129 @@
           }
         ],
         "summary": "查询已选课程",
+        "tags": [
+          "course-selection"
+        ]
+      }
+    },
+    "/api/course-selection/selections": {
+      "post": {
+        "operationId": "create_selection_api_course_selection_selections_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CourseWriteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseWriteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "选课",
+        "tags": [
+          "course-selection"
+        ]
+      }
+    },
+    "/api/course-selection/selections/{selection_id}": {
+      "delete": {
+        "operationId": "delete_selection_api_course_selection_selections__selection_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "selection_id",
+            "required": true,
+            "schema": {
+              "title": "Selection Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseWriteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "退课",
         "tags": [
           "course-selection"
         ]
@@ -4186,6 +4625,26 @@
       "post": {
         "description": "## 业务说明\n将一门可选课程添加到购物车（不直接选课）。\n\n## 使用场景\n- 意愿选课模式下先加入购物车\n- 需要比较多门课程后再确认选课",
         "operationId": "add_to_cart_api_courses_cart_add_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "minLength": 8,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -4236,6 +4695,26 @@
       "post": {
         "description": "## 业务说明\n从购物车中移除一门或多门课程。\n\n## 参数说明\n- `course_ids`: 要移除的课程 ID 列表（支持批量操作）",
         "operationId": "remove_from_cart_api_courses_cart_remove_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "minLength": 8,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -4297,6 +4776,24 @@
               "description": "选课方式代码",
               "title": "Method",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "minLength": 8,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
             }
           }
         ],
@@ -4487,6 +4984,26 @@
       "post": {
         "description": "## 业务说明\n退选一门已选课程。\n\n## 参数说明\n- `course_id`: 已选课程的 ID，可通过 `/courses/selected` 获取\n- `method`: 选课方式代码\n\n## 注意事项\n- 退课有时间限制，超过退课截止时间将无法退课\n- 必修课退课需谨慎",
         "operationId": "drop_course_api_courses_drop_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "minLength": 8,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -4537,6 +5054,26 @@
       "post": {
         "description": "## 业务说明\n直接选择一门课程（先到先得模式）。\n\n## 参数说明\n- `course_id`: 课程任务 ID，可通过 `/courses/available` 获取可选课程列表中的 `id` 字段\n- `method`: 选课方式代码（默认 bx-b-b 必修）\n\n## 选课方式代码\n- `bx-b-b`: 必修课\n- `mooc-b-b`: MOOC\n- `sztzk`: 素质拓展课\n- `zytzk`: 专业拓展课\n- `ggkrw`: 公共课\n\n## 返回数据\n- `success`: 是否成功\n- `message`: 操作结果描述",
         "operationId": "select_course_api_courses_select_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "minLength": 8,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {

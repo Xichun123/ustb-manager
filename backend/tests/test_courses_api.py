@@ -356,6 +356,8 @@ def test_legacy_course_write_uses_the_byyt_adapter_without_real_network():
                     "p_dqxnxq": "2025-20262",
                 },
             )
+        if request.url.path == "/Xsxk/cxmtctPd":
+            return httpx.Response(200, json={"jg": "1", "message": "无冲突"})
         assert request.url.path == "/Xsxk/addGouwuche"
         form = parse_qs(request.content.decode(), keep_blank_values=True)
         assert form["p_id"] == ["task-1"]
@@ -369,6 +371,10 @@ def test_legacy_course_write_uses_the_byyt_adapter_without_real_network():
         with TestClient(app, raise_server_exceptions=False) as client:
             response = client.post(
                 "/api/courses/select",
+                headers={
+                    "Origin": "http://localhost:5173",
+                    "Idempotency-Key": "legacy-write-123",
+                },
                 json={"course_id": "task-1", "method": "bx-b-b"},
             )
     finally:

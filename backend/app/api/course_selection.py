@@ -1,18 +1,38 @@
-from typing import Optional
+import logging
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Header, Query, Request
 
-from app.dependencies import get_authenticated_session
+from app.dependencies import get_authenticated_session, require_trusted_write_origin
 from app.models.courses import (
+    CoursePreflightRequest,
+    CoursePreflightResponse,
     CourseSelectionContext,
     CourseSelectionLog,
     CourseSelectionPage,
+    CourseWriteRequest,
+    CourseWriteResponse,
     SelectedCoursePage,
 )
 from app.services import course_selection_service
 from app.services.session_store import Session
 
 router = APIRouter(prefix="/course-selection", tags=["course-selection"])
+logger = logging.getLogger(__name__)
+
+IdempotencyKey = Annotated[
+    str,
+    Header(alias="Idempotency-Key", min_length=8, max_length=128),
+]
+
+
+def _audit(request: Request, operation: str, result: dict) -> None:
+    logger.info(
+        "course_operation operation=%s result=%s request_id=%s",
+        operation,
+        result["status"],
+        getattr(request.state, "request_id", ""),
+    )
 
 
 @router.get("/context", response_model=CourseSelectionContext, summary="获取选课上下文")
@@ -71,3 +91,112 @@ async def cart(
 @router.get("/logs", response_model=list[CourseSelectionLog], summary="查询选课日志")
 async def logs(session: Session = Depends(get_authenticated_session)):
     return await course_selection_service.query_logs(session)
+
+
+@router.post(
+    "/preflight",
+    response_model=CoursePreflightResponse,
+    summary="检查选课冲突与业务规则",
+)
+async def preflight(
+    payload: CoursePreflightRequest,
+    session: Session = Depends(get_authenticated_session),
+):
+    return await course_selection_service.preflight(
+        session,
+        course_id=payload.course_id,
+        method=payload.method,
+    )
+
+
+@router.post("/selections", response_model=CourseWriteResponse, summary="选课")
+async def create_selection(
+    request: Request,
+    payload: CourseWriteRequest,
+    idempotency_key: IdempotencyKey,
+    session: Session = Depends(get_authenticated_session),
+    _: None = Depends(require_trusted_write_origin),
+):
+    result = await course_selection_service.create_selection(
+        session,
+        course_id=payload.course_id,
+        method=payload.method,
+        idempotency_key=idempotency_key,
+    )
+    _audit(request, "select", result)
+    return result
+
+
+@router.delete(
+    "/selections/{selection_id}",
+    response_model=CourseWriteResponse,
+    summary="退课",
+)
+async def delete_selection(
+    request: Request,
+    selection_id: str,
+    idempotency_key: IdempotencyKey,
+    session: Session = Depends(get_authenticated_session),
+    _: None = Depends(require_trusted_write_origin),
+):
+    result = await course_selection_service.delete_selection(
+        session,
+        selection_id=selection_id,
+        idempotency_key=idempotency_key,
+    )
+    _audit(request, "drop", result)
+    return result
+
+
+@router.post("/cart/items", response_model=CourseWriteResponse, summary="加入选课购物车")
+async def add_cart_item(
+    request: Request,
+    payload: CourseWriteRequest,
+    idempotency_key: IdempotencyKey,
+    session: Session = Depends(get_authenticated_session),
+    _: None = Depends(require_trusted_write_origin),
+):
+    result = await course_selection_service.add_cart_item(
+        session,
+        course_id=payload.course_id,
+        method=payload.method,
+        idempotency_key=idempotency_key,
+    )
+    _audit(request, "cart-add", result)
+    return result
+
+
+@router.delete(
+    "/cart/items/{item_id}",
+    response_model=CourseWriteResponse,
+    summary="移出选课购物车",
+)
+async def delete_cart_item(
+    request: Request,
+    item_id: str,
+    idempotency_key: IdempotencyKey,
+    session: Session = Depends(get_authenticated_session),
+    _: None = Depends(require_trusted_write_origin),
+):
+    result = await course_selection_service.delete_cart_item(
+        session,
+        item_id=item_id,
+        idempotency_key=idempotency_key,
+    )
+    _audit(request, "cart-remove", result)
+    return result
+
+
+@router.post("/cart/submit", response_model=CourseWriteResponse, summary="提交选课购物车")
+async def submit_cart(
+    request: Request,
+    idempotency_key: IdempotencyKey,
+    session: Session = Depends(get_authenticated_session),
+    _: None = Depends(require_trusted_write_origin),
+):
+    result = await course_selection_service.submit_cart(
+        session,
+        idempotency_key=idempotency_key,
+    )
+    _audit(request, "cart-submit", result)
+    return result

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -74,6 +74,28 @@ class SelectedCoursePage(BaseModel):
     items: list[CourseSelectionRecord] = Field(default_factory=list)
     total: int
     total_credits: float
+
+
+class CoursePreflightRequest(BaseModel):
+    course_id: str
+    method: str = "bx-b-b"
+
+
+class CoursePreflightResponse(BaseModel):
+    allowed: bool
+    status: Literal["clear", "conflict", "blocked", "unknown"]
+    message: str = ""
+
+
+class CourseWriteRequest(BaseModel):
+    course_id: str
+    method: str = "bx-b-b"
+
+
+class CourseWriteResponse(BaseModel):
+    success: bool
+    status: Literal["success", "failed"]
+    message: str = ""
 
 
 class CourseSelectionLog(BaseModel):
