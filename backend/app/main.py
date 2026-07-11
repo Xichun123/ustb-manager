@@ -1,4 +1,5 @@
 import logging
+import time
 import uuid
 from contextlib import asynccontextmanager
 
@@ -42,6 +43,7 @@ from .exceptions import (
 )
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -146,8 +148,18 @@ app = FastAPI(
 async def request_id_middleware(request: Request, call_next):
     request_id = uuid.uuid4().hex
     request.state.request_id = request_id
+    started_at = time.perf_counter()
     response = await call_next(request)
+    duration_ms = (time.perf_counter() - started_at) * 1000
     response.headers["X-Request-ID"] = request_id
+    logger.info(
+        "request_complete request_id=%s method=%s path=%s status=%s duration_ms=%.1f",
+        request_id,
+        request.method,
+        request.url.path,
+        response.status_code,
+        duration_ms,
+    )
     return response
 
 
