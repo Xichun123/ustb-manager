@@ -3,37 +3,14 @@ import { Card, Row, Col, Avatar, Descriptions, Spin, Tooltip, Button, Statistic 
 import { UserOutlined, CalendarOutlined, WifiOutlined, LoginOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
+import type { components } from '../services/openapi'
 import AppLayout from '../components/AppLayout'
 import WifiLoginModal from '../components/WifiLoginModal'
 
-interface StudentInfo {
-  XM?: string
-  XH?: string
-  ZYMC?: string
-  YXMC?: string
-  BJMC?: string
-  NJMC?: string
-  XB?: string
-}
-
-interface CourseItem {
-  key: string
-  weekday: number
-  period: number
-  start_period: number
-  end_period: number
-  course_name: string
-  teacher: string
-  weeks: string
-  location: string
-}
-
-interface ScheduleData {
-  schedule: CourseItem[]
-  dates: Record<string, string>
-  week: number | null
-  term: string
-}
+type StudentInfo = components['schemas']['UserProfile']
+type CourseItem = components['schemas']['ScheduleCourse']
+type ScheduleData = components['schemas']['ScheduleView']
+type AcademicContext = components['schemas']['AcademicContextResponse']
 
 const PERIOD_TIMES = [
   { label: '1-2节', time: '08:00-09:35' },
@@ -81,7 +58,7 @@ export function Dashboard() {
   const courseColorMap = useMemo(() => {
     const map: Record<string, string> = {}
     const courseNames = new Set<string>()
-    scheduleData?.schedule.forEach(c => courseNames.add(c.course_name))
+    scheduleData?.items?.forEach(c => courseNames.add(c.course_name))
     Array.from(courseNames).forEach((name, idx) => {
       map[name] = COURSE_COLORS[idx % COURSE_COLORS.length]
     })
@@ -96,8 +73,8 @@ export function Dashboard() {
       Array(7).fill(null).map(() => [])
     )
 
-    scheduleData.schedule.forEach(course => {
-      const periodIdx = course.period - 1
+    scheduleData.items?.forEach(course => {
+      const periodIdx = Math.floor((course.start_period - 1) / 2)
       const weekdayIdx = course.weekday - 1
       if (periodIdx >= 0 && periodIdx < 6 && weekdayIdx >= 0 && weekdayIdx < 7) {
         grid[periodIdx][weekdayIdx].push(course)
@@ -140,37 +117,26 @@ export function Dashboard() {
     const fetchData = async () => {
       setLoading(true)
       try {
-        // 获取学生信息
-        const studentRes = await api.get('/grades/student-info')
-        setStudentInfo(studentRes.data)
-
-        // 获取当前学期信息
-        const termRes = await api.get('/schedule/current-term')
-        const { XN, XQ } = termRes.data
-
-        // 获取周次列表并计算当前周
-        const weekRes = await api.get(`/schedule/week-list?xn=${XN}&xq=${XQ}`)
-        const weeks = weekRes.data.filter((w: { ZC: number }) => w.ZC !== 99)
-
-        if (weeks.length > 0) {
-          // 获取第一周的日期来计算当前周
-          const datesRes = await api.get(`/schedule/week?xn=${XN}&xq=${XQ}&week=1`)
-          const firstWeekDates = datesRes.data.dates
-          if (firstWeekDates && firstWeekDates['1']) {
-            const firstDate = new Date(firstWeekDates['1'])
-            const today = new Date()
-            const diffDays = Math.floor((today.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24))
-            const calculatedWeek = Math.floor(diffDays / 7) + 1
-            const validWeek = Math.max(1, Math.min(calculatedWeek, weeks[weeks.length - 1].ZC))
-            setCurrentWeek(validWeek)
-
-            // 获取当前周的课表
-            const scheduleRes = await api.get(`/schedule/week?xn=${XN}&xq=${XQ}&week=${validWeek}`)
+        const [profileResult, contextResult] = await Promise.allSettled([
+          api.get<StudentInfo>('/me'),
+          api.get<AcademicContext>('/academic/context'),
+        ])
+        if (profileResult.status === 'fulfilled') {
+          setStudentInfo(profileResult.value.data)
+        }
+        if (contextResult.status === 'fulfilled') {
+          const context = contextResult.value.data
+          const week = context.week || 1
+          setCurrentWeek(context.week ?? null)
+          try {
+            const scheduleRes = await api.get<ScheduleData>('/schedule', {
+              params: { term: context.teaching_term.code, week },
+            })
             setScheduleData(scheduleRes.data)
+          } catch {
+            setScheduleData(null)
           }
         }
-      } catch (err) {
-        console.error('Failed to fetch dashboard data:', err)
       } finally {
         setLoading(false)
       }
@@ -198,18 +164,19 @@ export function Dashboard() {
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 24 }}>
                   <Avatar
                     size={80}
+                    src={studentInfo.photo_url}
                     icon={<UserOutlined />}
                     style={{ backgroundColor: '#003366', flexShrink: 0 }}
                   />
                   <Descriptions column={1} size="small">
                     <Descriptions.Item label="姓名">
-                      <strong style={{ fontSize: 16 }}>{studentInfo.XM || '-'}</strong>
+                      <strong style={{ fontSize: 16 }}>{studentInfo.name || '-'}</strong>
                     </Descriptions.Item>
-                    <Descriptions.Item label="学号">{studentInfo.XH || '-'}</Descriptions.Item>
-                    <Descriptions.Item label="院系">{studentInfo.YXMC || '-'}</Descriptions.Item>
-                    <Descriptions.Item label="专业">{studentInfo.ZYMC || '-'}</Descriptions.Item>
-                    <Descriptions.Item label="班级">{studentInfo.BJMC || '-'}</Descriptions.Item>
-                    <Descriptions.Item label="年级">{studentInfo.NJMC || '-'}</Descriptions.Item>
+                    <Descriptions.Item label="学号">{studentInfo.student_id || '-'}</Descriptions.Item>
+                    <Descriptions.Item label="院系">{studentInfo.college || '-'}</Descriptions.Item>
+                    <Descriptions.Item label="专业">{studentInfo.major || '-'}</Descriptions.Item>
+                    <Descriptions.Item label="班级">{studentInfo.class_name || '-'}</Descriptions.Item>
+                    <Descriptions.Item label="年级">{studentInfo.grade || '-'}</Descriptions.Item>
                   </Descriptions>
                 </div>
               )}
@@ -314,7 +281,7 @@ export function Dashboard() {
                     }}
                   >
                     <div>{day}</div>
-                    {scheduleData?.dates[idx + 1] && (
+                    {scheduleData?.dates?.[idx + 1] && (
                       <div style={{ fontSize: 10, color: '#999' }}>
                         {scheduleData.dates[idx + 1]}
                       </div>
@@ -370,7 +337,7 @@ export function Dashboard() {
                         {courses.map((course, idx) => (
                           <Tooltip
                             key={`${periodIdx}-${weekdayIdx}-${idx}`}
-                            title={`${course.course_name} - ${course.teacher} - ${course.weeks}`}
+                            title={`${course.course_name} - ${course.teacher} - ${course.week_text}`}
                           >
                             <div
                               style={{
