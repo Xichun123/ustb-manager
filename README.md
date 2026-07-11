@@ -50,7 +50,7 @@ docker compose logs -f
 - 升级到 SQLite 存储时会直接删除旧 `cookies.json` / `session_map.json`，用户需重新登录
 - `frontend` 依赖 `backend` 的 readiness 检查结果再启动
 
-完整发布、升级和回滚步骤见 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)。
+完整发布、升级和回滚步骤见 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)，升级完成项与外部发布门禁见 [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md)。
 
 ### 反代（推荐）
 
