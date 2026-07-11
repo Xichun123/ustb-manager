@@ -1,16 +1,22 @@
 import { get } from '../../services/api'
+import type { components } from '../../services/openapi'
 import {
   getScheduleHideWeekend,
   getSchedulePageState,
   setScheduleHideWeekend,
   setSchedulePageState,
 } from '../../utils/storage'
-import { calculateCurrentWeekFromDates, extractWeekNumbers } from '../../utils/util'
 
 const app = getApp<IAppOption>()
 const SCHEDULE_REFRESH_TTL = 5 * 60 * 1000
+type ScheduleCourse = components['schemas']['ScheduleCourse']
+type ScheduleView = components['schemas']['ScheduleView']
+type AcademicContext = components['schemas']['AcademicContextResponse']
+type AcademicTerm = components['schemas']['AcademicTermOption']
+type DisplayCourse = Omit<ScheduleCourse, 'weeks'> & { weeks: string }
+interface TermOption { code: string; name: string }
 
-function findTermIndex(termList: any[], termCode: string): number {
+function findTermIndex(termList: TermOption[], termCode: string): number {
   for (let i = 0; i < termList.length; i += 1) {
     if (termList[i] && termList[i].code === termCode) {
       return i
@@ -31,8 +37,12 @@ function parseTermCode(termCode: string): { xn: string; xq: string } {
   }
   return {
     xn: code.slice(0, 9),
-    xq: code.slice(9),
+    xq: code.slice(-1),
   }
+}
+
+function displayCourses(items?: ScheduleCourse[]): DisplayCourse[] {
+  return (items || []).map(item => ({ ...item, weeks: item.week_text }))
 }
 
 function buildInitialData() {
@@ -52,12 +62,12 @@ function buildInitialData() {
     selectedWeekIdx: findWeekIndex(weekList, selectedWeek),
     currentWeek: persisted ? persisted.currentWeek : 0,
     hideWeekend: getScheduleHideWeekend(),
-    schedule: persisted && Array.isArray(persisted.schedule) ? persisted.schedule : ([] as any[]),
+    schedule: persisted && Array.isArray(persisted.schedule) ? persisted.schedule : ([] as DisplayCourse[]),
     dates: persisted && persisted.dates ? persisted.dates : ({} as Record<string, string>),
     currentXn: persisted ? persisted.currentXn : '',
     currentXq: persisted ? persisted.currentXq : '',
     currentTermCode: persisted ? persisted.currentTermCode : '',
-    courseDetail: null as any,
+    courseDetail: null as DisplayCourse | null,
     showDetail: false,
   }
 }
@@ -135,7 +145,7 @@ Component({
       return caches[mode] && caches[mode][key] ? caches[mode][key] : null
     },
 
-    setViewCache(mode: 'week' | 'term', termCode: string, schedule: any[], dates: Record<string, string>, week?: number) {
+    setViewCache(mode: 'week' | 'term', termCode: string, schedule: DisplayCourse[], dates: Record<string, string>, week?: number) {
       const caches = this.getViewCaches()
       const key = mode === 'week' ? `${termCode}:${week || 0}` : termCode
       caches[mode][key] = {
@@ -198,18 +208,17 @@ Component({
       }
 
       try {
-        const results = await Promise.all([
-          get('/api/schedule/current-term'),
-          get('/api/schedule/term-list'),
+        const [context, termRecords] = await Promise.all([
+          get<AcademicContext>('/api/academic/context'),
+          get<AcademicTerm[]>('/api/academic/terms'),
         ])
-
-        const currentTerm = results[0]
-        const termListRes = Array.isArray(results[1]) ? results[1] : []
-        const currentTermCode = `${currentTerm.XN || ''}${currentTerm.XQ || ''}`
-        const terms = termListRes.map((item: any) => ({
-          code: item.dm,
-          name: item.mc,
+        const terms: TermOption[] = termRecords.map(term => ({
+          code: term.code,
+          name: term.name || term.code,
         }))
+
+        const currentTermCode = context.teaching_term.code
+        const currentWeek = context.week || 1
 
         let preferredTermCode = this.getSelectedTermCode()
         if (!preferredTermCode) {
@@ -231,6 +240,7 @@ Component({
               currentXn: parsedTerm.xn,
               currentXq: parsedTerm.xq,
               currentTermCode,
+              currentWeek,
             },
             () => resolve()
           )
@@ -238,7 +248,7 @@ Component({
 
         await this.loadWeeks(parsedTerm.xn, parsedTerm.xq, {
           showLoading: false,
-          preferredWeek: this.getSelectedWeekValue(),
+          preferredWeek: this.getSelectedWeekValue() || currentWeek,
         })
 
         ;(this as any)._scheduleLoaded = true
@@ -258,22 +268,18 @@ Component({
     async loadWeeks(xn: string, xq: string, options?: { showLoading?: boolean; preferredWeek?: number }) {
       const showLoading = !!(options && options.showLoading)
       try {
-        const weekListRes = await get('/api/schedule/week-list', { xn, xq })
-        const weeks = extractWeekNumbers(weekListRes)
-        const termCode = `${xn}${xq}`
-        let currentWeek = 0
+        const currentWeek = `${xn}-${xq}` === this.data.currentTermCode
+          ? this.data.currentWeek
+          : 0
+        const weeks = Array.from(
+          { length: Math.max(24, currentWeek || 0) },
+          (_, index) => index + 1,
+        )
+        const termCode = `${xn}-${xq}`
         let selectedWeek = options && options.preferredWeek ? options.preferredWeek : this.getSelectedWeekValue()
 
-        if (termCode === this.data.currentTermCode && weeks.length > 0) {
-          const firstWeekRes = await get('/api/schedule/week', { xn, xq, week: weeks[0] }).catch(() => null)
-          if (firstWeekRes && firstWeekRes.dates) {
-            const calculatedWeek = calculateCurrentWeekFromDates(firstWeekRes.dates, weeks)
-            currentWeek = calculatedWeek || 0
-          }
-        }
-
         if (!selectedWeek || weeks.indexOf(selectedWeek) === -1) {
-          selectedWeek = currentWeek || weeks[0] || 0
+          selectedWeek = currentWeek || 1
         }
 
         const selectedWeekIdx = findWeekIndex(weeks, selectedWeek)
@@ -317,10 +323,10 @@ Component({
       }
 
       try {
-        const res = await get('/api/schedule/week', { xn, xq, week })
-        const schedule = res && res.schedule ? res.schedule : []
-        const dates = res && res.dates ? res.dates : {}
-        const termCode = `${xn}${xq}`
+        const termCode = `${xn}-${xq}`
+        const res = await get<ScheduleView>('/api/schedule', { term: termCode, week })
+        const schedule = displayCourses(res.items)
+        const dates = res.dates || {}
 
         this.setData({
           schedule,
@@ -346,10 +352,10 @@ Component({
       }
 
       try {
-        const res = await get('/api/schedule/full', { xn, xq })
-        const schedule = res && res.schedule ? res.schedule : []
-        const dates = res && res.dates ? res.dates : {}
-        const termCode = `${xn}${xq}`
+        const termCode = `${xn}-${xq}`
+        const res = await get<ScheduleView>('/api/schedule', { term: termCode })
+        const schedule = displayCourses(res.items)
+        const dates = res.dates || {}
 
         this.setData({
           schedule,
@@ -375,7 +381,7 @@ Component({
       }
 
       this.setData({ viewMode: mode }, () => {
-        const termCode = this.getSelectedTermCode() || `${this.data.currentXn}${this.data.currentXq}`
+        const termCode = this.getSelectedTermCode() || `${this.data.currentXn}-${this.data.currentXq}`
         this.persistState()
 
         if (mode === 'week') {
@@ -420,7 +426,7 @@ Component({
       if (!week) return
 
       this.setData({ selectedWeekIdx: idx }, () => {
-        const termCode = this.getSelectedTermCode() || `${this.data.currentXn}${this.data.currentXq}`
+        const termCode = this.getSelectedTermCode() || `${this.data.currentXn}-${this.data.currentXq}`
         this.persistState()
         const hasCache = this.applyViewCache('week', termCode, week)
         this.loadWeekSchedule(this.data.currentXn, this.data.currentXq, week, {
