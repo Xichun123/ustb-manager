@@ -3,51 +3,15 @@ import { Card, Table, Select, Spin, Tag, Statistic, Row, Col, Modal, Description
 import { BookOutlined, ClockCircleOutlined, TeamOutlined, BankOutlined, CheckCircleOutlined, NotificationOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import { api } from '../services/api'
+import type { components } from '../services/openapi'
 import AppLayout from '../components/AppLayout'
 
-interface Course {
-  task_id: string
-  internal_id?: string  // BYYT 内部 ID（退课用）
-  course_code: string
-  course_name: string
-  course_name_en: string
-  course_type: string
-  course_type_code: string
-  category: string
-  category_code: string
-  credits: string
-  hours: string
-  selection_method: string
-  selection_method_code: string
-  college: string
-  college_code: string
-  campus: string
-  campus_code: string
-  teacher: string
-  task_name: string
-  capacity: string
-  selected_count: string
-  selection_time: string
-  withdraw_start: string
-  withdraw_end: string
-  selection_status: string
-  lottery_status: string
-  needs_payment: boolean
-  needs_approval: boolean
-  schedule_html: string
-  course_info: string
-  class_number: string
-  is_selected?: boolean  // 是否已选（可选课程列表中使用）
-}
-
-interface TermInfo {
-  p_xn: string
-  p_xq: string
-  p_xnxq: string
-  p_dqxn: string
-  p_dqxq: string
-  p_dqxnxq: string
-}
+type Course = components['schemas']['CourseSelectionRecord']
+type CourseContext = components['schemas']['app__models__courses__CourseSelectionContext']
+type CoursePage = components['schemas']['CourseSelectionPage']
+type SelectedCoursePage = components['schemas']['SelectedCoursePage']
+type PreflightResponse = components['schemas']['CoursePreflightResponse']
+type WriteResponse = components['schemas']['CourseWriteResponse']
 
 interface TermListItem {
   dm: string
@@ -76,18 +40,12 @@ const SELECTION_METHOD_COLORS: Record<string, string> = {
   '专业拓展课': 'gold',
 }
 
-// 选课方式选项
-const COURSE_METHODS = [
-  { value: 'bx-b-b', label: '必修课' },
-  { value: 'mooc-b-b', label: 'MOOC' },
-  { value: 'sztzk-b-b', label: '素质拓展课' },
-  { value: 'zytzk-b-b', label: '专业拓展课' },
-]
+const idempotencyKey = () => crypto.randomUUID()
 
 export default function CoursesPage() {
   const [loading, setLoading] = useState(true)
   const [courses, setCourses] = useState<Course[]>([])
-  const [termInfo, setTermInfo] = useState<TermInfo | null>(null)
+  const [courseContext, setCourseContext] = useState<CourseContext | null>(null)
   const [termList, setTermList] = useState<TermListItem[]>([])
   const [selectedTerm, setSelectedTerm] = useState<string | null>(null)
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
@@ -99,6 +57,7 @@ export default function CoursesPage() {
   const [courseMethod, setCourseMethod] = useState('bx-b-b')
   const [colleges, setColleges] = useState<FilterOption[]>([])
   const [campuses, setCampuses] = useState<FilterOption[]>([])
+  const [categories, setCategories] = useState<FilterOption[]>([])
   const [filterCollege, setFilterCollege] = useState<string | undefined>()
   const [filterCategory, setFilterCategory] = useState<string | undefined>()
   const [filterCampus, setFilterCampus] = useState<string | undefined>()
@@ -114,17 +73,10 @@ export default function CoursesPage() {
   const [selectingCourse, setSelectingCourse] = useState<string | null>(null)
   const [droppingCourse, setDroppingCourse] = useState<string | null>(null)
 
-  // 从当前课程数据中提取唯一的课程类别
-  const categoryOptions = useMemo(() => {
-    const categorySet = new Set<string>()
-    courses.forEach(c => {
-      if (c.category) categorySet.add(c.category)
-    })
-    return Array.from(categorySet).sort().map(cat => ({
-      value: cat,
-      label: cat,
-    }))
-  }, [courses])
+  const categoryOptions = useMemo(
+    () => categories.map(category => ({ value: category.code, label: category.name })),
+    [categories],
+  )
 
   // 筛选后的课程
   const filteredCourses = useMemo(() => {
@@ -133,11 +85,6 @@ export default function CoursesPage() {
     // 在可选课程模式下，只显示未选的课程
     if (viewMode === 'available') {
       result = result.filter(c => !c.is_selected)
-    }
-
-    // 课程类别筛选（本地筛选）
-    if (filterCategory) {
-      result = result.filter(c => c.category === filterCategory)
     }
 
     // 搜索筛选
@@ -152,52 +99,49 @@ export default function CoursesPage() {
     }
 
     return result
-  }, [courses, searchText, viewMode, filterCategory])
+  }, [courses, searchText, viewMode])
 
   // 统计信息
   const stats = useMemo(() => {
     const types: Record<string, number> = {}
     const methods: Record<string, number> = {}
     filteredCourses.forEach(c => {
-      types[c.course_type] = (types[c.course_type] || 0) + 1
-      methods[c.selection_method] = (methods[c.selection_method] || 0) + 1
+      types[c.course_nature] = (types[c.course_nature] || 0) + 1
+      methods[c.method] = (methods[c.method] || 0) + 1
     })
     return { types, methods }
   }, [filteredCourses])
 
-  // 初始化：获取学期信息和筛选选项
+  // 初始化：由后端动态上下文提供学期、方式和筛选项
   useEffect(() => {
     const init = async () => {
       try {
-        const [termInfoRes, termListRes, collegesRes, campusesRes] = await Promise.all([
-          api.get('/courses/term-info'),
-          api.get('/courses/term-list'),
-          api.get('/courses/colleges'),
-          api.get('/courses/campuses'),
+        const contextRes = await api.get<CourseContext>('/course-selection/context')
+        const context = contextRes.data
+        setCourseContext(context)
+        setColleges(context.colleges || [])
+        setCategories(context.categories || [])
+        setCampuses(context.campuses || [])
+        setCourseMethod(context.methods?.[0]?.code || 'bx-b-b')
+        setTermList([
+          {
+            dm: context.term.code,
+            mc: `${context.term.year} 第${context.term.semester}学期`,
+          },
         ])
-        setTermInfo(termInfoRes.data)
-        setTermList(termListRes.data)
-        setColleges(collegesRes.data)
-        setCampuses(campusesRes.data)
-        // 默认选择选课学期
-        if (termInfoRes.data.p_xnxq) {
-          setSelectedTerm(termInfoRes.data.p_xnxq)
-        } else if (termListRes.data.length > 0) {
-          setSelectedTerm(termListRes.data[0].dm)
-        }
-        // 加载公告
+        setSelectedTerm(context.term.code)
+
         try {
-          const xn = termInfoRes.data.p_xn || termInfoRes.data.p_dqxn
-          const xq = termInfoRes.data.p_xq || termInfoRes.data.p_dqxq
-          const announcementsRes = await api.get('/courses/announcements', { params: { xn, xq } })
-          const list = Array.isArray(announcementsRes.data) ? announcementsRes.data : []
-          setAnnouncements(list)
+          const announcementsRes = await api.get('/courses/announcements', {
+            params: { xn: context.term.year, xq: context.term.semester },
+          })
+          setAnnouncements(Array.isArray(announcementsRes.data) ? announcementsRes.data : [])
         } catch {
           // 公告加载失败不影响主功能
         }
       } catch (err) {
         console.error('Failed to init courses:', err)
-        message.error('获取学期信息失败')
+        message.error('获取选课上下文失败')
       }
     }
     init()
@@ -209,27 +153,30 @@ export default function CoursesPage() {
 
     const fetchCourses = async () => {
       setLoading(true)
-      // 清空旧数据，避免显示混合内容
       setCourses([])
-      // 重置本地筛选
-      setFilterCategory(undefined)
       try {
-        // 解析学期代码
-        const xn = selectedTerm.slice(0, 9) // 2025-2026
-        const xq = selectedTerm.slice(9) // 2
-
-        let url: string
+        const year = selectedTerm.slice(0, 9)
+        const semester = selectedTerm.slice(-1)
         if (viewMode === 'selected') {
-          url = `/courses/selected?xn=${xn}&xq=${xq}`
+          const res = await api.get<SelectedCoursePage>('/course-selection/selected', {
+            params: { year, semester },
+          })
+          setCourses(res.data.items || [])
         } else {
-          const params = new URLSearchParams({ xn, xq, method: courseMethod })
-          if (filterCollege) params.append('college', filterCollege)
-          if (filterCampus) params.append('campus', filterCampus)
-          url = `/courses/available?${params}`
+          const res = await api.get<CoursePage>('/course-selection/courses', {
+            params: {
+              year,
+              semester,
+              method: courseMethod,
+              college: filterCollege,
+              category: filterCategory,
+              campus: filterCampus,
+              page: 1,
+              page_size: 100,
+            },
+          })
+          setCourses(res.data.items || [])
         }
-
-        const res = await api.get(url)
-        setCourses(res.data.courses)
       } catch (err) {
         console.error('Failed to fetch courses:', err)
         message.error(viewMode === 'selected' ? '获取已选课程失败' : '获取可选课程失败')
@@ -238,7 +185,7 @@ export default function CoursesPage() {
       }
     }
     fetchCourses()
-  }, [selectedTerm, viewMode, courseMethod, filterCollege, filterCampus])
+  }, [selectedTerm, viewMode, courseMethod, filterCollege, filterCategory, filterCampus])
 
   // 显示课程详情
   const handleCourseClick = (course: Course) => {
@@ -257,16 +204,16 @@ export default function CoursesPage() {
 
   // 冲突检测
   const handleCheckConflict = useCallback(async (course: Course) => {
-    setCheckingConflict(course.task_id)
+    setCheckingConflict(course.course_id)
     try {
-      const res = await api.post('/courses/check-conflict', {
-        course_id: course.task_id,
+      const res = await api.post<PreflightResponse>('/course-selection/preflight', {
+        course_id: course.course_id,
         method: courseMethod,
       })
-      if (res.data.has_conflict) {
+      if (!res.data.allowed) {
         Modal.warning({
-          title: '存在时间冲突',
-          content: res.data.message || `"${course.course_name}" 与已选课程存在时间冲突`,
+          title: res.data.status === 'conflict' ? '存在时间冲突' : '暂不可选',
+          content: res.data.message || `"${course.course_name}" 当前不可选择`,
         })
       } else {
         message.success(`"${course.course_name}" 无时间冲突`)
@@ -280,23 +227,19 @@ export default function CoursesPage() {
 
   // 选课
   const handleSelectCourse = useCallback(async (course: Course) => {
-    setSelectingCourse(course.task_id)
+    setSelectingCourse(course.course_id)
     try {
-      const res = await api.post('/courses/select', {
-        course_id: course.task_id,
-        method: courseMethod,
-      })
-      if (res.data.success) {
-        message.success(res.data.message || `"${course.course_name}" 选课成功`)
-        // 刷新课程列表
-        setCourses(prev => prev.map(c =>
-          c.task_id === course.task_id ? { ...c, is_selected: true } : c
-        ))
-      } else {
-        message.error(res.data.message || '选课失败')
-      }
+      const res = await api.post<WriteResponse>(
+        '/course-selection/selections',
+        { course_id: course.course_id, method: courseMethod },
+        { headers: { 'Idempotency-Key': idempotencyKey() } },
+      )
+      message.success(res.data.message || `"${course.course_name}" 选课成功`)
+      setCourses(prev => prev.map(c =>
+        c.course_id === course.course_id ? { ...c, is_selected: true } : c
+      ))
     } catch (err: any) {
-      message.error(err.response?.data?.detail || '选课失败')
+      message.error(err.response?.data?.error?.message || '选课失败')
     } finally {
       setSelectingCourse(null)
     }
@@ -311,20 +254,17 @@ export default function CoursesPage() {
       okType: 'danger',
       cancelText: '取消',
       onOk: async () => {
-        setDroppingCourse(course.task_id)
+        setDroppingCourse(course.course_id)
         try {
-          const res = await api.post('/courses/drop', {
-            course_id: course.internal_id || course.task_id,
-            method: course.selection_method_code || 'bx-b-b',
-          })
-          if (res.data.success) {
-            message.success(res.data.message || `"${course.course_name}" 退课成功`)
-            setCourses(prev => prev.filter(c => c.task_id !== course.task_id))
-          } else {
-            message.error(res.data.message || '退课失败')
-          }
+          const selectionId = course.selection_id || course.course_id
+          const res = await api.delete<WriteResponse>(
+            `/course-selection/selections/${encodeURIComponent(selectionId)}`,
+            { headers: { 'Idempotency-Key': idempotencyKey() } },
+          )
+          message.success(res.data.message || `"${course.course_name}" 退课成功`)
+          setCourses(prev => prev.filter(c => c.course_id !== course.course_id))
         } catch (err: any) {
-          message.error(err.response?.data?.detail || '退课失败')
+          message.error(err.response?.data?.error?.message || '退课失败')
         } finally {
           setDroppingCourse(null)
         }
@@ -353,19 +293,19 @@ export default function CoursesPage() {
     },
     {
       title: '课程性质',
-      dataIndex: 'course_type',
-      key: 'course_type',
+      dataIndex: 'course_nature',
+      key: 'course_nature',
       width: 80,
       render: (text) => (
         <Tag color={COURSE_TYPE_COLORS[text] || 'default'}>{text}</Tag>
       ),
       filters: Object.keys(stats.types).map(t => ({ text: t, value: t })),
-      onFilter: (value, record) => record.course_type === value,
+      onFilter: (value, record) => record.course_nature === value,
     },
     {
       title: '课程类别',
-      dataIndex: 'category',
-      key: 'category',
+      dataIndex: 'course_category',
+      key: 'course_category',
       width: 120,
       ellipsis: true,
     },
@@ -375,7 +315,7 @@ export default function CoursesPage() {
       key: 'credits',
       width: 60,
       align: 'center',
-      sorter: (a, b) => parseFloat(a.credits) - parseFloat(b.credits),
+      sorter: (a, b) => a.credits - b.credits,
     },
     {
       title: '学时',
@@ -386,14 +326,14 @@ export default function CoursesPage() {
     },
     {
       title: '选课方式',
-      dataIndex: 'selection_method',
-      key: 'selection_method',
+      dataIndex: 'method',
+      key: 'method',
       width: 100,
       render: (text) => (
         <Tag color={SELECTION_METHOD_COLORS[text] || 'default'}>{text}</Tag>
       ),
       filters: Object.keys(stats.methods).map(m => ({ text: m, value: m })),
-      onFilter: (value, record) => record.selection_method === value,
+      onFilter: (value, record) => record.method === value,
     },
     {
       title: '教师',
@@ -420,8 +360,8 @@ export default function CoursesPage() {
       key: 'capacity',
       width: 100,
       render: (_, record) => {
-        const selected = parseInt(record.selected_count) || 0
-        const total = parseInt(record.capacity) || 0
+        const selected = record.selected_count || 0
+        const total = record.capacity || 0
         const percent = total > 0 ? (selected / total) * 100 : 0
         const color = percent >= 100 ? 'red' : percent >= 80 ? 'orange' : 'green'
         return (
@@ -432,12 +372,6 @@ export default function CoursesPage() {
       },
     },
     ...(viewMode === 'selected' ? [{
-      title: '选课时间',
-      dataIndex: 'selection_time',
-      key: 'selection_time',
-      width: 160,
-      sorter: (a: Course, b: Course) => new Date(a.selection_time).getTime() - new Date(b.selection_time).getTime(),
-    }, {
       title: '操作',
       key: 'action',
       width: 80,
@@ -447,7 +381,7 @@ export default function CoursesPage() {
           type="link"
           size="small"
           danger
-          loading={droppingCourse === record.task_id}
+          loading={droppingCourse === record.course_id}
           onClick={(e) => { e.stopPropagation(); handleDropCourse(record) }}
         >
           退课
@@ -463,7 +397,7 @@ export default function CoursesPage() {
           <Button
             type="link"
             size="small"
-            loading={selectingCourse === record.task_id}
+            loading={selectingCourse === record.course_id}
             disabled={record.is_selected}
             onClick={(e) => { e.stopPropagation(); handleSelectCourse(record) }}
           >
@@ -473,7 +407,7 @@ export default function CoursesPage() {
             type="link"
             size="small"
             icon={<ThunderboltOutlined />}
-            loading={checkingConflict === record.task_id}
+            loading={checkingConflict === record.course_id}
             onClick={(e) => { e.stopPropagation(); handleCheckConflict(record) }}
           >
             冲突检测
@@ -528,7 +462,7 @@ export default function CoursesPage() {
           placeholder="选择学期"
           options={termList.map(t => ({
             value: t.dm,
-            label: t.mc + (t.dm === termInfo?.p_xnxq ? ' (选课)' : ''),
+            label: t.mc + (t.dm === courseContext?.term.code ? ' (选课)' : ''),
           }))}
         />
 
@@ -538,7 +472,10 @@ export default function CoursesPage() {
               value={courseMethod}
               onChange={setCourseMethod}
               style={{ width: 140 }}
-              options={COURSE_METHODS}
+              options={(courseContext?.methods || []).map(method => ({
+                value: method.code,
+                label: method.name,
+              }))}
             />
             <Select
               value={filterCollege}
@@ -595,7 +532,7 @@ export default function CoursesPage() {
           <Card size="small">
             <Statistic
               title="总学分"
-              value={filteredCourses.reduce((sum, c) => sum + parseFloat(c.credits || '0'), 0)}
+              value={filteredCourses.reduce((sum, c) => sum + c.credits, 0)}
               prefix={<TeamOutlined />}
               precision={1}
             />
@@ -605,7 +542,7 @@ export default function CoursesPage() {
           <Card size="small">
             <Statistic
               title="总学时"
-              value={filteredCourses.reduce((sum, c) => sum + parseFloat(c.hours || '0'), 0)}
+              value={filteredCourses.reduce((sum, c) => sum + (c.hours || 0), 0)}
               prefix={<ClockCircleOutlined />}
             />
           </Card>
@@ -627,7 +564,7 @@ export default function CoursesPage() {
           <Table
             columns={columns}
             dataSource={filteredCourses}
-            rowKey="task_id"
+            rowKey="course_id"
             scroll={{ x: 1400 }}
             pagination={{
               showSizeChanger: true,
@@ -650,56 +587,31 @@ export default function CoursesPage() {
         {selectedCourse && (
           <Descriptions column={2} bordered size="small">
             <Descriptions.Item label="课程代码">{selectedCourse.course_code}</Descriptions.Item>
-            <Descriptions.Item label="课序号">{selectedCourse.class_number}</Descriptions.Item>
-            <Descriptions.Item label="课程名称" span={2}>{selectedCourse.course_name}</Descriptions.Item>
+            <Descriptions.Item label="课程名称">{selectedCourse.course_name}</Descriptions.Item>
             {selectedCourse.course_name_en && (
               <Descriptions.Item label="英文名称" span={2}>{selectedCourse.course_name_en}</Descriptions.Item>
             )}
             <Descriptions.Item label="课程性质">
-              <Tag color={COURSE_TYPE_COLORS[selectedCourse.course_type] || 'default'}>
-                {selectedCourse.course_type}
+              <Tag color={COURSE_TYPE_COLORS[selectedCourse.course_nature] || 'default'}>
+                {selectedCourse.course_nature}
               </Tag>
             </Descriptions.Item>
-            <Descriptions.Item label="课程类别">{selectedCourse.category}</Descriptions.Item>
+            <Descriptions.Item label="课程类别">{selectedCourse.course_category}</Descriptions.Item>
             <Descriptions.Item label="学分">{selectedCourse.credits}</Descriptions.Item>
-            <Descriptions.Item label="学时">{selectedCourse.hours}</Descriptions.Item>
-            <Descriptions.Item label="选课方式">
-              <Tag color={SELECTION_METHOD_COLORS[selectedCourse.selection_method] || 'default'}>
-                {selectedCourse.selection_method}
-              </Tag>
-            </Descriptions.Item>
+            <Descriptions.Item label="学时">{selectedCourse.hours ?? '-'}</Descriptions.Item>
+            <Descriptions.Item label="选课方式">{selectedCourse.method}</Descriptions.Item>
             <Descriptions.Item label="教师">{selectedCourse.teacher}</Descriptions.Item>
             <Descriptions.Item label="开课学院">{selectedCourse.college}</Descriptions.Item>
             <Descriptions.Item label="校区">{selectedCourse.campus}</Descriptions.Item>
             <Descriptions.Item label="容量/已选">
-              {selectedCourse.selected_count}/{selectedCourse.capacity}
+              {selectedCourse.selected_count ?? '-'}/{selectedCourse.capacity ?? '-'}
             </Descriptions.Item>
-            {selectedCourse.selection_time && (
-              <Descriptions.Item label="选课时间">{selectedCourse.selection_time}</Descriptions.Item>
-            )}
-            {selectedCourse.withdraw_start && (
-              <Descriptions.Item label="退选时间" span={2}>
-                {selectedCourse.withdraw_start} ~ {selectedCourse.withdraw_end}
-              </Descriptions.Item>
-            )}
-            {selectedCourse.task_name && (
-              <Descriptions.Item label="任务名称" span={2}>{selectedCourse.task_name}</Descriptions.Item>
-            )}
-            {selectedCourse.schedule_html && (
-              <Descriptions.Item label="上课安排" span={2}>
-                <div dangerouslySetInnerHTML={{ __html: selectedCourse.schedule_html }} />
-              </Descriptions.Item>
-            )}
-            {selectedCourse.needs_payment && (
-              <Descriptions.Item label="状态" span={2}>
-                <Tag color="warning">需要缴费</Tag>
-              </Descriptions.Item>
-            )}
-            {selectedCourse.needs_approval && (
-              <Descriptions.Item label="审核" span={2}>
-                <Tag color="processing">需要审核</Tag>
-              </Descriptions.Item>
-            )}
+            <Descriptions.Item label="上课时间" span={2}>
+              {selectedCourse.schedule_time || '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label="上课地点" span={2}>
+              {selectedCourse.schedule_location || '-'}
+            </Descriptions.Item>
           </Descriptions>
         )}
       </Modal>
