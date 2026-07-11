@@ -1,3 +1,5 @@
+const CACHE_SCHEMA_VERSION = 2
+
 const STORAGE_KEYS = {
   SESSION_ID: 'ustb_session_id',
   USER_INFO: 'ustb_user_info',
@@ -24,6 +26,38 @@ function setStoredData<T>(key: string, value: T): void {
 
 function removeStoredData(key: string): void {
   wx.removeStorageSync(key)
+}
+
+interface PageCacheEnvelope<T> {
+  schemaVersion: number
+  owner: string
+  value: T
+}
+
+function cacheOwner(): string {
+  const user = getStoredData<UserInfo>(STORAGE_KEYS.USER_INFO)
+  return user?.student_id || getWifiStudentId() || 'anonymous'
+}
+
+function getPageCache<T>(key: string): T | null {
+  const envelope = getStoredData<PageCacheEnvelope<T>>(key)
+  if (
+    !envelope
+    || envelope.schemaVersion !== CACHE_SCHEMA_VERSION
+    || envelope.owner !== cacheOwner()
+  ) {
+    removeStoredData(key)
+    return null
+  }
+  return envelope.value
+}
+
+function setPageCache<T>(key: string, value: T): void {
+  setStoredData<PageCacheEnvelope<T>>(key, {
+    schemaVersion: CACHE_SCHEMA_VERSION,
+    owner: cacheOwner(),
+    value,
+  })
 }
 
 export function getSessionId(): string {
@@ -179,11 +213,11 @@ export function setScheduleHideWeekend(value: boolean): void {
 }
 
 export function getDashboardPageState(): DashboardPageState | null {
-  return getStoredData<DashboardPageState>(STORAGE_KEYS.DASHBOARD_PAGE_STATE)
+  return getPageCache<DashboardPageState>(STORAGE_KEYS.DASHBOARD_PAGE_STATE)
 }
 
 export function setDashboardPageState(state: DashboardPageState): void {
-  setStoredData(STORAGE_KEYS.DASHBOARD_PAGE_STATE, state)
+  setPageCache(STORAGE_KEYS.DASHBOARD_PAGE_STATE, state)
 }
 
 export function removeDashboardPageState(): void {
@@ -191,11 +225,11 @@ export function removeDashboardPageState(): void {
 }
 
 export function getSchedulePageState(): SchedulePageState | null {
-  return getStoredData<SchedulePageState>(STORAGE_KEYS.SCHEDULE_PAGE_STATE)
+  return getPageCache<SchedulePageState>(STORAGE_KEYS.SCHEDULE_PAGE_STATE)
 }
 
 export function setSchedulePageState(state: SchedulePageState): void {
-  setStoredData(STORAGE_KEYS.SCHEDULE_PAGE_STATE, state)
+  setPageCache(STORAGE_KEYS.SCHEDULE_PAGE_STATE, state)
 }
 
 export function removeSchedulePageState(): void {
@@ -203,11 +237,11 @@ export function removeSchedulePageState(): void {
 }
 
 export function getGradesPageState(): GradesPageState | null {
-  return getStoredData<GradesPageState>(STORAGE_KEYS.GRADES_PAGE_STATE)
+  return getPageCache<GradesPageState>(STORAGE_KEYS.GRADES_PAGE_STATE)
 }
 
 export function setGradesPageState(state: GradesPageState): void {
-  setStoredData(STORAGE_KEYS.GRADES_PAGE_STATE, state)
+  setPageCache(STORAGE_KEYS.GRADES_PAGE_STATE, state)
 }
 
 export function removeGradesPageState(): void {
@@ -215,11 +249,11 @@ export function removeGradesPageState(): void {
 }
 
 export function getMePageState(): MePageState | null {
-  return getStoredData<MePageState>(STORAGE_KEYS.ME_PAGE_STATE)
+  return getPageCache<MePageState>(STORAGE_KEYS.ME_PAGE_STATE)
 }
 
 export function setMePageState(state: MePageState): void {
-  setStoredData(STORAGE_KEYS.ME_PAGE_STATE, state)
+  setPageCache(STORAGE_KEYS.ME_PAGE_STATE, state)
 }
 
 export function removeMePageState(): void {
@@ -227,11 +261,11 @@ export function removeMePageState(): void {
 }
 
 export function getExamsPageState(): ExamsPageState | null {
-  return getStoredData<ExamsPageState>(STORAGE_KEYS.EXAMS_PAGE_STATE)
+  return getPageCache<ExamsPageState>(STORAGE_KEYS.EXAMS_PAGE_STATE)
 }
 
 export function setExamsPageState(state: ExamsPageState): void {
-  setStoredData(STORAGE_KEYS.EXAMS_PAGE_STATE, state)
+  setPageCache(STORAGE_KEYS.EXAMS_PAGE_STATE, state)
 }
 
 export function removeExamsPageState(): void {
@@ -239,11 +273,11 @@ export function removeExamsPageState(): void {
 }
 
 export function getProgressPageState(): ProgressPageState | null {
-  return getStoredData<ProgressPageState>(STORAGE_KEYS.PROGRESS_PAGE_STATE)
+  return getPageCache<ProgressPageState>(STORAGE_KEYS.PROGRESS_PAGE_STATE)
 }
 
 export function setProgressPageState(state: ProgressPageState): void {
-  setStoredData(STORAGE_KEYS.PROGRESS_PAGE_STATE, state)
+  setPageCache(STORAGE_KEYS.PROGRESS_PAGE_STATE, state)
 }
 
 export function removeProgressPageState(): void {
@@ -251,11 +285,11 @@ export function removeProgressPageState(): void {
 }
 
 export function getCoursesPageState(): CoursesPageState | null {
-  return getStoredData<CoursesPageState>(STORAGE_KEYS.COURSES_PAGE_STATE)
+  return getPageCache<CoursesPageState>(STORAGE_KEYS.COURSES_PAGE_STATE)
 }
 
 export function setCoursesPageState(state: CoursesPageState): void {
-  setStoredData(STORAGE_KEYS.COURSES_PAGE_STATE, state)
+  setPageCache(STORAGE_KEYS.COURSES_PAGE_STATE, state)
 }
 
 export function removeCoursesPageState(): void {
@@ -263,11 +297,11 @@ export function removeCoursesPageState(): void {
 }
 
 export function getWifiPageState(): WifiPageState | null {
-  return getStoredData<WifiPageState>(STORAGE_KEYS.WIFI_PAGE_STATE)
+  return getPageCache<WifiPageState>(STORAGE_KEYS.WIFI_PAGE_STATE)
 }
 
 export function setWifiPageState(state: WifiPageState): void {
-  setStoredData(STORAGE_KEYS.WIFI_PAGE_STATE, state)
+  setPageCache(STORAGE_KEYS.WIFI_PAGE_STATE, state)
 }
 
 export function removeWifiPageState(): void {
