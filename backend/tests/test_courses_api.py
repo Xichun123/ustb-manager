@@ -370,7 +370,9 @@ def test_legacy_selected_courses_use_the_byyt_adapter():
     assert response.json()["total_credits"] == 3.0
 
 
-def test_legacy_course_write_uses_the_byyt_adapter_without_real_network():
+def test_legacy_course_write_uses_the_safe_boundary_and_audit_log(caplog):
+    caplog.set_level("INFO", logger="app.api.courses")
+
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/Xsxk/queryXkdqXnxq":
             return httpx.Response(
@@ -411,6 +413,8 @@ def test_legacy_course_write_uses_the_byyt_adapter_without_real_network():
 
     assert response.status_code == 200
     assert response.json() == {"success": True, "message": "成功"}
+    assert "course_operation operation=select result=success" in caplog.text
+    assert response.headers["X-Request-ID"] in caplog.text
 
 
 def test_legacy_course_reference_data_classifies_malformed_json():

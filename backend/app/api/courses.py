@@ -1,5 +1,7 @@
 """选课管理 API 路由"""
 
+import logging
+
 from fastapi import APIRouter, Depends, Header, Query, Request
 from typing import Annotated, Literal, Optional, List
 from pydantic import BaseModel, Field
@@ -8,6 +10,7 @@ from app.services.session_store import Session
 from app.dependencies import get_authenticated_session, require_trusted_write_origin
 
 router = APIRouter(prefix="/courses", tags=["courses"])
+logger = logging.getLogger(__name__)
 LegacyIdempotencyKey = Annotated[
     Optional[str], Header(alias="Idempotency-Key", min_length=8, max_length=128)
 ]
@@ -15,6 +18,16 @@ LegacyIdempotencyKey = Annotated[
 
 def _legacy_write_key(request: Request, key: Optional[str]) -> str:
     return key or str(request.state.request_id)
+
+
+def _audit_legacy_write(request: Request, operation: str, result: dict) -> dict:
+    logger.info(
+        "course_operation operation=%s result=%s request_id=%s legacy=true",
+        operation,
+        result["status"],
+        request.state.request_id,
+    )
+    return result
 
 
 class CourseItem(BaseModel):
@@ -381,12 +394,13 @@ async def select_course(
     - `success`: 是否成功
     - `message`: 操作结果描述
     """
-    return await course_selection_service.create_selection(
+    result = await course_selection_service.create_selection(
         session,
         course_id=req.course_id,
         method=req.method,
         idempotency_key=_legacy_write_key(request, idempotency_key),
     )
+    return _audit_legacy_write(request, "select", result)
 
 
 @router.post("/drop", response_model=CourseOperationResponse, summary="退课")
@@ -409,11 +423,12 @@ async def drop_course(
     - 退课有时间限制，超过退课截止时间将无法退课
     - 必修课退课需谨慎
     """
-    return await course_selection_service.delete_selection(
+    result = await course_selection_service.delete_selection(
         session,
         selection_id=req.course_id,
         idempotency_key=_legacy_write_key(request, idempotency_key),
     )
+    return _audit_legacy_write(request, "drop", result)
 
 
 # ==================== 购物车操作 ====================
@@ -453,12 +468,13 @@ async def add_to_cart(
     - 意愿选课模式下先加入购物车
     - 需要比较多门课程后再确认选课
     """
-    return await course_selection_service.add_cart_item(
+    result = await course_selection_service.add_cart_item(
         session,
         course_id=req.course_id,
         method=req.method,
         idempotency_key=_legacy_write_key(request, idempotency_key),
     )
+    return _audit_legacy_write(request, "cart-add", result)
 
 
 @router.post("/cart/remove", response_model=CourseOperationResponse, summary="从购物车移除课程")
@@ -476,12 +492,13 @@ async def remove_from_cart(
     ## 参数说明
     - `course_ids`: 要移除的课程 ID 列表（支持批量操作）
     """
-    return await course_selection_service.delete_cart_items(
+    result = await course_selection_service.delete_cart_items(
         session,
         item_ids=req.course_ids,
         method=req.method,
         idempotency_key=_legacy_write_key(request, idempotency_key),
     )
+    return _audit_legacy_write(request, "cart-remove", result)
 
 
 @router.post("/cart/submit", response_model=CourseOperationResponse, summary="提交购物车确认选课")
@@ -500,11 +517,12 @@ async def submit_cart(
     - 购物车中的所有课程将被批量提交
     - 提交后无法撤回，需要通过退课操作
     """
-    return await course_selection_service.submit_cart(
+    result = await course_selection_service.submit_cart(
         session,
         method=method,
         idempotency_key=_legacy_write_key(request, idempotency_key),
     )
+    return _audit_legacy_write(request, "cart-submit", result)
 
 
 # ==================== 选课日志 ====================
