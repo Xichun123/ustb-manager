@@ -1,4 +1,31 @@
+import type { components } from '../services/openapi'
+
 const CACHE_SCHEMA_VERSION = 2
+
+type ScheduleCourse = components['schemas']['ScheduleCourse']
+type CachedScheduleCourse = Omit<ScheduleCourse, 'weeks'> & { weeks: string }
+type GradeRecord = components['schemas']['GradeRecord'] & { scoreColor: string }
+type UserProfile = components['schemas']['UserProfile']
+type ExamRecord = components['schemas']['ExamRecord'] & { isPast: boolean; isToday: boolean }
+type ProgressSummary = components['schemas']['AcademicProgress']
+type ProgressModule = components['schemas']['AcademicProgressModule']
+type CourseRecord = components['schemas']['CourseSelectionRecord']
+type CourseAnnouncement = components['schemas']['CourseAnnouncement']
+
+interface CachedCreditCategory {
+  code: string
+  name: string
+  required: number
+  completed: number
+  remaining: number
+  percentage: number
+}
+
+interface ScheduleCacheEntry {
+  schedule: CachedScheduleCourse[]
+  dates: Record<string, string>
+  cachedAt: number
+}
 
 const STORAGE_KEYS = {
   SESSION_ID: 'ustb_session_id',
@@ -94,15 +121,15 @@ export interface SchedulePageState {
   currentTermCode: string
   termList: Array<{ code: string; name: string }>
   weekList: number[]
-  schedule: any[]
+  schedule: CachedScheduleCourse[]
   dates: Record<string, string>
-  scheduleCaches: any
+  scheduleCaches: Record<'week' | 'term', Record<string, ScheduleCacheEntry>>
   updatedAt: number
 }
 
 export interface DashboardPageState {
-  studentInfo: any
-  schedule: any[]
+  studentInfo: UserInfo | null
+  schedule: CachedScheduleCourse[]
   scheduleDates: Record<string, string>
   currentWeek: number
   wifiStatus: any
@@ -113,27 +140,32 @@ export interface DashboardPageState {
 }
 
 export interface GradesPageState {
-  grades: any[]
-  gpaStats: any
+  grades: GradeRecord[]
+  gpaStats: {
+    gpa: number
+    total_credits: number
+    passed_credits: number
+    failed_count: number
+  }
   updatedAt: number
 }
 
 export interface MePageState {
-  userInfo: any
-  studentInfo: any
+  userInfo: UserProfile | null
+  studentInfo: UserInfo | null
   updatedAt: number
 }
 
 export interface ExamsPageState {
-  exams: any[]
+  exams: ExamRecord[]
   updatedAt: number
 }
 
 export interface ProgressPageState {
   activeTab: 'credits' | 'required' | 'plan'
-  creditCategories: any[]
-  requiredStats: any
-  planData: any[]
+  creditCategories: CachedCreditCategory[]
+  requiredStats: ProgressSummary | null
+  planData: ProgressModule[]
   tabUpdatedAt: {
     credits: number
     required: number
@@ -144,8 +176,8 @@ export interface ProgressPageState {
 
 export interface CoursesPageState {
   viewMode: 'selected' | 'available'
-  rawCourses: any[]
-  displayCourses: any[]
+  rawCourses: CourseRecord[]
+  displayCourses: CourseRecord[]
   totalCredits: number
   totalHours: number
   courseCount: number
@@ -162,7 +194,7 @@ export interface CoursesPageState {
   categoryOptions: Array<{ value: string; label: string }>
   selectedCategoryIdx: number
   searchText: string
-  announcements: any[]
+  announcements: CourseAnnouncement[]
   showAnnouncements: boolean
   updatedAt: number
 }
