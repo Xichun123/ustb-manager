@@ -39,8 +39,8 @@ docker compose logs -f
 
 当前 `docker-compose.yml` 的行为：
 
-- `backend` 使用镜像 `xichun/ustb-manager-backend:${IMAGE_TAG}`
-- `frontend` 使用镜像 `xichun/ustb-manager-frontend:${IMAGE_TAG}`
+- `backend` 使用镜像 `ghcr.io/xichun123/ustb-manager-backend:${IMAGE_TAG}`
+- `frontend` 使用镜像 `ghcr.io/xichun123/ustb-manager-frontend:${IMAGE_TAG}`
 - `IMAGE_TAG` 必须是不可变发布标签，不允许依赖 `latest`
 - 前端只监听 `127.0.0.1:${APP_PORT:-8032}`，默认不会直接暴露到公网
 - 后端不单独映射端口，只在 Docker 网络内提供给前端访问

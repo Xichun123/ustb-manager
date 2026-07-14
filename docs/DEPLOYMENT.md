@@ -7,11 +7,11 @@ Use one immutable tag for both images. A date plus the short Git SHA is recommen
 ```bash
 export IMAGE_TAG="$(date +%Y.%m.%d)-$(git rev-parse --short HEAD)"
 
-docker build -t "xichun/ustb-manager-backend:${IMAGE_TAG}" backend
-docker build -t "xichun/ustb-manager-frontend:${IMAGE_TAG}" frontend
+docker build -t "ghcr.io/xichun123/ustb-manager-backend:${IMAGE_TAG}" backend
+docker build -t "ghcr.io/xichun123/ustb-manager-frontend:${IMAGE_TAG}" frontend
 
-docker push "xichun/ustb-manager-backend:${IMAGE_TAG}"
-docker push "xichun/ustb-manager-frontend:${IMAGE_TAG}"
+docker push "ghcr.io/xichun123/ustb-manager-backend:${IMAGE_TAG}"
+docker push "ghcr.io/xichun123/ustb-manager-frontend:${IMAGE_TAG}"
 ```
 
 Do not overwrite a published release tag. The backend build is frozen by `uv.lock`; the frontend build uses `npm ci` and `package-lock.json`.
