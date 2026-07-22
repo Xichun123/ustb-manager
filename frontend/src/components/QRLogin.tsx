@@ -83,7 +83,7 @@ export function QRLogin() {
         {qrImage ? (
           <Image src={qrImage} alt="登录二维码" width={200} preview={false} />
         ) : (
-          <Spin tip="加载中..." />
+          <Spin description="加载中..." />
         )}
         <div style={{ marginTop: 16 }}>
           <Text type="secondary">请使用微信扫描二维码</Text>

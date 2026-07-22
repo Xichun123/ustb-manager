@@ -4,6 +4,7 @@ import { UserOutlined, CalendarOutlined, WifiOutlined, LoginOutlined, ReloadOutl
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
 import type { components } from '../services/openapi'
+import { useTheme } from '../contexts/ThemeContext'
 import AppLayout from '../components/AppLayout'
 import WifiLoginModal from '../components/WifiLoginModal'
 import { buildScheduleGrid } from '../services/scheduleGrid'
@@ -28,6 +29,12 @@ const COURSE_COLORS = [
   '#e6fffb', '#fcffe6', '#fff0f6', '#f0f5ff', '#fffbe6',
 ]
 
+// 暗色主题下的课程底色
+const COURSE_COLORS_DARK = [
+  '#13293d', '#3d2e13', '#1e3d13', '#3d1a1a', '#2d1a3d',
+  '#133d3d', '#333d13', '#3d1330', '#1a2440', '#3d3613',
+]
+
 interface WifiStatus {
   logged_in: boolean
   has_credential: boolean
@@ -43,6 +50,9 @@ interface WifiFlow {
 
 export function Dashboard() {
   const navigate = useNavigate()
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+  const coursePalette = isDark ? COURSE_COLORS_DARK : COURSE_COLORS
   const [studentInfo, setStudentInfo] = useState<StudentInfo | null>(null)
   const [scheduleData, setScheduleData] = useState<ScheduleData | null>(null)
   const [currentWeek, setCurrentWeek] = useState<number | null>(null)
@@ -60,10 +70,10 @@ export function Dashboard() {
     const courseNames = new Set<string>()
     scheduleData?.items?.forEach(c => courseNames.add(c.course_name))
     Array.from(courseNames).forEach((name, idx) => {
-      map[name] = COURSE_COLORS[idx % COURSE_COLORS.length]
+      map[name] = coursePalette[idx % coursePalette.length]
     })
     return map
-  }, [scheduleData])
+  }, [scheduleData, coursePalette])
 
   // 构建课表网格数据；跨双节时段的课程需要出现在覆盖的每一行
   const scheduleGrid = useMemo(
@@ -132,13 +142,41 @@ export function Dashboard() {
     fetchWifiData()
   }, [])
 
+  // 今日星期（1=周一 ... 7=周日），用于课表高亮
+  const todayWeekday = useMemo(() => {
+    const day = new Date().getDay()
+    return day === 0 ? 7 : day
+  }, [])
+
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours()
+    if (hour < 6) return '夜深了'
+    if (hour < 9) return '早上好'
+    if (hour < 12) return '上午好'
+    if (hour < 14) return '中午好'
+    if (hour < 18) return '下午好'
+    return '晚上好'
+  }, [])
+
   return (
     <AppLayout>
       <Spin spinning={loading}>
+        {/* 欢迎区 */}
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 22, fontWeight: 700 }}>
+            {greeting}{studentInfo?.name ? `，${studentInfo.name}` : ''}
+          </div>
+          <div style={{ color: 'var(--app-text-secondary)', marginTop: 4, fontSize: 13 }}>
+            {new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' })}
+            {currentWeek ? ` · 第 ${currentWeek} 教学周` : ''}
+          </div>
+        </div>
+
         <Row gutter={[24, 24]}>
           {/* 学生信息卡片 */}
           <Col xs={24} lg={12}>
             <Card
+              className="app-card-hover"
               title={
                 <span>
                   <UserOutlined style={{ marginRight: 8 }} />
@@ -173,6 +211,7 @@ export function Dashboard() {
           {/* 校园网信息卡片 */}
           <Col xs={24} lg={12}>
             <Card
+              className="app-card-hover"
               title={
                 <span>
                   <WifiOutlined style={{ marginRight: 8 }} />
@@ -243,6 +282,7 @@ export function Dashboard() {
           {/* 本周课表卡片 */}
           <Col xs={24}>
             <Card
+              className="app-card-hover"
               title={
                 <span>
                   <CalendarOutlined style={{ marginRight: 8 }} />
@@ -253,28 +293,34 @@ export function Dashboard() {
             >
               {/* 课表表头 */}
               <div style={{ display: 'grid', gridTemplateColumns: '50px repeat(7, 1fr)', gap: 1 }}>
-                <div style={{ background: '#fafafa', padding: 6, textAlign: 'center', fontWeight: 'bold', fontSize: 12 }}>
+                <div className="schedule-grid-bg" style={{ padding: 6, textAlign: 'center', fontWeight: 'bold', fontSize: 12 }}>
                   节次
                 </div>
-                {WEEKDAYS.map((day, idx) => (
-                  <div
-                    key={day}
-                    style={{
-                      background: '#fafafa',
-                      padding: 6,
-                      textAlign: 'center',
-                      fontWeight: 'bold',
-                      fontSize: 12,
-                    }}
-                  >
-                    <div>{day}</div>
-                    {scheduleData?.dates?.[idx + 1] && (
-                      <div style={{ fontSize: 10, color: '#999' }}>
-                        {scheduleData.dates[idx + 1]}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                {WEEKDAYS.map((day, idx) => {
+                  const isToday = idx + 1 === todayWeekday
+                  return (
+                    <div
+                      key={day}
+                      className={isToday ? undefined : 'schedule-grid-bg'}
+                      style={{
+                        background: isToday ? 'var(--ant-color-primary)' : undefined,
+                        color: isToday ? '#fff' : undefined,
+                        padding: 6,
+                        textAlign: 'center',
+                        fontWeight: 'bold',
+                        fontSize: 12,
+                        borderRadius: isToday ? '8px 8px 0 0' : undefined,
+                      }}
+                    >
+                      <div>{day}</div>
+                      {scheduleData?.dates?.[idx + 1] && (
+                        <div style={{ fontSize: 10, color: isToday ? 'rgba(255,255,255,0.85)' : 'var(--app-text-secondary)' }}>
+                          {scheduleData.dates[idx + 1]}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
 
               {/* 课表内容 */}
@@ -284,8 +330,8 @@ export function Dashboard() {
                   style={{ display: 'grid', gridTemplateColumns: '50px repeat(7, 1fr)', gap: 1 }}
                 >
                   <div
+                    className="schedule-grid-bg"
                     style={{
-                      background: '#fafafa',
                       padding: 6,
                       textAlign: 'center',
                       fontSize: 11,
@@ -295,7 +341,7 @@ export function Dashboard() {
                     }}
                   >
                     <div style={{ fontWeight: 'bold' }}>{period.label}</div>
-                    <div style={{ color: '#999', fontSize: 9 }}>{period.time}</div>
+                    <div style={{ color: 'var(--app-text-secondary)', fontSize: 9 }}>{period.time}</div>
                   </div>
                   {WEEKDAYS.map((_, weekdayIdx) => {
                     const courses = scheduleGrid[periodIdx]?.[weekdayIdx] || []
@@ -303,10 +349,10 @@ export function Dashboard() {
                       return (
                         <div
                           key={`${periodIdx}-${weekdayIdx}`}
+                          className="schedule-grid-line schedule-grid-bg"
                           style={{
                             minHeight: 60,
-                            border: '1px solid #f0f0f0',
-                            background: '#fafafa',
+                            border: '1px solid var(--app-grid-line)',
                           }}
                         />
                       )
@@ -327,12 +373,14 @@ export function Dashboard() {
                             title={`${course.course_name} - ${course.teacher} - ${course.week_text}`}
                           >
                             <div
+                              className="schedule-grid-line"
                               style={{
                                 flex: 1,
                                 minHeight: courses.length > 1 ? 40 : 60,
                                 padding: 4,
-                                border: '1px solid #d9d9d9',
-                                background: courseColorMap[course.course_name] || '#e6f7ff',
+                                border: '1px solid var(--app-grid-line)',
+                                background: courseColorMap[course.course_name] || coursePalette[0],
+                                borderRadius: 6,
                                 cursor: 'pointer',
                                 overflow: 'hidden',
                                 fontSize: 10,
@@ -340,6 +388,7 @@ export function Dashboard() {
                                 flexDirection: 'column',
                                 justifyContent: 'center',
                                 textAlign: 'center',
+                                boxShadow: weekdayIdx + 1 === todayWeekday ? 'inset 0 0 0 1px var(--ant-color-primary)' : undefined,
                               }}
                               onClick={() => navigate('/schedule')}
                             >
@@ -348,8 +397,8 @@ export function Dashboard() {
                                   ? course.course_name.slice(0, 5) + '...'
                                   : course.course_name}
                               </div>
-                              <div style={{ color: '#666', fontSize: 9 }}>{course.teacher}</div>
-                              <div style={{ color: '#999', fontSize: 8 }}>
+                              <div style={{ color: 'var(--app-text-secondary)', fontSize: 9 }}>{course.teacher}</div>
+                              <div style={{ color: 'var(--app-text-secondary)', fontSize: 8, opacity: 0.8 }}>
                                 {course.location.replace('【校本部】', '')}
                               </div>
                             </div>

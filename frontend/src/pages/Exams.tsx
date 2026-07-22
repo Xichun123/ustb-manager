@@ -108,7 +108,7 @@ export default function ExamsPage() {
             />
             <style>{`
               .exam-row-past { opacity: 0.5; }
-              .exam-row-today, .exam-row-today td { background-color: #fff7e6 !important; }
+              .exam-row-today, .exam-row-today td { background-color: var(--ant-color-warning-bg, #fff7e6) !important; }
             `}</style>
           </Card>
         ) : (

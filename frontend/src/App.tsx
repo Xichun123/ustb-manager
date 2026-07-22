@@ -3,6 +3,8 @@ import { ConfigProvider } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { AuthProvider } from './contexts/AuthContext'
+import { ThemeProvider, useTheme } from './contexts/ThemeContext'
+import { lightTheme, darkTheme } from './theme'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { WifiRoute } from './components/WifiRoute'
 import { LoginPage } from './pages/Login'
@@ -17,31 +19,42 @@ import WifiStandalonePage from './pages/WifiStandalone'
 import CoursesPage from './pages/Courses'
 import CalendarPage from './pages/Calendar'
 import NoticesPage from './pages/Notices'
+import './theme/global.css'
 
-export function App() {
+function ThemedApp() {
+  const { resolvedTheme } = useTheme()
+
   return (
-    <ConfigProvider locale={zhCN}>
+    <ConfigProvider locale={zhCN} theme={resolvedTheme === 'dark' ? darkTheme : lightTheme}>
       <ErrorBoundary>
         <BrowserRouter>
           <AuthProvider>
             <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/wifi-standalone" element={<WifiStandalonePage />} />
-              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/schedule" element={<ProtectedRoute><SchedulePage /></ProtectedRoute>} />
-              <Route path="/grades" element={<ProtectedRoute><Grades /></ProtectedRoute>} />
-              <Route path="/user-info" element={<ProtectedRoute><UserInfo /></ProtectedRoute>} />
-              <Route path="/progress" element={<ProtectedRoute><ProgressPage /></ProtectedRoute>} />
-              <Route path="/exams" element={<ProtectedRoute><ExamsPage /></ProtectedRoute>} />
-              <Route path="/courses" element={<ProtectedRoute><CoursesPage /></ProtectedRoute>} />
-              <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
-              <Route path="/notices" element={<ProtectedRoute><NoticesPage /></ProtectedRoute>} />
-              <Route path="/wifi" element={<WifiRoute><WifiPage /></WifiRoute>} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/wifi-standalone" element={<WifiStandalonePage />} />
+                <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/schedule" element={<ProtectedRoute><SchedulePage /></ProtectedRoute>} />
+                <Route path="/grades" element={<ProtectedRoute><Grades /></ProtectedRoute>} />
+                <Route path="/user-info" element={<ProtectedRoute><UserInfo /></ProtectedRoute>} />
+                <Route path="/progress" element={<ProtectedRoute><ProgressPage /></ProtectedRoute>} />
+                <Route path="/exams" element={<ProtectedRoute><ExamsPage /></ProtectedRoute>} />
+                <Route path="/courses" element={<ProtectedRoute><CoursesPage /></ProtectedRoute>} />
+                <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
+                <Route path="/notices" element={<ProtectedRoute><NoticesPage /></ProtectedRoute>} />
+                <Route path="/wifi" element={<WifiRoute><WifiPage /></WifiRoute>} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </AuthProvider>
         </BrowserRouter>
       </ErrorBoundary>
     </ConfigProvider>
+  )
+}
+
+export function App() {
+  return (
+    <ThemeProvider>
+      <ThemedApp />
+    </ThemeProvider>
   )
 }

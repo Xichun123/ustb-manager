@@ -101,7 +101,7 @@ export default function WifiStandalonePage() {
   if (checking) {
     return (
       <Layout style={{ minHeight: '100vh', justifyContent: 'center', alignItems: 'center', background: '#f0f2f5' }}>
-        <Spin size="large" tip="检查登录状态..." />
+        <Spin size="large" description="检查登录状态..." />
       </Layout>
     )
   }
