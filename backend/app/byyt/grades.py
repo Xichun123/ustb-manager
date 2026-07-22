@@ -18,10 +18,19 @@ def _int_or_none(value: Any) -> Optional[int]:
         return None
 
 
-def _passed(value: Any) -> Optional[bool]:
+def _passed(value: Any, score: Any = None) -> Optional[bool]:
     if str(value) == "1":
         return True
     if str(value) == "0":
+        return False
+    # 新版 BYYT 常省略 sfjg，按成绩回退判断
+    numeric = _float_or_none(score)
+    if numeric is not None:
+        return numeric >= 60
+    text = str(score or "").strip()
+    if text in {"合格", "通过", "及格"}:
+        return True
+    if text in {"不合格", "不通过", "不及格"}:
         return False
     return None
 
@@ -74,7 +83,7 @@ def _grade(item: dict[str, Any]) -> dict[str, Any]:
         "course_category": str(item.get("kclb") or ""),
         "college": str(item.get("yxmc") or ""),
         "exam_attempt": str(item.get("bkcx") or ""),
-        "passed": _passed(item.get("sfjg")),
+        "passed": _passed(item.get("sfjg"), score),
         "rank": _int_or_none(item.get("pm")),
         "rank_total": _int_or_none(item.get("zrs")),
     }
@@ -89,6 +98,7 @@ async def query_grades(
     page: int = 1,
     page_size: int = 20,
 ) -> dict[str, Any]:
+    # BYYT 成绩列表接口要求携带 yhdm（可为空字符串）；缺少该字段会返回 code=500。
     content = await BYYTClient(session).request_json(
         "POST",
         "/cjgl/grcjcx/grcjcx",
@@ -102,6 +112,7 @@ async def query_grades(
             "pageSize": page_size,
             "xscjlb": None,
             "sffx": None,
+            "yhdm": "",
         },
         unwrap_content=True,
     )

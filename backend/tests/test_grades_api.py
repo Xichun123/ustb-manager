@@ -29,6 +29,7 @@ def test_grades_query_uses_the_current_json_endpoint_and_returns_stable_fields()
             "pageSize": 20,
             "xscjlb": None,
             "sffx": None,
+            "yhdm": "",
         }
         return httpx.Response(200, json=fixture)
 
@@ -163,6 +164,7 @@ def test_grade_summary_combines_official_and_estimated_values():
             "pageSize": 1000,
             "xscjlb": None,
             "sffx": None,
+            "yhdm": "",
         }
         return httpx.Response(200, json=grades_fixture)
 
