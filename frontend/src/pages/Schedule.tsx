@@ -5,6 +5,7 @@ import { DownloadOutlined, FileImageOutlined, CalendarOutlined } from '@ant-desi
 import html2canvas from 'html2canvas'
 import { api, getApiErrorMessage } from '../services/api'
 import type { components } from '../services/openapi'
+import { useTheme } from '../contexts/ThemeContext'
 import AppLayout from '../components/AppLayout'
 import { buildScheduleGrid } from '../services/scheduleGrid'
 import { formatAcademicTermLabel } from '../services/academicTerms'
@@ -30,7 +31,15 @@ const COURSE_COLORS = [
   '#e6fffb', '#fcffe6', '#fff0f6', '#f0f5ff', '#fffbe6',
 ]
 
+// 暗色主题下的课程底色
+const COURSE_COLORS_DARK = [
+  '#13293d', '#3d2e13', '#1e3d13', '#3d1a1a', '#2d1a3d',
+  '#133d3d', '#333d13', '#3d1330', '#1a2440', '#3d3613',
+]
+
 export default function SchedulePage() {
+  const { resolvedTheme } = useTheme()
+  const coursePalette = resolvedTheme === 'dark' ? COURSE_COLORS_DARK : COURSE_COLORS
   const [loading, setLoading] = useState(true)
   const [scheduleData, setScheduleData] = useState<ScheduleData | null>(null)
   const [currentTerm, setCurrentTerm] = useState<string | null>(null)
@@ -50,10 +59,10 @@ export default function SchedulePage() {
     const courseNames = new Set<string>()
     scheduleData?.items?.forEach(c => courseNames.add(c.course_name))
     Array.from(courseNames).forEach((name, idx) => {
-      map[name] = COURSE_COLORS[idx % COURSE_COLORS.length]
+      map[name] = coursePalette[idx % coursePalette.length]
     })
     return map
-  }, [scheduleData])
+  }, [scheduleData, coursePalette])
 
   // 课程网格数据；跨双节时段的课程需要出现在覆盖的每一行
   const scheduleGrid = useMemo(
@@ -258,10 +267,10 @@ export default function SchedulePage() {
       return (
         <div
           key={`${periodIdx}-${weekdayIdx}`}
+          className="schedule-grid-line schedule-grid-bg"
           style={{
             minHeight: 80,
-            border: '1px solid #f0f0f0',
-            background: '#fafafa',
+            border: '1px solid var(--app-grid-line)',
           }}
         />
       )
@@ -284,12 +293,14 @@ export default function SchedulePage() {
           >
             <div
               onClick={() => handleCourseClick(course)}
+              className="schedule-grid-line"
               style={{
                 flex: 1,
                 minHeight: courses.length > 1 ? 60 : 80,
                 padding: 4,
-                border: '1px solid #d9d9d9',
-                background: courseColorMap[course.course_name] || '#e6f7ff',
+                border: '1px solid var(--app-grid-line)',
+                background: courseColorMap[course.course_name] || coursePalette[0],
+                borderRadius: 6,
                 cursor: 'pointer',
                 overflow: 'hidden',
                 fontSize: 11,
@@ -304,11 +315,11 @@ export default function SchedulePage() {
                   ? course.course_name.slice(0, 6) + '...'
                   : course.course_name}
               </div>
-              <div style={{ color: '#666', fontSize: 10 }}>{course.teacher}</div>
-              <div style={{ color: '#1890ff', fontSize: 9, fontWeight: 500 }}>
+              <div style={{ color: 'var(--app-text-secondary)', fontSize: 10 }}>{course.teacher}</div>
+              <div style={{ color: 'var(--ant-color-primary)', fontSize: 9, fontWeight: 500 }}>
                 {course.week_text}
               </div>
-              <div style={{ color: '#999', fontSize: 9 }}>
+              <div style={{ color: 'var(--app-text-secondary)', fontSize: 9, opacity: 0.85 }}>
                 {course.location.replace('【校本部】', '')}
               </div>
             </div>
@@ -372,18 +383,18 @@ export default function SchedulePage() {
               display: 'grid',
               gridTemplateColumns: '60px repeat(7, 1fr)',
               gap: 1,
-              background: '#e8e8e8',
+              background: 'var(--app-grid-line)',
             }}
           >
             {/* 表头 */}
-            <div style={{ background: '#fafafa', padding: 8, textAlign: 'center', fontWeight: 'bold' }}>
+            <div className="schedule-grid-bg" style={{ padding: 8, textAlign: 'center', fontWeight: 'bold' }}>
               节次
             </div>
             {WEEKDAYS.map((day, idx) => (
               <div
                 key={day}
+                className="schedule-grid-bg"
                 style={{
-                  background: '#fafafa',
                   padding: 8,
                   textAlign: 'center',
                   fontWeight: 'bold',
@@ -391,7 +402,7 @@ export default function SchedulePage() {
               >
                 <div>{day}</div>
                 {scheduleData?.dates && scheduleData.dates[idx + 1] && (
-                  <div style={{ fontSize: 11, color: '#999' }}>
+                  <div style={{ fontSize: 11, color: 'var(--app-text-secondary)' }}>
                     {scheduleData.dates[idx + 1].slice(5)}
                   </div>
                 )}
@@ -403,8 +414,8 @@ export default function SchedulePage() {
               <>
                 <div
                   key={`period-${periodIdx}`}
+                  className="schedule-grid-bg"
                   style={{
-                    background: '#fafafa',
                     padding: 8,
                     textAlign: 'center',
                     display: 'flex',
@@ -413,7 +424,7 @@ export default function SchedulePage() {
                   }}
                 >
                   <div style={{ fontWeight: 'bold', fontSize: 12 }}>{period.label}</div>
-                  <div style={{ fontSize: 10, color: '#999' }}>{period.time}</div>
+                  <div style={{ fontSize: 10, color: 'var(--app-text-secondary)' }}>{period.time}</div>
                 </div>
                 {WEEKDAYS.map((_, weekdayIdx) =>
                   renderCourseCell(

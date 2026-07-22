@@ -35,7 +35,7 @@ export function WifiRoute({ children }: WifiRouteProps) {
   if (authLoading || standaloneChecking) {
     return (
       <Layout style={{ minHeight: '100vh', justifyContent: 'center', alignItems: 'center' }}>
-        <Spin size="large" tip="验证登录状态..." />
+        <Spin size="large" description="验证登录状态..." />
       </Layout>
     )
   }

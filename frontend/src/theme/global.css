@@ -1,0 +1,169 @@
+/* ===== 全局主题样式 ===== */
+
+html {
+  --app-sidebar-bg: #ffffff;
+  --app-header-bg: rgba(255, 255, 255, 0.8);
+  --app-content-bg: #f5f7fa;
+  --app-card-bg: #ffffff;
+  --app-border: rgba(0, 0, 0, 0.06);
+  --app-text-secondary: rgba(0, 0, 0, 0.55);
+  --app-grid-line: #f0f0f0;
+  --app-grid-bg: #fafbfc;
+  --app-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.03), 0 4px 16px rgba(0, 0, 0, 0.04);
+  --app-shadow-hover: 0 4px 8px rgba(0, 0, 0, 0.05), 0 12px 32px rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme='dark'] {
+  --app-sidebar-bg: #141b24;
+  --app-header-bg: rgba(26, 34, 44, 0.8);
+  --app-content-bg: #0f1419;
+  --app-card-bg: #1a222c;
+  --app-border: rgba(255, 255, 255, 0.08);
+  --app-text-secondary: rgba(255, 255, 255, 0.55);
+  --app-grid-line: rgba(255, 255, 255, 0.08);
+  --app-grid-bg: #141b24;
+  --app-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2), 0 4px 16px rgba(0, 0, 0, 0.25);
+  --app-shadow-hover: 0 4px 8px rgba(0, 0, 0, 0.25), 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+body {
+  background: var(--app-content-bg);
+  transition: background-color 0.3s ease;
+}
+
+/* ===== 卡片 ===== */
+.app-card-hover {
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+.app-card-hover:hover {
+  box-shadow: var(--app-shadow-hover);
+  transform: translateY(-2px);
+}
+
+/* ===== 侧边栏 ===== */
+.app-sider {
+  box-shadow: 1px 0 0 var(--app-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.app-sider-brand {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--app-border);
+  user-select: none;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.app-sider-brand-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #003366 0%, #0b5cad 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+.app-sider-brand-name {
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.3px;
+  color: var(--ant-color-text, rgba(0, 0, 0, 0.88));
+  opacity: 1;
+  max-width: 140px;
+  transition: opacity 0.2s ease, max-width 0.2s ease;
+}
+
+.app-sider-brand.collapsed {
+  gap: 0;
+}
+
+.app-sider-brand.collapsed .app-sider-brand-name {
+  opacity: 0;
+  max-width: 0;
+}
+
+/* ===== 顶栏 ===== */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 99;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 1px 0 var(--app-border);
+}
+
+.app-header-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ant-color-text, rgba(0, 0, 0, 0.88));
+}
+
+/* ===== 课表网格（主题适配） ===== */
+.schedule-grid-line {
+  border-color: var(--app-grid-line) !important;
+}
+.schedule-grid-bg {
+  background: var(--app-grid-bg) !important;
+}
+
+/* ===== 滚动条美化 ===== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.28);
+}
+html[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+}
+html[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+/* ===== 登录页背景 ===== */
+.auth-page-bg {
+  background: linear-gradient(135deg, #003366 0%, #0b5cad 55%, #1976d2 100%);
+  position: relative;
+  overflow: hidden;
+}
+.auth-page-bg::before {
+  content: '';
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  top: -200px;
+  right: -150px;
+}
+.auth-page-bg::after {
+  content: '';
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  bottom: -150px;
+  left: -100px;
+}
+
+/* ===== 菜单过渡 ===== */
+.ant-menu .ant-menu-item {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
