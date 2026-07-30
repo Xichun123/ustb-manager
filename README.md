@@ -86,6 +86,14 @@ npm run dev
 - 后端 API: http://localhost:8000
 - API 文档: http://localhost:8000/docs
 
+**安卓 APP：**
+```bash
+cd android
+./gradlew assembleDebug
+```
+
+安卓客户端使用 Kotlin / Jetpack Compose，直接连接学校统一认证与本研一体教务系统，不依赖 FastAPI 后端。详见 [`android/README.md`](android/README.md)。
+
 **小程序类型检查：**
 ```bash
 cd miniapp
