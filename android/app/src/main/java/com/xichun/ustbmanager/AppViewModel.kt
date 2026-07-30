@@ -1,15 +1,17 @@
 package com.xichun.ustbmanager
 
 import android.app.Application
-import android.webkit.CookieManager
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.xichun.ustbmanager.data.ByytClient
 import com.xichun.ustbmanager.data.ByytRepository
 import com.xichun.ustbmanager.data.DashboardData
 import com.xichun.ustbmanager.data.SessionExpiredException
+import com.xichun.ustbmanager.data.SessionStore
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 data class AppUiState(
@@ -22,7 +24,8 @@ data class AppUiState(
 )
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = ByytRepository()
+    private val sessionStore = SessionStore(application)
+    private val repository = ByytRepository(ByytClient(sessionStore = sessionStore))
 
     var state by mutableStateOf(AppUiState())
         private set
@@ -35,20 +38,21 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         if (state.loginChecking || state.authenticated) return
         state = state.copy(loginChecking = true, error = null)
         viewModelScope.launch {
-            runCatching { repository.loadDashboard() }
-                .onSuccess { data ->
-                    state = AppUiState(
-                        checkingSession = false,
-                        authenticated = true,
-                        data = data,
-                    )
-                }
-                .onFailure { error ->
-                    state = state.copy(
-                        loginChecking = false,
-                        error = error.userMessage("登录尚未完成，请在学校页面完成认证"),
-                    )
-                }
+            try {
+                val data = loadAndPersistDashboard()
+                state = AppUiState(
+                    checkingSession = false,
+                    authenticated = true,
+                    data = data,
+                )
+            } catch (error: Throwable) {
+                if (error is CancellationException) throw error
+                if (error is SessionExpiredException) sessionStore.clearSession()
+                state = state.copy(
+                    loginChecking = false,
+                    error = error.userMessage("登录尚未完成，请在学校页面完成认证"),
+                )
+            }
         }
     }
 
@@ -60,25 +64,27 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             error = null,
         )
         viewModelScope.launch {
-            runCatching { repository.loadDashboard() }
-                .onSuccess { data ->
-                    state = AppUiState(
+            try {
+                if (initial) sessionStore.restoreSession()
+                val data = loadAndPersistDashboard()
+                state = AppUiState(
+                    checkingSession = false,
+                    authenticated = true,
+                    data = data,
+                )
+            } catch (error: Throwable) {
+                if (error is CancellationException) throw error
+                state = if (error is SessionExpiredException) {
+                    sessionStore.clearSession()
+                    AppUiState(checkingSession = false, authenticated = false)
+                } else {
+                    state.copy(
                         checkingSession = false,
-                        authenticated = true,
-                        data = data,
+                        loading = false,
+                        error = error.userMessage("加载失败，请稍后重试"),
                     )
                 }
-                .onFailure { error ->
-                    state = if (error is SessionExpiredException) {
-                        AppUiState(checkingSession = false, authenticated = false)
-                    } else {
-                        state.copy(
-                            checkingSession = false,
-                            loading = false,
-                            error = error.userMessage("加载失败，请稍后重试"),
-                        )
-                    }
-                }
+            }
         }
     }
 
@@ -87,10 +93,19 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun logout() {
-        CookieManager.getInstance().removeAllCookies {
-            CookieManager.getInstance().flush()
-            state = AppUiState(checkingSession = false, authenticated = false)
+        viewModelScope.launch {
+            try {
+                sessionStore.clearAllCookies()
+            } finally {
+                state = AppUiState(checkingSession = false, authenticated = false)
+            }
         }
+    }
+
+    private suspend fun loadAndPersistDashboard(): DashboardData {
+        val data = repository.loadDashboard()
+        sessionStore.saveCurrentSession()
+        return data
     }
 }
 

@@ -11,13 +11,12 @@ import java.net.URI
 import java.net.URLEncoder
 import java.net.URL
 
-private const val BASE_URL = "https://byyt.ustb.edu.cn"
-
 class SessionExpiredException : IOException("学校登录状态已过期")
 class UpstreamException(message: String) : IOException(message)
 
 class ByytClient(
     private val cookieManager: CookieManager = CookieManager.getInstance(),
+    private val sessionStore: SessionStore? = null,
 ) {
     suspend fun get(path: String, params: Map<String, String> = emptyMap()): Any? =
         request("GET", path, params = params)
@@ -50,7 +49,7 @@ class ByytClient(
         val query = params.entries.joinToString("&") { (key, value) ->
             "${key.urlEncode()}=${value.urlEncode()}"
         }
-        val requestUrl = "$BASE_URL/${path.trimStart('/')}${if (query.isEmpty()) "" else "?$query"}"
+        val requestUrl = "$BYYT_BASE_URL/${path.trimStart('/')}${if (query.isEmpty()) "" else "?$query"}"
         val connection = (URL(requestUrl).openConnection() as HttpURLConnection).apply {
             requestMethod = method
             instanceFollowRedirects = false
@@ -58,7 +57,7 @@ class ByytClient(
             readTimeout = 30_000
             setRequestProperty("Accept", "application/json, text/plain, */*")
             setRequestProperty("X-Requested-With", "XMLHttpRequest")
-            cookieManager.getCookie(BASE_URL)?.takeIf { it.isNotBlank() }?.let {
+            cookieManager.getCookie(BYYT_BASE_URL)?.takeIf { it.isNotBlank() }?.let {
                 setRequestProperty("Cookie", it)
             }
             if (body != null) {
@@ -70,8 +69,11 @@ class ByytClient(
         try {
             body?.let { connection.outputStream.use { output -> output.write(it) } }
             val status = connection.responseCode
-            connection.headerFields["Set-Cookie"].orEmpty().forEach { cookie ->
-                cookieManager.setCookie(BASE_URL, cookie)
+            val setCookies = connection.headerFields.entries
+                .filter { (name) -> name?.equals("Set-Cookie", ignoreCase = true) == true }
+                .flatMap { (_, values) -> values.orEmpty() }
+            setCookies.forEach { cookie ->
+                cookieManager.setCookie(BYYT_BASE_URL, cookie)
             }
             cookieManager.flush()
 
@@ -85,6 +87,9 @@ class ByytClient(
                 val host = runCatching { URI(location).host.orEmpty() }.getOrDefault("")
                 if (host.contains("sso.ustb.edu.cn") || host.isBlank()) throw SessionExpiredException()
                 throw UpstreamException("学校系统返回了意外跳转")
+            }
+            if (status in 200..299) {
+                setCookies.forEach { sessionStore?.saveFromSetCookie(it) }
             }
 
             val stream = if (status >= 400) connection.errorStream else connection.inputStream
