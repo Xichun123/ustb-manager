@@ -54,51 +54,71 @@ private enum class LoginMode(val title: String) {
     Qr("微信 / 企微扫码登录"),
 }
 
-private fun LoginMode.mobileLayoutScript(): String = when (this) {
-    LoginMode.Sms -> """
+private fun LoginMode.mobileLayoutScript(): String {
+    val selectLoginMode = when (this) {
+        LoginMode.Sms -> """
+            if ((window.__ustbManagerLoginMode || '').startsWith('sms')) return;
+            window.__ustbManagerLoginMode = 'sms-pending';
+            let attempts = 0;
+            const selectMode = () => {
+              fillViewport();
+              if (document.querySelector('.login-form')) {
+                window.__ustbManagerLoginMode = 'sms';
+                return true;
+              }
+              const toggle = document.querySelector('.content_img');
+              if (toggle && document.querySelector('iframe')) {
+                toggle.click();
+                attempts += 1;
+              }
+              return attempts >= 20;
+            };
+        """.trimIndent()
+        LoginMode.Qr -> """
+            if ((window.__ustbManagerLoginMode || '').startsWith('qr')) return;
+            window.__ustbManagerLoginMode = 'qr-pending';
+            let attempts = 0;
+            const selectMode = () => {
+              fillViewport();
+              if (document.querySelector('iframe')) {
+                window.__ustbManagerLoginMode = 'qr';
+                return true;
+              }
+              const toggle = document.querySelector('.content_img');
+              if (toggle && document.querySelector('.login-form')) {
+                toggle.click();
+                attempts += 1;
+              }
+              return attempts >= 20;
+            };
+        """.trimIndent()
+    }
+    return """
         (() => {
-          if ((window.__ustbManagerLoginMode || '').startsWith('sms')) return;
-          window.__ustbManagerLoginMode = 'sms-pending';
-          let attempts = 0;
-          const selectSms = () => {
-            if (document.querySelector('.login-form')) {
-              window.__ustbManagerLoginMode = 'sms';
-              return true;
-            }
-            const toggle = document.querySelector('.content_img');
-            if (toggle && document.querySelector('iframe')) {
-              toggle.click();
-              attempts += 1;
-            }
-            return attempts >= 20;
+          const fillViewport = () => {
+            const height = `${'$'}{window.innerHeight}px`;
+            const app = document.getElementById('app');
+            [
+              document.documentElement,
+              document.body,
+              app,
+              app?.firstElementChild,
+              document.querySelector('#app > div > .topicPreview'),
+            ].filter(Boolean).forEach((element) => {
+              element.style.setProperty('height', height, 'important');
+              element.style.setProperty('min-height', height, 'important');
+            });
           };
-          if (!selectSms()) {
-            const timer = setInterval(() => {
-              if (selectSms()) clearInterval(timer);
-            }, 500);
+          window.__ustbManagerFillViewport = fillViewport;
+          if (!window.__ustbManagerViewportListener) {
+            window.__ustbManagerViewportListener = true;
+            window.addEventListener('resize', () => window.__ustbManagerFillViewport?.());
           }
-        })()
-    """.trimIndent()
-    LoginMode.Qr -> """
-        (() => {
-          if ((window.__ustbManagerLoginMode || '').startsWith('qr')) return;
-          window.__ustbManagerLoginMode = 'qr-pending';
-          let attempts = 0;
-          const selectQr = () => {
-            if (document.querySelector('iframe')) {
-              window.__ustbManagerLoginMode = 'qr';
-              return true;
-            }
-            const toggle = document.querySelector('.content_img');
-            if (toggle && document.querySelector('.login-form')) {
-              toggle.click();
-              attempts += 1;
-            }
-            return attempts >= 20;
-          };
-          if (!selectQr()) {
+          fillViewport();
+          $selectLoginMode
+          if (!selectMode()) {
             const timer = setInterval(() => {
-              if (selectQr()) clearInterval(timer);
+              if (selectMode()) clearInterval(timer);
             }, 500);
           }
         })()
