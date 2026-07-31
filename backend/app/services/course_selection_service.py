@@ -1,8 +1,17 @@
 import asyncio
+import json
+import uuid
 from collections.abc import Awaitable, Callable
+from datetime import datetime, timezone
 from typing import Any, Optional
 
-from app.exceptions import CourseConflict, CourseOperationBlocked, IdempotencyKeyReused
+from app.byyt.errors import BYYTRateLimited, BYYTUnavailable, BYYTUpstreamError
+from app.exceptions import (
+    BYYTSessionExpired,
+    CourseConflict,
+    CourseOperationBlocked,
+    IdempotencyKeyReused,
+)
 from app.services import course_service
 from app.services.session_store import Session
 
@@ -100,6 +109,7 @@ async def query_courses(
     category: str,
     campus: str,
     keyword: str,
+    facing: str,
     page: int,
     page_size: int,
 ) -> dict[str, Any]:
@@ -112,6 +122,7 @@ async def query_courses(
         kclb=category,
         xiaoqu=campus,
         gjz=keyword,
+        sfmxzj=facing,
         page_num=page,
         page_size=page_size,
     )
@@ -333,6 +344,249 @@ async def submit_cart(
         fingerprint=method,
         execute=execute,
     )
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _snatch_snapshot(state: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: ([dict(item) for item in value] if key == "items" else value)
+        for key, value in state.items()
+    }
+
+
+async def _finish_snatch_task(
+    session: Session,
+    task_id: str,
+    *,
+    status: str,
+    message: str = "",
+) -> None:
+    async with session.course_snatch_lock:
+        state = session.course_snatch_tasks[task_id]
+        state["status"] = status
+        state["message"] = message
+        state["finished_at"] = _utc_now()
+
+
+async def _run_snatch_task(session: Session, task_id: str) -> None:
+    try:
+        async with session.course_snatch_lock:
+            state = session.course_snatch_tasks[task_id]
+            start_at = state["start_at"]
+        delay = max(0.0, (start_at - _utc_now()).total_seconds())
+        if delay:
+            await asyncio.sleep(delay)
+
+        async with session.course_snatch_lock:
+            state = session.course_snatch_tasks[task_id]
+            state["status"] = "running"
+            state["started_at"] = _utc_now()
+            retry_interval = float(state["retry_interval_seconds"])
+
+        params = await _term_params(session)
+        while True:
+            async with session.course_snatch_lock:
+                state = session.course_snatch_tasks[task_id]
+                remaining_indexes = [
+                    index
+                    for index, item in enumerate(state["items"])
+                    if item["status"] in {"pending", "retrying"}
+                ]
+
+            if not remaining_indexes:
+                async with session.course_snatch_lock:
+                    items = session.course_snatch_tasks[task_id]["items"]
+                    has_failures = any(item["status"] == "failed" for item in items)
+                await _finish_snatch_task(
+                    session,
+                    task_id,
+                    status="completed_with_errors" if has_failures else "completed",
+                )
+                return
+
+            for position, index in enumerate(remaining_indexes):
+                async with session.course_snatch_lock:
+                    item = session.course_snatch_tasks[task_id]["items"][index]
+                    item["status"] = "retrying"
+                    item["attempts"] += 1
+                    course_id = item["course_id"]
+                    method = item["method"]
+
+                try:
+                    preflight = await course_service.check_time_conflict(
+                        session,
+                        **params,
+                        course_id=course_id,
+                        xkfsdm=method,
+                    )
+                    if preflight["status"] == "conflict":
+                        async with session.course_snatch_lock:
+                            item = session.course_snatch_tasks[task_id]["items"][index]
+                            item["status"] = "failed"
+                            item["message"] = preflight["message"] or "课程时间冲突"
+                        continue
+                    if not preflight["allowed"]:
+                        async with session.course_snatch_lock:
+                            session.course_snatch_tasks[task_id]["items"][index]["message"] = (
+                                preflight["message"] or "暂不可选，等待重试"
+                            )
+                        continue
+
+                    result = await course_service.select_course(
+                        session,
+                        **params,
+                        course_id=course_id,
+                        xkfsdm=method,
+                    )
+                    async with session.course_snatch_lock:
+                        item = session.course_snatch_tasks[task_id]["items"][index]
+                        if result["success"]:
+                            item["status"] = "success"
+                            item["message"] = result["message"] or "选课成功"
+                        else:
+                            item["message"] = result["message"] or "暂未成功，等待重试"
+                except (BYYTRateLimited, BYYTUnavailable, BYYTUpstreamError):
+                    async with session.course_snatch_lock:
+                        session.course_snatch_tasks[task_id]["items"][index]["message"] = (
+                            "教务系统繁忙，正在退避重试"
+                        )
+                except BYYTSessionExpired:
+                    await _finish_snatch_task(
+                        session,
+                        task_id,
+                        status="failed",
+                        message="教务系统登录已过期，请重新登录",
+                    )
+                    return
+
+                if position + 1 < len(remaining_indexes):
+                    await asyncio.sleep(min(1.0, retry_interval))
+
+            await asyncio.sleep(retry_interval)
+    except asyncio.CancelledError:
+        async with session.course_snatch_lock:
+            state = session.course_snatch_tasks.get(task_id)
+            if state and state["status"] not in {"completed", "completed_with_errors", "failed"}:
+                state["status"] = "stopped"
+                state["message"] = "任务已手动停止"
+                state["finished_at"] = _utc_now()
+        raise
+    except Exception:
+        await _finish_snatch_task(
+            session,
+            task_id,
+            status="failed",
+            message="抢课任务异常终止",
+        )
+
+
+async def create_snatch_task(
+    session: Session,
+    *,
+    courses: list[dict[str, str]],
+    start_at: datetime,
+    retry_interval_seconds: float,
+    idempotency_key: str,
+) -> dict[str, Any]:
+    fingerprint = json.dumps(
+        {
+            "courses": courses,
+            "start_at": start_at.isoformat(),
+            "retry_interval_seconds": retry_interval_seconds,
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+    )
+
+    async def execute() -> dict[str, Any]:
+        async with session.course_snatch_lock:
+            active = next(
+                (
+                    state
+                    for state in session.course_snatch_tasks.values()
+                    if state["status"] in {"scheduled", "running"}
+                ),
+                None,
+            )
+            if active:
+                raise CourseOperationBlocked("已有进行中的抢课任务，请先停止")
+
+            task_id = uuid.uuid4().hex
+            state = {
+                "task_id": task_id,
+                "status": "scheduled",
+                "start_at": start_at.astimezone(timezone.utc),
+                "retry_interval_seconds": retry_interval_seconds,
+                "created_at": _utc_now(),
+                "started_at": None,
+                "finished_at": None,
+                "message": "",
+                "items": [
+                    {
+                        **course,
+                        "status": "pending",
+                        "attempts": 0,
+                        "message": "",
+                    }
+                    for course in courses
+                ],
+            }
+            session.course_snatch_tasks[task_id] = state
+            runner = asyncio.create_task(_run_snatch_task(session, task_id))
+            session.course_snatch_runners[task_id] = runner
+            runner.add_done_callback(lambda _: session.course_snatch_runners.pop(task_id, None))
+            return _snatch_snapshot(state)
+
+    return await _execute_idempotent(
+        session,
+        operation="snatch-create",
+        key=idempotency_key,
+        fingerprint=fingerprint,
+        execute=execute,
+    )
+
+
+async def get_active_snatch_task(session: Session) -> Optional[dict[str, Any]]:
+    async with session.course_snatch_lock:
+        state = next(
+            (
+                task
+                for task in reversed(session.course_snatch_tasks.values())
+                if task["status"] in {"scheduled", "running"}
+            ),
+            None,
+        )
+        return _snatch_snapshot(state) if state else None
+
+
+async def get_snatch_task(session: Session, task_id: str) -> Optional[dict[str, Any]]:
+    async with session.course_snatch_lock:
+        state = session.course_snatch_tasks.get(task_id)
+        return _snatch_snapshot(state) if state else None
+
+
+async def stop_snatch_task(session: Session, task_id: str) -> Optional[dict[str, Any]]:
+    async with session.course_snatch_lock:
+        state = session.course_snatch_tasks.get(task_id)
+        if state is None:
+            return None
+        if state["status"] not in {"completed", "completed_with_errors", "stopped", "failed"}:
+            state["status"] = "stopped"
+            state["message"] = "任务已手动停止"
+            state["finished_at"] = _utc_now()
+        runner = session.course_snatch_runners.get(task_id)
+
+    if runner and not runner.done():
+        runner.cancel()
+        try:
+            await runner
+        except asyncio.CancelledError:
+            pass
+
+    return await get_snatch_task(session, task_id)
 
 
 def _require_clear_preflight(result: dict[str, Any]) -> None:

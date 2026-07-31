@@ -214,6 +214,7 @@ async def get_available_courses(
     kclb: str = "",  # 课程类别
     xiaoqu: str = "",  # 校区
     gjz: str = "",  # 关键字搜索
+    sfmxzj: str = "0",  # 是否面向自己：1=面向，-1=不面向，0=全部
     page_num: int = 1,
     page_size: int = 100,
 ) -> Dict:
@@ -232,6 +233,7 @@ async def get_available_courses(
         kclb: 课程类别代码
         xiaoqu: 校区代码
         gjz: 课程关键字
+        sfmxzj: 是否面向自己（1=面向，-1=不面向，0=全部）
         page_num: 页码
         page_size: 每页数量
     """
@@ -249,6 +251,7 @@ async def get_available_courses(
         p_kkyx=kkyx,
         p_kclb=kclb,
         p_kc_gjz=gjz,
+        p_sfmxzj=sfmxzj,
         pageNum=str(page_num),
         pageSize=str(page_size),
     )

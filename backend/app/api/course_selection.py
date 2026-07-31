@@ -1,7 +1,7 @@
 import logging
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, Header, Query, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 
 from app.dependencies import get_authenticated_session, require_trusted_write_origin
 from app.models.courses import (
@@ -11,6 +11,8 @@ from app.models.courses import (
     CourseSelectionContext,
     CourseSelectionLog,
     CourseSelectionPage,
+    CourseSnatchTask,
+    CourseSnatchTaskRequest,
     CourseWriteRequest,
     CourseWriteResponse,
     SelectedCoursePage,
@@ -51,6 +53,7 @@ async def courses(
     category: str = Query(""),
     campus: str = Query(""),
     keyword: str = Query(""),
+    facing: str = Query("0", pattern=r"^(?:-1|0|1)$"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ):
@@ -63,6 +66,7 @@ async def courses(
         category=category,
         campus=campus,
         keyword=keyword,
+        facing=facing,
         page=page,
         page_size=page_size,
     )
@@ -113,6 +117,71 @@ async def preflight(
         course_id=payload.course_id,
         method=payload.method,
     )
+
+
+@router.post(
+    "/snatch-tasks",
+    response_model=CourseSnatchTask,
+    summary="创建多选抢课任务",
+)
+async def create_snatch_task(
+    payload: CourseSnatchTaskRequest,
+    idempotency_key: IdempotencyKey,
+    session: Session = Depends(get_authenticated_session),
+    _: None = Depends(require_trusted_write_origin),
+):
+    return await course_selection_service.create_snatch_task(
+        session,
+        courses=[course.model_dump() for course in payload.courses],
+        start_at=payload.start_at,
+        retry_interval_seconds=payload.retry_interval_seconds,
+        idempotency_key=idempotency_key,
+    )
+
+
+@router.get(
+    "/snatch-tasks/active",
+    response_model=CourseSnatchTask,
+    summary="查询当前抢课任务",
+)
+async def get_active_snatch_task(
+    session: Session = Depends(get_authenticated_session),
+):
+    task = await course_selection_service.get_active_snatch_task(session)
+    if task is None:
+        raise HTTPException(status_code=404, detail="当前没有进行中的抢课任务")
+    return task
+
+
+@router.get(
+    "/snatch-tasks/{task_id}",
+    response_model=CourseSnatchTask,
+    summary="查询抢课任务状态",
+)
+async def get_snatch_task(
+    task_id: str,
+    session: Session = Depends(get_authenticated_session),
+):
+    task = await course_selection_service.get_snatch_task(session, task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="抢课任务不存在")
+    return task
+
+
+@router.delete(
+    "/snatch-tasks/{task_id}",
+    response_model=CourseSnatchTask,
+    summary="停止抢课任务",
+)
+async def stop_snatch_task(
+    task_id: str,
+    session: Session = Depends(get_authenticated_session),
+    _: None = Depends(require_trusted_write_origin),
+):
+    task = await course_selection_service.stop_snatch_task(session, task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="抢课任务不存在")
+    return task
 
 
 @router.post("/selections", response_model=CourseWriteResponse, summary="选课")

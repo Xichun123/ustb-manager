@@ -1518,6 +1518,199 @@
         "title": "CourseSelectionTerm",
         "type": "object"
       },
+      "CourseSnatchCourseRequest": {
+        "properties": {
+          "course_code": {
+            "default": "",
+            "maxLength": 64,
+            "title": "Course Code",
+            "type": "string"
+          },
+          "course_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Course Id",
+            "type": "string"
+          },
+          "course_name": {
+            "default": "",
+            "maxLength": 256,
+            "title": "Course Name",
+            "type": "string"
+          },
+          "method": {
+            "default": "zytzk-b-b",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Method",
+            "type": "string"
+          }
+        },
+        "required": [
+          "course_id"
+        ],
+        "title": "CourseSnatchCourseRequest",
+        "type": "object"
+      },
+      "CourseSnatchItem": {
+        "properties": {
+          "attempts": {
+            "default": 0,
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "course_code": {
+            "default": "",
+            "title": "Course Code",
+            "type": "string"
+          },
+          "course_id": {
+            "title": "Course Id",
+            "type": "string"
+          },
+          "course_name": {
+            "default": "",
+            "title": "Course Name",
+            "type": "string"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "status": {
+            "default": "pending",
+            "enum": [
+              "pending",
+              "retrying",
+              "success",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "course_id",
+          "method"
+        ],
+        "title": "CourseSnatchItem",
+        "type": "object"
+      },
+      "CourseSnatchTask": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CourseSnatchItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "retry_interval_seconds": {
+            "title": "Retry Interval Seconds",
+            "type": "number"
+          },
+          "start_at": {
+            "format": "date-time",
+            "title": "Start At",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "enum": [
+              "scheduled",
+              "running",
+              "completed",
+              "completed_with_errors",
+              "stopped",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "status",
+          "start_at",
+          "retry_interval_seconds",
+          "created_at"
+        ],
+        "title": "CourseSnatchTask",
+        "type": "object"
+      },
+      "CourseSnatchTaskRequest": {
+        "properties": {
+          "courses": {
+            "items": {
+              "$ref": "#/components/schemas/CourseSnatchCourseRequest"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Courses",
+            "type": "array"
+          },
+          "retry_interval_seconds": {
+            "default": 1.0,
+            "maximum": 30.0,
+            "minimum": 0.1,
+            "title": "Retry Interval Seconds",
+            "type": "number"
+          },
+          "start_at": {
+            "format": "date-time",
+            "title": "Start At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "courses",
+          "start_at"
+        ],
+        "title": "CourseSnatchTaskRequest",
+        "type": "object"
+      },
       "CourseWriteRequest": {
         "properties": {
           "course_id": {
@@ -4075,6 +4268,17 @@
           },
           {
             "in": "query",
+            "name": "facing",
+            "required": false,
+            "schema": {
+              "default": "0",
+              "pattern": "^(?:-1|0|1)$",
+              "title": "Facing",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "page",
             "required": false,
             "schema": {
@@ -4412,6 +4616,195 @@
         ]
       }
     },
+    "/api/course-selection/snatch-tasks": {
+      "post": {
+        "operationId": "create_snatch_task_api_course_selection_snatch_tasks_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 8,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CourseSnatchTaskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseSnatchTask"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "创建多选抢课任务",
+        "tags": [
+          "course-selection"
+        ]
+      }
+    },
+    "/api/course-selection/snatch-tasks/active": {
+      "get": {
+        "operationId": "get_active_snatch_task_api_course_selection_snatch_tasks_active_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseSnatchTask"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "查询当前抢课任务",
+        "tags": [
+          "course-selection"
+        ]
+      }
+    },
+    "/api/course-selection/snatch-tasks/{task_id}": {
+      "delete": {
+        "operationId": "stop_snatch_task_api_course_selection_snatch_tasks__task_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseSnatchTask"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "停止抢课任务",
+        "tags": [
+          "course-selection"
+        ]
+      },
+      "get": {
+        "operationId": "get_snatch_task_api_course_selection_snatch_tasks__task_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseSnatchTask"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "查询抢课任务状态",
+        "tags": [
+          "course-selection"
+        ]
+      }
+    },
     "/api/courses/announcements": {
       "get": {
         "description": "## 业务说明\n查询选课公告信息，包含选课时间安排、注意事项等。\n\n## 参数说明\n- xn: 学年（可选，不传则使用当前选课学年）\n- xq: 学期（可选，不传则使用当前选课学期）\n\n## 返回数据\n选课公告列表",
@@ -4494,7 +4887,7 @@
     },
     "/api/courses/available": {
       "get": {
-        "description": "## 业务说明\n获取可选课程列表，支持按选课方式、学院、类别、校区筛选。\n\n## 参数说明\n- method: 选课方式代码\n  - `bx-b-b`: 必修课\n  - `mooc-b-b`: MOOC在线课程\n  - `sztzk`: 素质拓展课\n  - `zytzk`: 专业拓展课\n  - `ggkrw`: 公共课\n- college: 开课学院代码（通过 /courses/colleges 获取）\n- category: 课程类别代码（通过 /courses/categories 获取）\n- campus: 校区代码（通过 /courses/campuses 获取）\n- keyword: 课程名称关键字\n\n## 返回数据\n- courses: 可选课程列表\n- total: 课程总数\n- total_credits: 总学分\n- selection_method: 当前查询的选课方式",
+        "description": "## 业务说明\n获取可选课程列表，支持按选课方式、学院、类别、校区筛选。\n\n## 参数说明\n- method: 选课方式代码\n  - `bx-b-b`: 必修课\n  - `mooc-b-b`: MOOC在线课程\n  - `sztzk`: 素质拓展课\n  - `zytzk`: 专业拓展课\n  - `ggkrw`: 公共课\n- college: 开课学院代码（通过 /courses/colleges 获取）\n- category: 课程类别代码（通过 /courses/categories 获取）\n- campus: 校区代码（通过 /courses/campuses 获取）\n- keyword: 课程名称关键字\n- facing: 是否面向自己（`1`=面向，`-1`=不面向，`0`=全部）\n\n## 返回数据\n- courses: 可选课程列表\n- total: 课程总数\n- total_credits: 总学分\n- selection_method: 当前查询的选课方式",
         "operationId": "get_available_courses_api_courses_available_get",
         "parameters": [
           {
@@ -4615,6 +5008,19 @@
               ],
               "description": "课程关键字搜索",
               "title": "Keyword"
+            }
+          },
+          {
+            "description": "是否面向自己: 1(面向), -1(不面向), 0(全部)",
+            "in": "query",
+            "name": "facing",
+            "required": false,
+            "schema": {
+              "default": "0",
+              "description": "是否面向自己: 1(面向), -1(不面向), 0(全部)",
+              "pattern": "^(?:-1|0|1)$",
+              "title": "Facing",
+              "type": "string"
             }
           }
         ],

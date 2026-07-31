@@ -12,6 +12,7 @@ type CoursePage = components['schemas']['CourseSelectionPage']
 type SelectedCoursePage = components['schemas']['SelectedCoursePage']
 type PreflightResponse = components['schemas']['CoursePreflightResponse']
 type WriteResponse = components['schemas']['CourseWriteResponse']
+type SnatchTask = components['schemas']['CourseSnatchTask']
 type Announcement = components['schemas']['CourseAnnouncement']
 
 interface TermListItem {
@@ -43,6 +44,22 @@ const SELECTION_METHOD_COLORS: Record<string, string> = {
 
 const idempotencyKey = () => crypto.randomUUID()
 
+const defaultSnatchStart = () => {
+  const target = new Date()
+  target.setHours(15, 0, 0, 0)
+  const local = new Date(target.getTime() - target.getTimezoneOffset() * 60_000)
+  return local.toISOString().slice(0, 16)
+}
+
+const SNATCH_STATUS_LABELS: Record<SnatchTask['status'], string> = {
+  scheduled: '等待开始',
+  running: '抢课中',
+  completed: '全部成功',
+  completed_with_errors: '部分失败',
+  stopped: '已停止',
+  failed: '任务失败',
+}
+
 export default function CoursesPage() {
   const [loading, setLoading] = useState(true)
   const [courses, setCourses] = useState<Course[]>([])
@@ -52,16 +69,21 @@ export default function CoursesPage() {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
   const [modalVisible, setModalVisible] = useState(false)
   const [searchText, setSearchText] = useState('')
+  const [searchKeyword, setSearchKeyword] = useState('')
 
   // 新增：视图模式和筛选条件
   const [viewMode, setViewMode] = useState<'selected' | 'available'>('selected')
   const [courseMethod, setCourseMethod] = useState('bx-b-b')
+  const [coursePage, setCoursePage] = useState(1)
+  const [coursePageSize, setCoursePageSize] = useState(100)
+  const [availableCourseTotal, setAvailableCourseTotal] = useState(0)
   const [colleges, setColleges] = useState<FilterOption[]>([])
   const [campuses, setCampuses] = useState<FilterOption[]>([])
   const [categories, setCategories] = useState<FilterOption[]>([])
   const [filterCollege, setFilterCollege] = useState<string | undefined>()
   const [filterCategory, setFilterCategory] = useState<string | undefined>()
   const [filterCampus, setFilterCampus] = useState<string | undefined>()
+  const [filterFacing, setFilterFacing] = useState('0')
 
   // 公告
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
@@ -74,10 +96,20 @@ export default function CoursesPage() {
   const [selectingCourse, setSelectingCourse] = useState<string | null>(null)
   const [droppingCourse, setDroppingCourse] = useState<string | null>(null)
 
+  // 多选定时抢课
+  const [selectedCourseKeys, setSelectedCourseKeys] = useState<string[]>([])
+  const [selectedCourseMap, setSelectedCourseMap] = useState<Record<string, Course>>({})
+  const [snatchModalOpen, setSnatchModalOpen] = useState(false)
+  const [snatchStartAt, setSnatchStartAt] = useState(defaultSnatchStart)
+  const [creatingSnatchTask, setCreatingSnatchTask] = useState(false)
+  const [stoppingSnatchTask, setStoppingSnatchTask] = useState(false)
+  const [snatchTask, setSnatchTask] = useState<SnatchTask | null>(null)
+
   const categoryOptions = useMemo(
     () => categories.map(category => ({ value: category.code, label: category.name })),
     [categories],
   )
+  const isProfessionalDevelopment = courseMethod.startsWith('zytzk')
 
   // 筛选后的课程
   const filteredCourses = useMemo(() => {
@@ -88,8 +120,8 @@ export default function CoursesPage() {
       result = result.filter(c => !c.is_selected)
     }
 
-    // 搜索筛选
-    if (searchText) {
+    // 已选课程没有服务端分页，在本地搜索；可选课程由后端搜索全部结果。
+    if (viewMode === 'selected' && searchText) {
       const lower = searchText.toLowerCase()
       result = result.filter(c =>
         c.course_name.toLowerCase().includes(lower) ||
@@ -148,6 +180,14 @@ export default function CoursesPage() {
     init()
   }, [])
 
+  useEffect(() => {
+    api.get<SnatchTask>('/course-selection/snatch-tasks/active')
+      .then(res => setSnatchTask(res.data))
+      .catch(() => {
+        // 没有活动任务时接口返回 404，无需提示。
+      })
+  }, [])
+
   // 加载课程
   useEffect(() => {
     if (!selectedTerm) return
@@ -172,11 +212,14 @@ export default function CoursesPage() {
               college: filterCollege,
               category: filterCategory,
               campus: filterCampus,
-              page: 1,
-              page_size: 100,
+              keyword: searchKeyword,
+              facing: isProfessionalDevelopment ? filterFacing : '0',
+              page: coursePage,
+              page_size: coursePageSize,
             },
           })
           setCourses(res.data.items || [])
+          setAvailableCourseTotal(res.data.total || 0)
         }
       } catch (err) {
         console.error('Failed to fetch courses:', err)
@@ -186,7 +229,121 @@ export default function CoursesPage() {
       }
     }
     fetchCourses()
-  }, [selectedTerm, viewMode, courseMethod, filterCollege, filterCategory, filterCampus])
+  }, [selectedTerm, viewMode, courseMethod, isProfessionalDevelopment, filterCollege, filterCategory, filterCampus, filterFacing, searchKeyword, coursePage, coursePageSize])
+
+  useEffect(() => {
+    if (!snatchTask || !['scheduled', 'running'].includes(snatchTask.status)) return
+
+    let disposed = false
+    const refresh = async () => {
+      try {
+        const res = await api.get<SnatchTask>(
+          `/course-selection/snatch-tasks/${snatchTask.task_id}`,
+        )
+        if (disposed) return
+        setSnatchTask(res.data)
+        const successfulIds = new Set(
+          (res.data.items || []).filter(item => item.status === 'success').map(item => item.course_id),
+        )
+        if (successfulIds.size) {
+          setCourses(prev => prev.map(course =>
+            successfulIds.has(course.course_id) ? { ...course, is_selected: true } : course
+          ))
+          setSelectedCourseKeys(prev => prev.filter(key => !successfulIds.has(key)))
+          setSelectedCourseMap(prev => {
+            const next = { ...prev }
+            successfulIds.forEach(id => delete next[id])
+            return next
+          })
+        }
+      } catch (err) {
+        console.error('Failed to refresh snatch task:', err)
+      }
+    }
+
+    const timer = window.setInterval(refresh, 1000)
+    return () => {
+      disposed = true
+      window.clearInterval(timer)
+    }
+  }, [snatchTask?.task_id, snatchTask?.status])
+
+  const selectedCourses = useMemo(
+    () => selectedCourseKeys.map(key => selectedCourseMap[key]).filter(Boolean),
+    [selectedCourseKeys, selectedCourseMap],
+  )
+
+  const clearSelectedCourses = () => {
+    setSelectedCourseKeys([])
+    setSelectedCourseMap({})
+  }
+
+  const handleCourseSelectionChange = (keys: React.Key[]) => {
+    const nextKeys = keys.map(String).slice(0, 10)
+    if (keys.length > 10) message.warning('单个抢课任务最多选择 10 门课程')
+    setSelectedCourseKeys(nextKeys)
+    setSelectedCourseMap(prev => {
+      const next = { ...prev }
+      courses.forEach(course => {
+        if (nextKeys.includes(course.course_id)) next[course.course_id] = course
+        else delete next[course.course_id]
+      })
+      return next
+    })
+  }
+
+  const handleCreateSnatchTask = async () => {
+    if (!selectedCourses.length) {
+      message.warning('请先选择要抢的课程')
+      return
+    }
+    const startAt = new Date(snatchStartAt)
+    if (Number.isNaN(startAt.getTime())) {
+      message.error('请选择有效的开始时间')
+      return
+    }
+
+    setCreatingSnatchTask(true)
+    try {
+      const res = await api.post<SnatchTask>(
+        '/course-selection/snatch-tasks',
+        {
+          start_at: startAt.toISOString(),
+          retry_interval_seconds: 1,
+          courses: selectedCourses.map(course => ({
+            course_id: course.course_id,
+            course_code: course.course_code,
+            course_name: course.course_name,
+            method: courseMethod,
+          })),
+        },
+        { headers: { 'Idempotency-Key': idempotencyKey() } },
+      )
+      setSnatchTask(res.data)
+      setSnatchModalOpen(false)
+      message.success('定时抢课任务已创建')
+    } catch (err: unknown) {
+      message.error(getApiErrorMessage(err, '创建抢课任务失败'))
+    } finally {
+      setCreatingSnatchTask(false)
+    }
+  }
+
+  const handleStopSnatchTask = async () => {
+    if (!snatchTask) return
+    setStoppingSnatchTask(true)
+    try {
+      const res = await api.delete<SnatchTask>(
+        `/course-selection/snatch-tasks/${snatchTask.task_id}`,
+      )
+      setSnatchTask(res.data)
+      message.success('抢课任务已停止')
+    } catch (err: unknown) {
+      message.error(getApiErrorMessage(err, '停止抢课任务失败'))
+    } finally {
+      setStoppingSnatchTask(false)
+    }
+  }
 
   // 显示课程详情
   const handleCourseClick = (course: Course) => {
@@ -198,9 +355,24 @@ export default function CoursesPage() {
   const handleViewModeChange = (mode: string) => {
     setViewMode(mode as 'selected' | 'available')
     setSearchText('')
+    setSearchKeyword('')
+    setCoursePage(1)
     setFilterCollege(undefined)
     setFilterCategory(undefined)
     setFilterCampus(undefined)
+    setFilterFacing('0')
+    clearSelectedCourses()
+  }
+
+  const handleAvailablePageChange = (page: number, pageSize: number) => {
+    setCoursePage(pageSize === coursePageSize ? page : 1)
+    setCoursePageSize(pageSize)
+  }
+
+  const handleAvailableSearch = (value: string) => {
+    setSearchText(value)
+    setSearchKeyword(value.trim())
+    setCoursePage(1)
   }
 
   // 冲突检测
@@ -458,7 +630,7 @@ export default function CoursesPage() {
       <div style={{ marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <Select
           value={selectedTerm}
-          onChange={setSelectedTerm}
+          onChange={(value) => { setSelectedTerm(value); setCoursePage(1) }}
           style={{ width: 180 }}
           placeholder="选择学期"
           options={termList.map(t => ({
@@ -471,7 +643,12 @@ export default function CoursesPage() {
           <>
             <Select
               value={courseMethod}
-              onChange={setCourseMethod}
+              onChange={(value) => {
+                setCourseMethod(value)
+                setFilterFacing('0')
+                setCoursePage(1)
+                clearSelectedCourses()
+              }}
               style={{ width: 140 }}
               options={(courseContext?.methods || []).map(method => ({
                 value: method.code,
@@ -480,7 +657,7 @@ export default function CoursesPage() {
             />
             <Select
               value={filterCollege}
-              onChange={setFilterCollege}
+              onChange={(value) => { setFilterCollege(value); setCoursePage(1) }}
               style={{ width: 150 }}
               placeholder="开课学院"
               allowClear
@@ -490,7 +667,7 @@ export default function CoursesPage() {
             />
             <Select
               value={filterCategory}
-              onChange={setFilterCategory}
+              onChange={(value) => { setFilterCategory(value); setCoursePage(1) }}
               style={{ width: 200 }}
               placeholder="课程类别"
               allowClear
@@ -500,12 +677,25 @@ export default function CoursesPage() {
             />
             <Select
               value={filterCampus}
-              onChange={setFilterCampus}
+              onChange={(value) => { setFilterCampus(value); setCoursePage(1) }}
               style={{ width: 120 }}
               placeholder="校区"
               allowClear
               options={campuses.map(c => ({ value: c.code, label: c.name }))}
             />
+            {isProfessionalDevelopment && (
+              <Select
+                aria-label="是否面向自己"
+                value={filterFacing}
+                onChange={(value) => { setFilterFacing(value); setCoursePage(1) }}
+                style={{ width: 130 }}
+                options={[
+                  { value: '0', label: '全部' },
+                  { value: '1', label: '面向自己' },
+                  { value: '-1', label: '不面向自己' },
+                ]}
+              />
+            )}
           </>
         )}
 
@@ -514,16 +704,75 @@ export default function CoursesPage() {
           allowClear
           style={{ width: 280 }}
           value={searchText}
-          onChange={e => setSearchText(e.target.value)}
+          onChange={e => {
+            setSearchText(e.target.value)
+            if (!e.target.value) handleAvailableSearch('')
+          }}
+          onSearch={viewMode === 'available' ? handleAvailableSearch : undefined}
         />
+        {viewMode === 'available' && (
+          <Button
+            type="primary"
+            icon={<ThunderboltOutlined />}
+            disabled={!selectedCourseKeys.length || !!snatchTask && ['scheduled', 'running'].includes(snatchTask.status)}
+            onClick={() => setSnatchModalOpen(true)}
+          >
+            定时抢课 ({selectedCourseKeys.length})
+          </Button>
+        )}
       </div>
+
+      {snatchTask && (
+        <Card
+          size="small"
+          title={
+            <Space>
+              <ThunderboltOutlined />
+              <span>多选抢课任务</span>
+              <Tag color={snatchTask.status === 'completed' ? 'success' : snatchTask.status === 'running' ? 'processing' : snatchTask.status === 'failed' || snatchTask.status === 'completed_with_errors' ? 'error' : 'default'}>
+                {SNATCH_STATUS_LABELS[snatchTask.status]}
+              </Tag>
+            </Space>
+          }
+          extra={['scheduled', 'running'].includes(snatchTask.status) && (
+            <Button danger loading={stoppingSnatchTask} onClick={handleStopSnatchTask}>
+              停止任务
+            </Button>
+          )}
+          style={{ marginBottom: 16 }}
+        >
+          <Alert
+            type="warning"
+            showIcon
+            message="任务由当前后端进程执行；请勿重启后端或让电脑休眠。关闭网页不会停止任务。"
+            style={{ marginBottom: 12 }}
+          />
+          <div style={{ marginBottom: 12 }}>
+            计划开始：{new Date(snatchTask.start_at).toLocaleString()}
+            {snatchTask.message ? ` · ${snatchTask.message}` : ''}
+          </div>
+          <Space wrap>
+            {(snatchTask.items || []).map(item => (
+              <Tag
+                key={item.course_id}
+                color={item.status === 'success' ? 'success' : item.status === 'failed' ? 'error' : item.status === 'retrying' ? 'processing' : 'default'}
+              >
+                {item.course_name || item.course_code || item.course_id} · {
+                  item.status === 'success' ? '成功' : item.status === 'failed' ? '失败' : item.status === 'retrying' ? `重试中 (${item.attempts})` : '等待'
+                }
+                {item.message ? ` · ${item.message}` : ''}
+              </Tag>
+            ))}
+          </Space>
+        </Card>
+      )}
 
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col xs={12} sm={6}>
           <Card size="small">
             <Statistic
               title={viewMode === 'selected' ? '已选课程' : '可选课程'}
-              value={filteredCourses.length}
+              value={viewMode === 'available' ? availableCourseTotal : filteredCourses.length}
               prefix={<BookOutlined />}
               suffix="门"
             />
@@ -566,8 +815,26 @@ export default function CoursesPage() {
             columns={columns}
             dataSource={filteredCourses}
             rowKey="course_id"
+            rowSelection={viewMode === 'available' ? {
+              selectedRowKeys: selectedCourseKeys,
+              preserveSelectedRowKeys: true,
+              onChange: handleCourseSelectionChange,
+              getCheckboxProps: (record) => ({
+                disabled: record.is_selected || (
+                  selectedCourseKeys.length >= 10 && !selectedCourseKeys.includes(record.course_id)
+                ),
+              }),
+            } : undefined}
             scroll={{ x: 1400 }}
-            pagination={{
+            pagination={viewMode === 'available' ? {
+              current: coursePage,
+              pageSize: coursePageSize,
+              total: availableCourseTotal,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total) => `共 ${total} 门课程`,
+              onChange: handleAvailablePageChange,
+            } : {
               showSizeChanger: true,
               showQuickJumper: true,
               showTotal: (total) => `共 ${total} 门课程`,
@@ -577,6 +844,49 @@ export default function CoursesPage() {
           />
         </Spin>
       </Card>
+
+      <Modal
+        title={`创建定时抢课任务（${selectedCourses.length} 门）`}
+        open={snatchModalOpen}
+        onCancel={() => setSnatchModalOpen(false)}
+        onOk={handleCreateSnatchTask}
+        okText="确认定时抢课"
+        cancelText="取消"
+        confirmLoading={creatingSnatchTask}
+        width={640}
+      >
+        <Alert
+          type="info"
+          showIcon
+          message="到达设定时间后自动开始；未成功课程会持续重试，全部成功后停止。"
+          description="同一会话只运行一个任务。时间冲突的课程会标记失败，其余课程继续。"
+          style={{ marginBottom: 16 }}
+        />
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 8, fontWeight: 500 }}>开始时间</div>
+          <Input
+            type="datetime-local"
+            aria-label="抢课开始时间"
+            value={snatchStartAt}
+            onChange={event => setSnatchStartAt(event.target.value)}
+          />
+        </div>
+        <div style={{ marginBottom: 8, fontWeight: 500 }}>已选课程</div>
+        <Space wrap>
+          {selectedCourses.map(course => (
+            <Tag key={course.course_id} closable onClose={() => {
+              setSelectedCourseKeys(prev => prev.filter(key => key !== course.course_id))
+              setSelectedCourseMap(prev => {
+                const next = { ...prev }
+                delete next[course.course_id]
+                return next
+              })
+            }}>
+              {course.course_name} · {course.teacher || '教师待定'}
+            </Tag>
+          ))}
+        </Space>
+      </Modal>
 
       <Modal
         title="课程详情"

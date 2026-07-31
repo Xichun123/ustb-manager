@@ -92,6 +92,7 @@ def test_course_selection_courses_return_a_typed_page():
         assert request.url.path == "/Xsxk/queryKxrw"
         form = parse_qs(request.content.decode(), keep_blank_values=True)
         assert form["p_xkfsdm"] == ["bx-b-b"]
+        assert form["p_sfmxzj"] == ["1"]
         assert form["pageNum"] == ["2"]
         assert form["pageSize"] == ["10"]
         return httpx.Response(
@@ -117,7 +118,7 @@ def test_course_selection_courses_return_a_typed_page():
     response = _request(
         "/api/course-selection/courses",
         handler,
-        params={"method": "bx-b-b", "page": 2, "page_size": 10},
+        params={"method": "bx-b-b", "facing": "1", "page": 2, "page_size": 10},
     )
 
     assert response.status_code == 200

@@ -668,6 +668,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/course-selection/snatch-tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 创建多选抢课任务 */
+        post: operations["create_snatch_task_api_course_selection_snatch_tasks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/course-selection/snatch-tasks/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 查询当前抢课任务 */
+        get: operations["get_active_snatch_task_api_course_selection_snatch_tasks_active_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/course-selection/snatch-tasks/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 查询抢课任务状态 */
+        get: operations["get_snatch_task_api_course_selection_snatch_tasks__task_id__get"];
+        put?: never;
+        post?: never;
+        /** 停止抢课任务 */
+        delete: operations["stop_snatch_task_api_course_selection_snatch_tasks__task_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/courses/announcements": {
         parameters: {
             query?: never;
@@ -719,6 +771,7 @@ export interface paths {
          *     - category: 课程类别代码（通过 /courses/categories 获取）
          *     - campus: 校区代码（通过 /courses/campuses 获取）
          *     - keyword: 课程名称关键字
+         *     - facing: 是否面向自己（`1`=面向，`-1`=不面向，`0`=全部）
          *
          *     ## 返回数据
          *     - courses: 可选课程列表
@@ -2910,6 +2963,107 @@ export interface components {
             /** Year */
             year: string;
         };
+        /** CourseSnatchCourseRequest */
+        CourseSnatchCourseRequest: {
+            /**
+             * Course Code
+             * @default
+             */
+            course_code: string;
+            /** Course Id */
+            course_id: string;
+            /**
+             * Course Name
+             * @default
+             */
+            course_name: string;
+            /**
+             * Method
+             * @default zytzk-b-b
+             */
+            method: string;
+        };
+        /** CourseSnatchItem */
+        CourseSnatchItem: {
+            /**
+             * Attempts
+             * @default 0
+             */
+            attempts: number;
+            /**
+             * Course Code
+             * @default
+             */
+            course_code: string;
+            /** Course Id */
+            course_id: string;
+            /**
+             * Course Name
+             * @default
+             */
+            course_name: string;
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+            /** Method */
+            method: string;
+            /**
+             * Status
+             * @default pending
+             * @enum {string}
+             */
+            status: "pending" | "retrying" | "success" | "failed";
+        };
+        /** CourseSnatchTask */
+        CourseSnatchTask: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Finished At */
+            finished_at?: string | null;
+            /** Items */
+            items?: components["schemas"]["CourseSnatchItem"][];
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+            /** Retry Interval Seconds */
+            retry_interval_seconds: number;
+            /**
+             * Start At
+             * Format: date-time
+             */
+            start_at: string;
+            /** Started At */
+            started_at?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "scheduled" | "running" | "completed" | "completed_with_errors" | "stopped" | "failed";
+            /** Task Id */
+            task_id: string;
+        };
+        /** CourseSnatchTaskRequest */
+        CourseSnatchTaskRequest: {
+            /** Courses */
+            courses: components["schemas"]["CourseSnatchCourseRequest"][];
+            /**
+             * Retry Interval Seconds
+             * @default 1
+             */
+            retry_interval_seconds: number;
+            /**
+             * Start At
+             * Format: date-time
+             */
+            start_at: string;
+        };
         /** CourseWriteRequest */
         CourseWriteRequest: {
             /** Course Id */
@@ -4248,6 +4402,7 @@ export interface operations {
                 category?: string;
                 campus?: string;
                 keyword?: string;
+                facing?: string;
                 page?: number;
                 page_size?: number;
             };
@@ -4430,6 +4585,123 @@ export interface operations {
             };
         };
     };
+    create_snatch_task_api_course_selection_snatch_tasks_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CourseSnatchTaskRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseSnatchTask"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_active_snatch_task_api_course_selection_snatch_tasks_active_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseSnatchTask"];
+                };
+            };
+        };
+    };
+    get_snatch_task_api_course_selection_snatch_tasks__task_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseSnatchTask"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stop_snatch_task_api_course_selection_snatch_tasks__task_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseSnatchTask"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_announcements_api_courses_announcements_get: {
         parameters: {
             query?: {
@@ -4481,6 +4753,8 @@ export interface operations {
                 campus?: string | null;
                 /** @description 课程关键字搜索 */
                 keyword?: string | null;
+                /** @description 是否面向自己: 1(面向), -1(不面向), 0(全部) */
+                facing?: string;
             };
             header?: never;
             path?: never;

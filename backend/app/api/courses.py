@@ -213,6 +213,11 @@ async def get_available_courses(
     category: Optional[str] = Query(None, description="课程类别代码"),
     campus: Optional[str] = Query(None, description="校区代码"),
     keyword: Optional[str] = Query(None, description="课程关键字搜索"),
+    facing: str = Query(
+        "0",
+        pattern=r"^(?:-1|0|1)$",
+        description="是否面向自己: 1(面向), -1(不面向), 0(全部)",
+    ),
 ):
     """
     ## 业务说明
@@ -229,6 +234,7 @@ async def get_available_courses(
     - category: 课程类别代码（通过 /courses/categories 获取）
     - campus: 校区代码（通过 /courses/campuses 获取）
     - keyword: 课程名称关键字
+    - facing: 是否面向自己（`1`=面向，`-1`=不面向，`0`=全部）
 
     ## 返回数据
     - courses: 可选课程列表
@@ -250,6 +256,7 @@ async def get_available_courses(
         kclb=category or "",
         xiaoqu=campus or "",
         gjz=keyword or "",
+        sfmxzj=facing,
     )
 
 

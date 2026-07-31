@@ -1,6 +1,7 @@
+from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class CourseSelectionTerm(BaseModel):
@@ -96,6 +97,66 @@ class CourseWriteResponse(BaseModel):
     success: bool
     status: Literal["success", "failed"]
     message: str = ""
+
+
+class CourseSnatchCourseRequest(BaseModel):
+    course_id: str = Field(min_length=1, max_length=128)
+    course_code: str = Field(default="", max_length=64)
+    course_name: str = Field(default="", max_length=256)
+    method: str = Field(default="zytzk-b-b", min_length=1, max_length=64)
+
+
+class CourseSnatchTaskRequest(BaseModel):
+    courses: list[CourseSnatchCourseRequest] = Field(min_length=1, max_length=10)
+    start_at: datetime
+    retry_interval_seconds: float = Field(default=1.0, ge=0.1, le=30)
+
+    @field_validator("courses")
+    @classmethod
+    def require_unique_courses(
+        cls,
+        value: list[CourseSnatchCourseRequest],
+    ) -> list[CourseSnatchCourseRequest]:
+        course_ids = [course.course_id for course in value]
+        if len(course_ids) != len(set(course_ids)):
+            raise ValueError("courses must not contain duplicate course_id values")
+        return value
+
+    @field_validator("start_at")
+    @classmethod
+    def require_timezone(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("start_at must include a timezone")
+        return value
+
+
+class CourseSnatchItem(BaseModel):
+    course_id: str
+    course_code: str = ""
+    course_name: str = ""
+    method: str
+    status: Literal["pending", "retrying", "success", "failed"] = "pending"
+    attempts: int = 0
+    message: str = ""
+
+
+class CourseSnatchTask(BaseModel):
+    task_id: str
+    status: Literal[
+        "scheduled",
+        "running",
+        "completed",
+        "completed_with_errors",
+        "stopped",
+        "failed",
+    ]
+    start_at: datetime
+    retry_interval_seconds: float
+    created_at: datetime
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+    message: str = ""
+    items: list[CourseSnatchItem] = Field(default_factory=list)
 
 
 class CourseAnnouncement(BaseModel):

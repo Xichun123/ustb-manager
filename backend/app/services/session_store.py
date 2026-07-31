@@ -40,6 +40,9 @@ class Session:
     query_cache: dict[str, tuple[float, Any]] = field(default_factory=dict)
     idempotency_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     idempotency_results: dict[str, Any] = field(default_factory=dict)
+    course_snatch_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    course_snatch_tasks: dict[str, dict[str, Any]] = field(default_factory=dict)
+    course_snatch_runners: dict[str, asyncio.Task[Any]] = field(default_factory=dict)
     qr_image: Optional[bytes] = None
     procedure: Optional[object] = None
     closing: bool = False
@@ -98,6 +101,10 @@ class SessionStore:
         if session.closing:
             return
         session.closing = True
+        for runner in session.course_snatch_runners.values():
+            if not runner.done():
+                runner.cancel()
+        session.course_snatch_runners.clear()
         session.client.close()
 
     def _restore_session(self, session_id: str) -> Optional[Session]:
