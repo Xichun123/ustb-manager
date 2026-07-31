@@ -109,7 +109,11 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
 
 
 async def byyt_session_expired_handler(request: Request, exc: BYYTSessionExpired):
-    """BYYT 会话过期 → 401。"""
+    """BYYT 会话过期 → 使项目会话失效并返回 401。"""
+    session = getattr(request.state, "authenticated_session", None)
+    if session is not None:
+        session.mark_expired()
+
     logger.warning(
         "BYYT session expired request_id=%s method=%s path=%s",
         _request_id(request),

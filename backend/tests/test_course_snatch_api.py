@@ -68,7 +68,9 @@ def test_multi_course_snatch_task_runs_until_every_course_succeeds():
 
     try:
         with TestClient(app, raise_server_exceptions=False) as client:
-            created = client.post("/api/course-selection/snatch-tasks", headers=headers, json=payload)
+            created = client.post(
+                "/api/course-selection/snatch-tasks", headers=headers, json=payload
+            )
             assert created.status_code == 200, created.text
             task_id = created.json()["task_id"]
 
@@ -119,7 +121,9 @@ def test_scheduled_snatch_task_can_be_stopped_before_it_writes():
 
     try:
         with TestClient(app, raise_server_exceptions=False) as client:
-            created = client.post("/api/course-selection/snatch-tasks", headers=headers, json=payload)
+            created = client.post(
+                "/api/course-selection/snatch-tasks", headers=headers, json=payload
+            )
             assert created.status_code == 200, created.text
             task_id = created.json()["task_id"]
             active = client.get("/api/course-selection/snatch-tasks/active")

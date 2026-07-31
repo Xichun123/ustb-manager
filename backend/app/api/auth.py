@@ -476,9 +476,9 @@ async def auth_status(
     if not session_token:
         return {"authenticated": False}
     session = store.get(session_token)
-    if not session:
+    if not session or session.state != AuthState.ACTIVE:
         return {"authenticated": False}
-    return {"authenticated": session.state == AuthState.ACTIVE, "state": session.state.value}
+    return {"authenticated": True, "state": session.state.value}
 
 
 @router.post("/logout", response_model=SimpleResponse, summary="退出登录")

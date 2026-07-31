@@ -42,6 +42,7 @@ def require_trusted_write_origin(request: Request) -> None:
 
 
 def get_authenticated_session(
+    request: Request,
     session_token: Optional[str] = Depends(get_optional_session_token),
 ) -> Session:
     """获取已认证的 Cookie/Bearer 共用会话。"""
@@ -52,4 +53,5 @@ def get_authenticated_session(
     if not session or not session.authenticated:
         raise AuthenticationRequired
 
+    request.state.authenticated_session = session
     return session

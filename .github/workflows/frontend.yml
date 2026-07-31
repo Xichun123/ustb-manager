@@ -48,4 +48,4 @@ jobs:
         run: npm run build
 
       - name: Dependency audit
-        run: npm audit --audit-level=high
+        run: npm run audit:ci

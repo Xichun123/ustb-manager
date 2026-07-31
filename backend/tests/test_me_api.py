@@ -6,6 +6,7 @@ import httpx
 from fastapi.testclient import TestClient
 
 from app import dependencies
+from app.api import auth
 from app.dependencies import get_authenticated_session
 from app.main import app
 from app.services.session_store import AuthState, Session, SessionStore
@@ -97,3 +98,40 @@ def test_me_accepts_the_same_session_as_a_bearer_token(monkeypatch):
 
     assert response.status_code == 200
     assert response.json()["student_id"] == "U000000000"
+
+
+def test_upstream_expiration_invalidates_the_project_session(monkeypatch):
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/UserManager/queryxsxx"
+        return httpx.Response(401, json={"detail": "unauthorized"})
+
+    session_store = SessionStore()
+    session_id, session = session_store.create()
+    session.client.close()
+    session.client = httpx.Client(transport=httpx.MockTransport(handler))
+    session.state = AuthState.ACTIVE
+    session.authenticated = True
+    monkeypatch.setattr(dependencies, "store", session_store)
+    monkeypatch.setattr(auth, "store", session_store)
+
+    async def init_qr(_session):
+        return b"qr-image"
+
+    monkeypatch.setattr(auth.auth_service, "init_qr_auth", init_qr)
+    headers = {"Authorization": f"Bearer {session_id}"}
+
+    try:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            expired_response = client.get("/api/me", headers=headers)
+            status_response = client.get("/api/auth/status", headers=headers)
+            qr_response = client.post("/api/auth/qr/init", headers=headers)
+    finally:
+        session_store.stop_cleanup()
+
+    assert expired_response.status_code == 401
+    assert expired_response.json()["error"]["code"] == "UPSTREAM_SESSION_EXPIRED"
+    assert status_response.status_code == 200
+    assert status_response.json() == {"authenticated": False, "state": None}
+    assert session.state == AuthState.EXPIRED
+    assert session.authenticated is False
+    assert qr_response.status_code == 200

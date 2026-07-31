@@ -6,7 +6,7 @@ from app.services.wifi_service import WifiSession, _extract_dashboard_user
 
 
 def test_dashboard_user_json_allows_braces_inside_strings():
-    html = '''
+    html = """
     <script>
       (function (user) { window.user = user || {}; })({
         "userName": "U202400001",
@@ -18,7 +18,7 @@ def test_dashboard_user_json_allows_braces_inside_strings():
       });
       window.afterUser = true;
     </script>
-    '''
+    """
 
     user = _extract_dashboard_user(html)
 

@@ -337,10 +337,7 @@ def test_course_selection_classifies_a_direct_conflict_rejection():
 
 def test_course_selection_uses_internal_id_and_enriches_a_generic_conflict():
     requests = []
-    detailed_message = (
-        "上课时间冲突，当前课程：德国国情(排课)，"
-        "冲突课程：信息系统开发实践II(排课)"
-    )
+    detailed_message = "上课时间冲突，当前课程：德国国情(排课)，冲突课程：信息系统开发实践II(排课)"
 
     def handler(request: httpx.Request) -> httpx.Response:
         requests.append(request.url.path)

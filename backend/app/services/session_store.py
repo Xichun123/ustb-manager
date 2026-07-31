@@ -52,6 +52,10 @@ class Session:
     qr_monitor_started: bool = False
     last_error: Optional[str] = None
 
+    def mark_expired(self) -> None:
+        self.state = AuthState.EXPIRED
+        self.authenticated = False
+
 
 class SessionStore:
     def __init__(
