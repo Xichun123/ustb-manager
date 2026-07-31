@@ -1166,6 +1166,17 @@
             "default": "bx-b-b",
             "title": "Method",
             "type": "string"
+          },
+          "selection_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selection Id"
           }
         },
         "required": [
@@ -1425,6 +1436,28 @@
             "title": "Credits",
             "type": "number"
           },
+          "external_capacity": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Capacity"
+          },
+          "external_selected_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Selected Count"
+          },
           "hours": {
             "anyOf": [
               {
@@ -1435,6 +1468,28 @@
               }
             ],
             "title": "Hours"
+          },
+          "internal_capacity": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Internal Capacity"
+          },
+          "internal_selected_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Internal Selected Count"
           },
           "is_selected": {
             "default": false,
@@ -1544,6 +1599,18 @@
             "minLength": 1,
             "title": "Method",
             "type": "string"
+          },
+          "selection_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selection Id"
           }
         },
         "required": [
@@ -1573,6 +1640,25 @@
             "title": "Course Name",
             "type": "string"
           },
+          "error_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "conflict",
+                  "full",
+                  "not_open",
+                  "not_eligible",
+                  "already_selected",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Type"
+          },
           "message": {
             "default": "",
             "title": "Message",
@@ -1581,6 +1667,17 @@
           "method": {
             "title": "Method",
             "type": "string"
+          },
+          "selection_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selection Id"
           },
           "status": {
             "default": "pending",
@@ -1721,6 +1818,17 @@
             "default": "bx-b-b",
             "title": "Method",
             "type": "string"
+          },
+          "selection_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selection Id"
           }
         },
         "required": [

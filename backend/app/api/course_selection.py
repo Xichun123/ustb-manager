@@ -115,6 +115,7 @@ async def preflight(
     return await course_selection_service.preflight(
         session,
         course_id=payload.course_id,
+        selection_id=payload.selection_id,
         method=payload.method,
     )
 
@@ -195,6 +196,7 @@ async def create_selection(
     result = await course_selection_service.create_selection(
         session,
         course_id=payload.course_id,
+        selection_id=payload.selection_id,
         method=payload.method,
         idempotency_key=idempotency_key,
     )
@@ -234,6 +236,7 @@ async def add_cart_item(
     result = await course_selection_service.add_cart_item(
         session,
         course_id=payload.course_id,
+        selection_id=payload.selection_id,
         method=payload.method,
         idempotency_key=idempotency_key,
     )

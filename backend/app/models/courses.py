@@ -55,6 +55,10 @@ class CourseSelectionRecord(BaseModel):
     campus: str = ""
     capacity: Optional[int] = None
     selected_count: Optional[int] = None
+    internal_capacity: Optional[int] = None
+    internal_selected_count: Optional[int] = None
+    external_capacity: Optional[int] = None
+    external_selected_count: Optional[int] = None
     teacher: str = ""
     schedule_time: str = ""
     schedule_location: str = ""
@@ -79,6 +83,7 @@ class SelectedCoursePage(BaseModel):
 
 class CoursePreflightRequest(BaseModel):
     course_id: str
+    selection_id: Optional[str] = None
     method: str = "bx-b-b"
 
 
@@ -90,6 +95,7 @@ class CoursePreflightResponse(BaseModel):
 
 class CourseWriteRequest(BaseModel):
     course_id: str
+    selection_id: Optional[str] = None
     method: str = "bx-b-b"
 
 
@@ -101,6 +107,7 @@ class CourseWriteResponse(BaseModel):
 
 class CourseSnatchCourseRequest(BaseModel):
     course_id: str = Field(min_length=1, max_length=128)
+    selection_id: Optional[str] = Field(default=None, max_length=128)
     course_code: str = Field(default="", max_length=64)
     course_name: str = Field(default="", max_length=256)
     method: str = Field(default="zytzk-b-b", min_length=1, max_length=64)
@@ -132,12 +139,16 @@ class CourseSnatchTaskRequest(BaseModel):
 
 class CourseSnatchItem(BaseModel):
     course_id: str
+    selection_id: Optional[str] = None
     course_code: str = ""
     course_name: str = ""
     method: str
     status: Literal["pending", "retrying", "success", "failed"] = "pending"
     attempts: int = 0
     message: str = ""
+    error_type: Optional[
+        Literal["conflict", "full", "not_open", "not_eligible", "already_selected", "unknown"]
+    ] = None
 
 
 class CourseSnatchTask(BaseModel):

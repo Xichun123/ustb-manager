@@ -127,6 +127,7 @@ def _parse_available_course(course: Dict) -> Dict:
 
     return {
         "task_id": course.get("rwh", "") or course.get("id", ""),  # 任务号
+        "internal_id": course.get("id", ""),  # BYYT 内部任务 ID
         "course_code": course.get("kcdm", ""),  # 课程代码
         "course_name": course.get("kcmc", ""),  # 课程名称
         "course_name_en": course.get("kcmc_en", ""),  # 英文名称
@@ -143,7 +144,11 @@ def _parse_available_course(course: Dict) -> Dict:
         "campus": course.get("xiaoqumc", ""),  # 校区
         "campus_code": course.get("xiaoqu", ""),  # 校区代码
         "capacity": course.get("zrl", ""),  # 总容量
-        "selected_count": course.get("yxzrs", ""),  # 已选人数
+        "selected_count": course.get("yxzrlrs") or course.get("yxzrs", ""),  # 实时已占
+        "internal_capacity": course.get("dnrl", ""),  # 对内容量
+        "internal_selected_count": course.get("dnyxrlrs") or course.get("dnyxrs", ""),
+        "external_capacity": course.get("dwrl", ""),  # 对外容量
+        "external_selected_count": course.get("dwyxrlrs") or course.get("dwyxrs", ""),
         "teacher": course.get("dgjsmc", ""),  # 教师
         "task_name": course.get("rwmc", ""),  # 任务名称
         "schedule_time": course.get("sksj", ""),  # 上课时间
@@ -183,7 +188,11 @@ def _parse_course(course: Dict) -> Dict:
         "campus": course.get("xiaoqumc", ""),  # 校区
         "campus_code": course.get("xiaoqu", ""),  # 校区代码
         "capacity": course.get("zrl", ""),  # 总容量
-        "selected_count": course.get("yxzrs", ""),  # 已选人数
+        "selected_count": course.get("yxzrlrs") or course.get("yxzrs", ""),  # 实时已占
+        "internal_capacity": course.get("dnrl", ""),  # 对内容量
+        "internal_selected_count": course.get("dnyxrlrs") or course.get("dnyxrs", ""),
+        "external_capacity": course.get("dwrl", ""),  # 对外容量
+        "external_selected_count": course.get("dwyxrlrs") or course.get("dwyxrs", ""),
         "teacher": course.get("dgjsmc", ""),  # 教师
         "task_name": course.get("rwmc", ""),  # 任务名称
         "schedule_time": course.get("sksj", ""),  # 上课时间
@@ -341,6 +350,32 @@ def _build_queryform(
     return form
 
 
+_SELECTION_FAILURE_PATTERNS = (
+    ("conflict", ("冲突",)),
+    ("full", ("容量已满", "人数已满", "名额已满", "已满", "无余量", "没有余量")),
+    (
+        "not_open",
+        ("未开放", "未开始", "未到选课时间", "选课时间未到", "不在选课时间", "暂停选课"),
+    ),
+    (
+        "not_eligible",
+        ("不面向", "不符合选课条件", "不在选课范围", "没有选课权限", "无选课权限", "不允许选择"),
+    ),
+    (
+        "already_selected",
+        ("已经选择", "已经选过", "已选该课程", "该课程已选", "重复选课", "已在已选", "您已选"),
+    ),
+)
+
+
+def _classify_selection_failure(message: str) -> str:
+    normalized = "".join(message.split()).casefold()
+    for error_type, patterns in _SELECTION_FAILURE_PATTERNS:
+        if any(pattern in normalized for pattern in patterns):
+            return error_type
+    return "unknown"
+
+
 async def select_course(
     session: Session,
     course_id: str,
@@ -373,9 +408,13 @@ async def select_course(
     )
 
     result = await byyt_courses.select_or_add_to_cart(session, params)
+    success = str(result.get("jg") or "") == "1"
+    message = str(result.get("message") or "")
     return {
-        "success": result.get("jg") == "1",
-        "message": result.get("message", ""),
+        "success": success,
+        "message": message,
+        "error_type": None if success else _classify_selection_failure(message),
+        "upstream_code": str(result.get("jg") or ""),
     }
 
 

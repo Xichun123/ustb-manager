@@ -107,6 +107,11 @@ def test_course_selection_courses_return_a_typed_page():
                             "xf": "3",
                             "zrl": "100",
                             "yxzrs": "80",
+                            "yxzrlrs": "85",
+                            "dnrl": "50",
+                            "dnyxrlrs": "35",
+                            "dwrl": "50",
+                            "dwyxrlrs": "50",
                             "xkzt": "未选",
                         }
                     ],
@@ -141,7 +146,11 @@ def test_course_selection_courses_return_a_typed_page():
         "college": "",
         "campus": "",
         "capacity": 100,
-        "selected_count": 80,
+        "selected_count": 85,
+        "internal_capacity": 50,
+        "internal_selected_count": 35,
+        "external_capacity": 50,
+        "external_selected_count": 50,
         "teacher": "",
         "schedule_time": "",
         "schedule_location": "",
@@ -239,15 +248,13 @@ def test_course_selection_cookie_write_requires_a_trusted_origin():
     assert request_count == 0
 
 
-def test_course_selection_bearer_write_is_idempotent_and_runs_preflight_first():
+def test_course_selection_bearer_write_is_idempotent_and_calls_selection_directly():
     requests = []
 
     def handler(request: httpx.Request) -> httpx.Response:
         requests.append(request.url.path)
         if request.url.path == "/Xsxk/queryXkdqXnxq":
             return httpx.Response(200, json=TERM_INFO)
-        if request.url.path == "/Xsxk/cxmtctPd":
-            return httpx.Response(200, json={"jg": "1", "message": "无冲突"})
         assert request.url.path == "/Xsxk/addGouwuche"
         return httpx.Response(200, json={"jg": "1", "message": "选课成功"})
 
@@ -286,17 +293,19 @@ def test_course_selection_bearer_write_is_idempotent_and_runs_preflight_first():
     )
     assert requests == [
         "/Xsxk/queryXkdqXnxq",
-        "/Xsxk/cxmtctPd",
         "/Xsxk/addGouwuche",
     ]
 
 
-def test_course_selection_write_conflict_has_a_stable_business_error():
+def test_course_selection_classifies_a_direct_conflict_rejection():
+    requests = []
+
     def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request.url.path)
         if request.url.path == "/Xsxk/queryXkdqXnxq":
             return httpx.Response(200, json=TERM_INFO)
-        assert request.url.path == "/Xsxk/cxmtctPd"
-        return httpx.Response(200, json={"jg": "-9", "message": "课程冲突"})
+        assert request.url.path == "/Xsxk/addGouwuche"
+        return httpx.Response(200, json={"jg": "0", "message": "课程冲突"})
 
     upstream = httpx.Client(transport=httpx.MockTransport(handler))
     session = Session(client=upstream, state=AuthState.ACTIVE, authenticated=True)
@@ -317,8 +326,144 @@ def test_course_selection_write_conflict_has_a_stable_business_error():
 
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "COURSE_CONFLICT"
+    assert response.json()["error"]["message"] == "课程冲突"
     assert response.json()["error"]["retryable"] is False
     assert response.json()["error"]["request_id"]
+    assert requests == ["/Xsxk/queryXkdqXnxq", "/Xsxk/addGouwuche"]
+
+
+def test_course_selection_uses_internal_id_and_enriches_a_generic_conflict():
+    requests = []
+    detailed_message = (
+        "上课时间冲突，当前课程：德国国情(排课)，"
+        "冲突课程：信息系统开发实践II(排课)"
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request.url.path)
+        if request.url.path == "/Xsxk/queryXkdqXnxq":
+            return httpx.Response(200, json=TERM_INFO)
+        form = parse_qs(request.content.decode(), keep_blank_values=True)
+        assert form["p_id"] == ["internal-task-id"]
+        if request.url.path == "/Xsxk/addGouwuche":
+            return httpx.Response(200, json={"jg": "0", "message": "操作失败"})
+        assert request.url.path == "/Xsxk/cxmtctPd"
+        return httpx.Response(200, json={"jg": "-9", "message": detailed_message})
+
+    upstream = httpx.Client(transport=httpx.MockTransport(handler))
+    session = Session(client=upstream, state=AuthState.ACTIVE, authenticated=True)
+    app.dependency_overrides[get_authenticated_session] = lambda: session
+    try:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.post(
+                "/api/course-selection/selections",
+                headers={
+                    "Authorization": "Bearer test-session",
+                    "Idempotency-Key": "detailed-conflict-key",
+                },
+                json={
+                    "course_id": "task-1",
+                    "selection_id": "internal-task-id",
+                    "method": "sztzk-b-b",
+                },
+            )
+    finally:
+        app.dependency_overrides.clear()
+        upstream.close()
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "COURSE_CONFLICT"
+    assert response.json()["error"]["message"] == detailed_message
+    assert requests == [
+        "/Xsxk/queryXkdqXnxq",
+        "/Xsxk/addGouwuche",
+        "/Xsxk/cxmtctPd",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("upstream_message", "expected_code", "retryable"),
+    [
+        ("该课程容量已满", "COURSE_FULL", True),
+        ("当前未到选课时间", "COURSE_NOT_OPEN", True),
+        ("该课程不面向您所在专业", "COURSE_NOT_ELIGIBLE", False),
+        ("操作失败", "COURSE_OPERATION_BLOCKED", False),
+    ],
+)
+def test_course_selection_classifies_direct_business_rejections(
+    upstream_message,
+    expected_code,
+    retryable,
+):
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/Xsxk/queryXkdqXnxq":
+            return httpx.Response(200, json=TERM_INFO)
+        assert request.url.path == "/Xsxk/addGouwuche"
+        return httpx.Response(200, json={"jg": "0", "message": upstream_message})
+
+    upstream = httpx.Client(transport=httpx.MockTransport(handler))
+    session = Session(client=upstream, state=AuthState.ACTIVE, authenticated=True)
+    app.dependency_overrides[get_authenticated_session] = lambda: session
+    try:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.post(
+                "/api/course-selection/selections",
+                headers={
+                    "Authorization": "Bearer test-session",
+                    "Idempotency-Key": f"write-{expected_code}",
+                },
+                json={"course_id": "task-1", "method": "bx-b-b"},
+            )
+    finally:
+        app.dependency_overrides.clear()
+        upstream.close()
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == expected_code
+    assert response.json()["error"]["message"] == upstream_message
+    assert response.json()["error"]["retryable"] is retryable
+
+
+def test_course_selection_confirms_an_already_selected_course():
+    requests = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request.url.path)
+        if request.url.path == "/Xsxk/queryXkdqXnxq":
+            return httpx.Response(200, json=TERM_INFO)
+        if request.url.path == "/Xsxk/addGouwuche":
+            return httpx.Response(200, json={"jg": "0", "message": "您已经选择该课程"})
+        assert request.url.path == "/Xsxk/queryYxkc"
+        return httpx.Response(200, json={"yxkcList": [{"rwh": "task-1"}]})
+
+    upstream = httpx.Client(transport=httpx.MockTransport(handler))
+    session = Session(client=upstream, state=AuthState.ACTIVE, authenticated=True)
+    app.dependency_overrides[get_authenticated_session] = lambda: session
+    try:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.post(
+                "/api/course-selection/selections",
+                headers={
+                    "Authorization": "Bearer test-session",
+                    "Idempotency-Key": "already-selected-key",
+                },
+                json={"course_id": "task-1", "method": "bx-b-b"},
+            )
+    finally:
+        app.dependency_overrides.clear()
+        upstream.close()
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "success": True,
+        "status": "success",
+        "message": "您已经选择该课程",
+    }
+    assert requests == [
+        "/Xsxk/queryXkdqXnxq",
+        "/Xsxk/addGouwuche",
+        "/Xsxk/queryYxkc",
+    ]
 
 
 def test_course_selection_announcements_do_not_expose_raw_fields():

@@ -44,6 +44,22 @@ const SELECTION_METHOD_COLORS: Record<string, string> = {
 
 const idempotencyKey = () => crypto.randomUUID()
 
+const quotaColor = (selected?: number | null, capacity?: number | null) => {
+  if (selected == null || capacity == null || capacity <= 0) return 'default'
+  const percent = selected / capacity
+  return percent >= 1 ? 'red' : percent >= 0.8 ? 'orange' : 'green'
+}
+
+const quotaTag = (
+  label: string,
+  selected?: number | null,
+  capacity?: number | null,
+) => (
+  <Tag color={quotaColor(selected, capacity)} style={{ marginInlineEnd: 0 }}>
+    {label} {selected ?? '-'}/{capacity ?? '-'}
+  </Tag>
+)
+
 const defaultSnatchStart = () => {
   const target = new Date()
   target.setHours(15, 0, 0, 0)
@@ -58,6 +74,18 @@ const SNATCH_STATUS_LABELS: Record<SnatchTask['status'], string> = {
   completed_with_errors: '部分失败',
   stopped: '已停止',
   failed: '任务失败',
+}
+
+const SNATCH_ERROR_LABELS: Record<
+  NonNullable<NonNullable<SnatchTask['items']>[number]['error_type']>,
+  string
+> = {
+  conflict: '时间冲突',
+  full: '容量已满',
+  not_open: '尚未开放',
+  not_eligible: '不符合选课条件',
+  already_selected: '已选待确认',
+  unknown: '未知失败',
 }
 
 export default function CoursesPage() {
@@ -312,6 +340,7 @@ export default function CoursesPage() {
           retry_interval_seconds: 1,
           courses: selectedCourses.map(course => ({
             course_id: course.course_id,
+            selection_id: course.selection_id,
             course_code: course.course_code,
             course_name: course.course_name,
             method: courseMethod,
@@ -381,6 +410,7 @@ export default function CoursesPage() {
     try {
       const res = await api.post<PreflightResponse>('/course-selection/preflight', {
         course_id: course.course_id,
+        selection_id: course.selection_id,
         method: courseMethod,
       })
       if (!res.data.allowed) {
@@ -404,7 +434,11 @@ export default function CoursesPage() {
     try {
       const res = await api.post<WriteResponse>(
         '/course-selection/selections',
-        { course_id: course.course_id, method: courseMethod },
+        {
+          course_id: course.course_id,
+          selection_id: course.selection_id,
+          method: courseMethod,
+        },
         { headers: { 'Idempotency-Key': idempotencyKey() } },
       )
       message.success(res.data.message || `"${course.course_name}" 选课成功`)
@@ -529,18 +563,36 @@ export default function CoursesPage() {
       width: 80,
     },
     {
-      title: '容量',
+      title: (
+        <Tooltip title="实时已占人数 / 容量上限">
+          <span>实时容量</span>
+        </Tooltip>
+      ),
       key: 'capacity',
-      width: 100,
+      width: 190,
       render: (_, record) => {
-        const selected = record.selected_count || 0
-        const total = record.capacity || 0
-        const percent = total > 0 ? (selected / total) * 100 : 0
-        const color = percent >= 100 ? 'red' : percent >= 80 ? 'orange' : 'green'
+        const hasInternal = record.internal_capacity != null
+          || record.internal_selected_count != null
+        const hasExternal = record.external_capacity != null
+          || record.external_selected_count != null
         return (
-          <Tooltip title={`${selected}/${total}`}>
-            <Tag color={color}>{selected}/{total}</Tag>
-          </Tooltip>
+          <Space direction="vertical" size={4}>
+            {quotaTag('总', record.selected_count, record.capacity)}
+            {(hasInternal || hasExternal) && (
+              <Space size={4}>
+                {hasInternal && quotaTag(
+                  '对内',
+                  record.internal_selected_count,
+                  record.internal_capacity,
+                )}
+                {hasExternal && quotaTag(
+                  '对外',
+                  record.external_selected_count,
+                  record.external_capacity,
+                )}
+              </Space>
+            )}
+          </Space>
         )
       },
     },
@@ -760,6 +812,7 @@ export default function CoursesPage() {
                 {item.course_name || item.course_code || item.course_id} · {
                   item.status === 'success' ? '成功' : item.status === 'failed' ? '失败' : item.status === 'retrying' ? `重试中 (${item.attempts})` : '等待'
                 }
+                {item.error_type ? ` · ${SNATCH_ERROR_LABELS[item.error_type]}` : ''}
                 {item.message ? ` · ${item.message}` : ''}
               </Tag>
             ))}
@@ -914,8 +967,20 @@ export default function CoursesPage() {
             <Descriptions.Item label="教师">{selectedCourse.teacher}</Descriptions.Item>
             <Descriptions.Item label="开课学院">{selectedCourse.college}</Descriptions.Item>
             <Descriptions.Item label="校区">{selectedCourse.campus}</Descriptions.Item>
-            <Descriptions.Item label="容量/已选">
-              {selectedCourse.selected_count ?? '-'}/{selectedCourse.capacity ?? '-'}
+            <Descriptions.Item label="实时容量（已占/上限）">
+              <Space wrap size={4}>
+                {quotaTag('总', selectedCourse.selected_count, selectedCourse.capacity)}
+                {selectedCourse.internal_capacity != null && quotaTag(
+                  '对内',
+                  selectedCourse.internal_selected_count,
+                  selectedCourse.internal_capacity,
+                )}
+                {selectedCourse.external_capacity != null && quotaTag(
+                  '对外',
+                  selectedCourse.external_selected_count,
+                  selectedCourse.external_capacity,
+                )}
+              </Space>
             </Descriptions.Item>
             <Descriptions.Item label="上课时间" span={2}>
               {selectedCourse.schedule_time || '-'}

@@ -2748,6 +2748,8 @@ export interface components {
              * @default bx-b-b
              */
             method: string;
+            /** Selection Id */
+            selection_id?: string | null;
         };
         /** CoursePreflightResponse */
         CoursePreflightResponse: {
@@ -2917,8 +2919,16 @@ export interface components {
              * @default 0
              */
             credits: number;
+            /** External Capacity */
+            external_capacity?: number | null;
+            /** External Selected Count */
+            external_selected_count?: number | null;
             /** Hours */
             hours?: number | null;
+            /** Internal Capacity */
+            internal_capacity?: number | null;
+            /** Internal Selected Count */
+            internal_selected_count?: number | null;
             /**
              * Is Selected
              * @default false
@@ -2982,6 +2992,8 @@ export interface components {
              * @default zytzk-b-b
              */
             method: string;
+            /** Selection Id */
+            selection_id?: string | null;
         };
         /** CourseSnatchItem */
         CourseSnatchItem: {
@@ -3002,6 +3014,8 @@ export interface components {
              * @default
              */
             course_name: string;
+            /** Error Type */
+            error_type?: ("conflict" | "full" | "not_open" | "not_eligible" | "already_selected" | "unknown") | null;
             /**
              * Message
              * @default
@@ -3009,6 +3023,8 @@ export interface components {
             message: string;
             /** Method */
             method: string;
+            /** Selection Id */
+            selection_id?: string | null;
             /**
              * Status
              * @default pending
@@ -3073,6 +3089,8 @@ export interface components {
              * @default bx-b-b
              */
             method: string;
+            /** Selection Id */
+            selection_id?: string | null;
         };
         /** CourseWriteResponse */
         CourseWriteResponse: {

@@ -26,6 +26,17 @@ class CourseConflict(Exception):
 class CourseOperationBlocked(Exception):
     """课程操作被教务系统业务规则阻止。"""
 
+    def __init__(
+        self,
+        message: str = "",
+        *,
+        code: str = "COURSE_OPERATION_BLOCKED",
+        retryable: bool = False,
+    ):
+        super().__init__(message)
+        self.code = code
+        self.retryable = retryable
+
 
 class IdempotencyKeyReused(Exception):
     """同一个幂等键被用于不同的请求。"""
@@ -179,9 +190,9 @@ async def course_operation_blocked_handler(request: Request, exc: CourseOperatio
     return _error_response(
         request,
         status_code=409,
-        code="COURSE_OPERATION_BLOCKED",
+        code=exc.code,
         message=str(exc) or "选课操作被阻止",
-        retryable=False,
+        retryable=exc.retryable,
     )
 
 

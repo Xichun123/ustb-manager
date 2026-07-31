@@ -46,6 +46,10 @@ def _course(item: dict[str, Any]) -> dict[str, Any]:
         "campus": str(item.get("campus") or ""),
         "capacity": _optional_int(item.get("capacity")),
         "selected_count": _optional_int(item.get("selected_count")),
+        "internal_capacity": _optional_int(item.get("internal_capacity")),
+        "internal_selected_count": _optional_int(item.get("internal_selected_count")),
+        "external_capacity": _optional_int(item.get("external_capacity")),
+        "external_selected_count": _optional_int(item.get("external_selected_count")),
         "teacher": str(item.get("teacher") or ""),
         "schedule_time": str(item.get("schedule_time") or ""),
         "schedule_location": str(item.get("schedule_location") or ""),
@@ -165,13 +169,14 @@ async def preflight(
     session: Session,
     *,
     course_id: str,
+    selection_id: Optional[str] = None,
     method: str,
 ) -> dict[str, Any]:
     params = await _term_params(session)
     result = await course_service.check_time_conflict(
         session,
         **params,
-        course_id=course_id,
+        course_id=selection_id or course_id,
         xkfsdm=method,
     )
     return {
@@ -207,34 +212,77 @@ async def _execute_idempotent(
 def _successful_write(result: dict[str, Any]) -> dict[str, Any]:
     message = str(result.get("message") or "")
     if not result.get("success"):
-        raise CourseOperationBlocked(message)
+        error_type = str(result.get("error_type") or "unknown")
+        if error_type == "conflict":
+            raise CourseConflict(message)
+        error_details = {
+            "full": ("COURSE_FULL", True),
+            "not_open": ("COURSE_NOT_OPEN", True),
+            "not_eligible": ("COURSE_NOT_ELIGIBLE", False),
+            "already_selected": ("COURSE_ALREADY_SELECTED", False),
+        }.get(error_type, ("COURSE_OPERATION_BLOCKED", False))
+        raise CourseOperationBlocked(
+            message,
+            code=error_details[0],
+            retryable=error_details[1],
+        )
     return {"success": True, "status": "success", "message": message}
+
+
+async def _is_course_selected(
+    session: Session,
+    *,
+    params: dict[str, str],
+    course_id: str,
+) -> bool:
+    selected = await course_service.get_selected_courses(session, **params)
+    return any(item.get("task_id") == course_id for item in selected["courses"])
 
 
 async def create_selection(
     session: Session,
     *,
     course_id: str,
+    selection_id: Optional[str] = None,
     method: str,
     idempotency_key: str,
 ) -> dict[str, Any]:
     async def execute() -> dict[str, Any]:
         params = await _term_params(session)
-        result = await course_service.check_time_conflict(
-            session, **params, course_id=course_id, xkfsdm=method
+        upstream_id = selection_id or course_id
+        result = await course_service.select_course(
+            session, **params, course_id=upstream_id, xkfsdm=method
         )
-        _require_clear_preflight(result)
-        return _successful_write(
-            await course_service.select_course(
-                session, **params, course_id=course_id, xkfsdm=method
+        if selection_id and not result["success"] and result.get("error_type") == "unknown":
+            conflict = await course_service.check_time_conflict(
+                session,
+                **params,
+                course_id=upstream_id,
+                xkfsdm=method,
             )
-        )
+            if conflict["status"] == "conflict":
+                result = {
+                    **result,
+                    "error_type": "conflict",
+                    "message": conflict["message"] or result["message"],
+                }
+        if result.get("error_type") == "already_selected" and await _is_course_selected(
+            session,
+            params=params,
+            course_id=course_id,
+        ):
+            return {
+                "success": True,
+                "status": "success",
+                "message": result.get("message") or "课程已在已选列表中",
+            }
+        return _successful_write(result)
 
     return await _execute_idempotent(
         session,
         operation="select",
         key=idempotency_key,
-        fingerprint=f"{course_id}:{method}",
+        fingerprint=f"{course_id}:{selection_id or ''}:{method}",
         execute=execute,
     )
 
@@ -264,24 +312,31 @@ async def add_cart_item(
     session: Session,
     *,
     course_id: str,
+    selection_id: Optional[str] = None,
     method: str,
     idempotency_key: str,
 ) -> dict[str, Any]:
     async def execute() -> dict[str, Any]:
         params = await _term_params(session)
+        upstream_id = selection_id or course_id
         result = await course_service.check_time_conflict(
-            session, **params, course_id=course_id, xkfsdm=method
+            session, **params, course_id=upstream_id, xkfsdm=method
         )
         _require_clear_preflight(result)
         return _successful_write(
-            await course_service.add_to_cart(session, **params, course_id=course_id, xkfsdm=method)
+            await course_service.add_to_cart(
+                session,
+                **params,
+                course_id=upstream_id,
+                xkfsdm=method,
+            )
         )
 
     return await _execute_idempotent(
         session,
         operation="cart-add",
         key=idempotency_key,
-        fingerprint=f"{course_id}:{method}",
+        fingerprint=f"{course_id}:{selection_id or ''}:{method}",
         execute=execute,
     )
 
@@ -412,42 +467,61 @@ async def _run_snatch_task(session: Session, task_id: str) -> None:
                     item = session.course_snatch_tasks[task_id]["items"][index]
                     item["status"] = "retrying"
                     item["attempts"] += 1
+                    item["error_type"] = None
                     course_id = item["course_id"]
+                    selection_id = item.get("selection_id")
+                    upstream_id = selection_id or course_id
                     method = item["method"]
 
                 try:
-                    preflight = await course_service.check_time_conflict(
-                        session,
-                        **params,
-                        course_id=course_id,
-                        xkfsdm=method,
-                    )
-                    if preflight["status"] == "conflict":
-                        async with session.course_snatch_lock:
-                            item = session.course_snatch_tasks[task_id]["items"][index]
-                            item["status"] = "failed"
-                            item["message"] = preflight["message"] or "课程时间冲突"
-                        continue
-                    if not preflight["allowed"]:
-                        async with session.course_snatch_lock:
-                            session.course_snatch_tasks[task_id]["items"][index]["message"] = (
-                                preflight["message"] or "暂不可选，等待重试"
-                            )
-                        continue
-
+                    # 直接选课接口会自行校验冲突；cxmtctPd 仅用于购物车预检。
                     result = await course_service.select_course(
                         session,
                         **params,
-                        course_id=course_id,
+                        course_id=upstream_id,
                         xkfsdm=method,
                     )
+                    if (
+                        selection_id
+                        and not result["success"]
+                        and result.get("error_type") == "unknown"
+                    ):
+                        conflict = await course_service.check_time_conflict(
+                            session,
+                            **params,
+                            course_id=upstream_id,
+                            xkfsdm=method,
+                        )
+                        if conflict["status"] == "conflict":
+                            result = {
+                                **result,
+                                "error_type": "conflict",
+                                "message": conflict["message"] or result["message"],
+                            }
                     async with session.course_snatch_lock:
                         item = session.course_snatch_tasks[task_id]["items"][index]
-                        if result["success"]:
+                        error_type = result.get("error_type")
+                        already_selected = error_type == "already_selected"
+
+                    confirmed_selected = already_selected and await _is_course_selected(
+                        session,
+                        params=params,
+                        course_id=course_id,
+                    )
+
+                    async with session.course_snatch_lock:
+                        item = session.course_snatch_tasks[task_id]["items"][index]
+                        if result["success"] or confirmed_selected:
                             item["status"] = "success"
                             item["message"] = result["message"] or "选课成功"
+                            item["error_type"] = None
+                        elif error_type in {"conflict", "not_eligible"}:
+                            item["status"] = "failed"
+                            item["message"] = result["message"] or "课程不可选择"
+                            item["error_type"] = error_type
                         else:
                             item["message"] = result["message"] or "暂未成功，等待重试"
+                            item["error_type"] = error_type or "unknown"
                 except (BYYTRateLimited, BYYTUnavailable, BYYTUpstreamError):
                     async with session.course_snatch_lock:
                         session.course_snatch_tasks[task_id]["items"][index]["message"] = (
@@ -530,6 +604,7 @@ async def create_snatch_task(
                         "status": "pending",
                         "attempts": 0,
                         "message": "",
+                        "error_type": None,
                     }
                     for course in courses
                 ],
