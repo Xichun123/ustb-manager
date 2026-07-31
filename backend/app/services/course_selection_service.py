@@ -30,6 +30,11 @@ def _optional_int(value: Any) -> Optional[int]:
     return int(number) if number is not None else None
 
 
+def _lottery_status(value: Any) -> str:
+    status = str(value) if value not in (None, "") else ""
+    return {"0": "待抽签", "1": "已中签"}.get(status, status)
+
+
 def _course(item: dict[str, Any]) -> dict[str, Any]:
     return {
         "course_id": str(item.get("task_id") or ""),
@@ -54,6 +59,7 @@ def _course(item: dict[str, Any]) -> dict[str, Any]:
         "schedule_time": str(item.get("schedule_time") or ""),
         "schedule_location": str(item.get("schedule_location") or ""),
         "selection_status": str(item.get("selection_status") or ""),
+        "lottery_status": _lottery_status(item.get("lottery_status")),
         "is_selected": bool(item.get("is_selected")),
     }
 

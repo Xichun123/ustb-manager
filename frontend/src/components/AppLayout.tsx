@@ -139,7 +139,7 @@ export default function AppLayout({ children, standaloneMode = false }: AppLayou
   const menuContent = (
     <>
       <div className={`app-sider-brand ${(!isMobile && collapsed) ? 'collapsed' : ''}`}>
-        <div className="app-sider-brand-logo">U</div>
+        <img className="app-sider-brand-logo" src="/app-icon.png" alt="" aria-hidden="true" />
         <span className="app-sider-brand-name">USTB Manager</span>
       </div>
       <Menu

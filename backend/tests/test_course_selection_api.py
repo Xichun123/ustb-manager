@@ -155,6 +155,7 @@ def test_course_selection_courses_return_a_typed_page():
         "schedule_time": "",
         "schedule_location": "",
         "selection_status": "未选",
+        "lottery_status": "",
         "is_selected": False,
     }
 
@@ -181,6 +182,7 @@ def test_course_selection_selected_and_cart_use_typed_records(route, upstream_pa
                         "kcdm": "CS1",
                         "kcmc": "程序设计",
                         "xf": "3",
+                        "cqzt": "0",
                     }
                 ]
             },
@@ -191,6 +193,7 @@ def test_course_selection_selected_and_cart_use_typed_records(route, upstream_pa
     assert response.status_code == 200
     assert response.json()["items"][0]["course_id"] == "task-1"
     assert response.json()["items"][0]["selection_id"] == "selection-1"
+    assert response.json()["items"][0]["lottery_status"] == "待抽签"
     assert response.json()["total_credits"] == 3.0
 
 

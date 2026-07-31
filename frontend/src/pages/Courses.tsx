@@ -50,6 +50,20 @@ const quotaColor = (selected?: number | null, capacity?: number | null) => {
   return percent >= 1 ? 'red' : percent >= 0.8 ? 'orange' : 'green'
 }
 
+const lotteryStatusColor = (status: string) => {
+  if (status.includes('未中') || status.includes('落选') || status.includes('失败')) return 'red'
+  if (status.includes('选中') || status.includes('中签') || status.includes('通过') || status.includes('成功')) return 'green'
+  if (status.includes('待') || status.includes('抽签中')) return 'gold'
+  return 'blue'
+}
+
+const courseStatusLabel = (lotteryStatus: string) => {
+  if (!lotteryStatus || (lotteryStatus.includes('中签') && !lotteryStatus.includes('未中'))) {
+    return '选中'
+  }
+  return lotteryStatus
+}
+
 const quotaTag = (
   label: string,
   selected?: number | null,
@@ -138,6 +152,9 @@ export default function CoursesPage() {
     [categories],
   )
   const isProfessionalDevelopment = courseMethod.startsWith('zytzk')
+  const isLotterySelection = (courseContext?.methods ?? []).some(
+    method => method.code === courseMethod && method.mode === '2',
+  )
 
   // 筛选后的课程
   const filteredCourses = useMemo(() => {
@@ -165,12 +182,14 @@ export default function CoursesPage() {
   // 统计信息
   const stats = useMemo(() => {
     const types: Record<string, number> = {}
+    const categories: Record<string, number> = {}
     const methods: Record<string, number> = {}
     filteredCourses.forEach(c => {
       types[c.course_nature] = (types[c.course_nature] || 0) + 1
+      categories[c.course_category] = (categories[c.course_category] || 0) + 1
       methods[c.method] = (methods[c.method] || 0) + 1
     })
-    return { types, methods }
+    return { types, categories, methods }
   }, [filteredCourses])
 
   // 初始化：由后端动态上下文提供学期、方式和筛选项
@@ -515,6 +534,12 @@ export default function CoursesPage() {
       key: 'course_category',
       width: 120,
       ellipsis: true,
+      filters: Object.keys(stats.categories).map(category => ({
+        text: category,
+        value: category,
+      })),
+      filterSearch: true,
+      onFilter: (value, record) => record.course_category === value,
     },
     {
       title: '学分',
@@ -536,11 +561,36 @@ export default function CoursesPage() {
       dataIndex: 'method',
       key: 'method',
       width: 100,
+      hidden: viewMode === 'available',
       render: (text) => (
         <Tag color={SELECTION_METHOD_COLORS[text] || 'default'}>{text}</Tag>
       ),
       filters: Object.keys(stats.methods).map(m => ({ text: m, value: m })),
       onFilter: (value, record) => record.method === value,
+    },
+    {
+      title: '状态',
+      dataIndex: 'lottery_status',
+      key: 'lottery_status',
+      width: 90,
+      hidden: viewMode !== 'selected',
+      render: (status: string) => {
+        const label = courseStatusLabel(status)
+        return <Tag color={lotteryStatusColor(label)}>{label}</Tag>
+      },
+    },
+    {
+      title: '录取方式',
+      key: 'admission_mode',
+      width: 100,
+      hidden: viewMode !== 'available',
+      render: () => isLotterySelection ? (
+        <Tooltip title="提交后进入待抽签，最终是否选中以抽签结果为准">
+          <Tag color="gold">需抽签</Tag>
+        </Tooltip>
+      ) : (
+        <Tag color="green">先到先得</Tag>
+      ),
     },
     {
       title: '教师',
@@ -615,7 +665,7 @@ export default function CoursesPage() {
     }] : [{
       title: '操作',
       key: 'action',
-      width: 160,
+      width: 190,
       fixed: 'right' as const,
       render: (_: unknown, record: Course) => (
         <Space>
@@ -626,7 +676,7 @@ export default function CoursesPage() {
             disabled={record.is_selected}
             onClick={(e) => { e.stopPropagation(); handleSelectCourse(record) }}
           >
-            {record.is_selected ? '已选' : '选课'}
+            {record.is_selected ? '已选' : isLotterySelection ? '报名抽签' : '选课'}
           </Button>
           <Button
             type="link"
@@ -964,6 +1014,13 @@ export default function CoursesPage() {
             <Descriptions.Item label="学分">{selectedCourse.credits}</Descriptions.Item>
             <Descriptions.Item label="学时">{selectedCourse.hours ?? '-'}</Descriptions.Item>
             <Descriptions.Item label="选课方式">{selectedCourse.method}</Descriptions.Item>
+            {viewMode === 'selected' && (
+              <Descriptions.Item label="状态">
+                <Tag color={lotteryStatusColor(courseStatusLabel(selectedCourse.lottery_status))}>
+                  {courseStatusLabel(selectedCourse.lottery_status)}
+                </Tag>
+              </Descriptions.Item>
+            )}
             <Descriptions.Item label="教师">{selectedCourse.teacher}</Descriptions.Item>
             <Descriptions.Item label="开课学院">{selectedCourse.college}</Descriptions.Item>
             <Descriptions.Item label="校区">{selectedCourse.campus}</Descriptions.Item>

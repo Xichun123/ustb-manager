@@ -1496,6 +1496,11 @@
             "title": "Is Selected",
             "type": "boolean"
           },
+          "lottery_status": {
+            "default": "",
+            "title": "Lottery Status",
+            "type": "string"
+          },
           "method": {
             "default": "",
             "title": "Method",

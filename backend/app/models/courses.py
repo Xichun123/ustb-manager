@@ -63,6 +63,7 @@ class CourseSelectionRecord(BaseModel):
     schedule_time: str = ""
     schedule_location: str = ""
     selection_status: str = ""
+    lottery_status: str = ""
     is_selected: bool = False
 
 

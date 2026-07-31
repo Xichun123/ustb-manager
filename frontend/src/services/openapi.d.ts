@@ -2935,6 +2935,11 @@ export interface components {
              */
             is_selected: boolean;
             /**
+             * Lottery Status
+             * @default
+             */
+            lottery_status: string;
+            /**
              * Method
              * @default
              */

@@ -39,14 +39,7 @@ export function LoginPage() {
       <Content style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1, padding: 24 }}>
         {/* 品牌区 */}
         <div style={{ textAlign: 'center', marginBottom: 28, color: '#fff' }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: 16, margin: '0 auto 14px',
-            background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 24, fontWeight: 700, border: '1px solid rgba(255,255,255,0.25)',
-          }}>
-            U
-          </div>
+          <img className="auth-brand-logo" src="/app-icon.png" alt="" aria-hidden="true" />
           <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: 0.5 }}>USTB Manager</div>
           <div style={{ fontSize: 13, opacity: 0.85, marginTop: 6 }}>北科大学业一站式管理平台</div>
         </div>
